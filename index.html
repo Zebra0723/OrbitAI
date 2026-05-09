@@ -243,6 +243,59 @@
   .coming-soon h4 { margin: 0 0 6px; font-size: 18px; font-weight: 800; }
   .coming-soon p { margin: 0; color: var(--text-soft); font-size: 14px; }
 
+  /* Content cards (per section items) */
+  .items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .item {
+    background: white;
+    border-radius: 16px;
+    padding: 18px;
+    border: 2px solid #f0e8ff;
+    box-shadow: 0 6px 18px rgba(80,30,120,0.08);
+    display: flex; flex-direction: column;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .item:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(80,30,120,0.14); }
+  .item .tag {
+    display: inline-block;
+    align-self: flex-start;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+  }
+  .item h4 { margin: 0 0 6px; font-size: 16px; font-weight: 800; line-height: 1.3; }
+  .item p { margin: 0 0 12px; font-size: 13px; line-height: 1.55; color: var(--text-soft); flex: 1; }
+  .item-actions { display: flex; gap: 6px; }
+  .vote-btn {
+    background: #f5f0ff;
+    border: none;
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .vote-btn:hover { transform: scale(1.1); background: #ede0ff; }
+  .vote-btn.active { background: #fde68a; }
+
+  /* Tag colors per section */
+  .tag-tennis    { background: linear-gradient(90deg, #10b981, #84cc16); }
+  .tag-rabbit    { background: linear-gradient(90deg, #8b5cf6, #d946ef); }
+  .tag-books     { background: linear-gradient(90deg, #ec4899, #8b5cf6); }
+  .tag-author    { background: linear-gradient(90deg, #a855f7, #ec4899); }
+  .tag-prestige  { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+  .tag-engineer  { background: linear-gradient(90deg, #06b6d4, #3b82f6); }
+  .tag-radar     { background: linear-gradient(90deg, #0ea5e9, #14b8a6); }
+
   /* Reminders */
   .reminder-form {
     display: flex; gap: 8px; flex-wrap: wrap;
@@ -503,16 +556,88 @@
     btn.addEventListener("click", () => openSection(btn.dataset.section));
   });
 
+  const CONTENT = {
+    tennis: [
+      { tag: "Tactics", title: "The art of the drop shot", body: "A great drop shot dies just over the net. Open-stance, soft hands, slice grip — and you sell it by setting up like you'll drive the ball. Used surgically, it's a rhythm-breaker against deep returners." },
+      { tag: "Legend", title: "Goran Ivanišević's 2001 Wimbledon", body: "Ranked 125th, in only on a wildcard, Ivanišević won Wimbledon. Three lost finals, a body breaking down, and on a People's Monday he beat Pat Rafter 9-7 in the fifth. Possibly the greatest comeback story in tennis." },
+      { tag: "Rising", title: "Coco Gauff's serve rebuild", body: "Gauff's forehand and serve were her weak links going into 2023. She rebuilt them, kept her elite movement, and won the US Open at 19. Proof that even the best identify their flaws and grind." },
+      { tag: "Big 3", title: "Why grass-court tennis is special", body: "The ball stays low, slides through the court, and rewards the slice and the serve-and-volley. Federer's grass game wasn't power — it was geometry: short angles, low contact, balletic footwork." },
+      { tag: "Tactics", title: "The kick serve, explained", body: "Brush up and across the ball. The topspin makes it dive into the box and then jump high. Murray and Nadal use it as a second serve that returners hate facing — eye-level on the backhand wing." },
+      { tag: "Mental", title: "Tennis is mostly a mind game", body: "Players hit the ball for maybe 20 minutes in a 3-hour match. The rest is between-points: breathing, routines, self-talk. The best aren't always the most talented — they're the most stable." },
+      { tag: "Rising", title: "Carlos Alcaraz's drop-shot habit", body: "Alcaraz uses drop shots more than almost anyone in the top 10 — sometimes on serve returns. It's risky, but it makes opponents play forward and disrupts their court positioning." },
+      { tag: "Legend", title: "The longest match ever played", body: "Isner vs Mahut, Wimbledon 2010 — 11 hours, 5 minutes across three days. Final set: 70-68. They had to suspend play twice for darkness. The scoreboard literally broke." },
+    ],
+    rabbit: [
+      { tag: "Biology", title: "Octopuses can taste with their suckers", body: "Each sucker has chemoreceptors. An octopus can 'taste' a crab hiding in a crevice without seeing it. Their arms also have a kind of distributed brain — most of their neurons live there, not in the head." },
+      { tag: "History", title: "The Antikythera mechanism", body: "Pulled from a Greek shipwreck in 1901. It's a hand-cranked bronze computer from ~100 BCE that predicts eclipses, planetary positions, and the dates of the Olympics. Nothing this complex appears again for 1,400 years." },
+      { tag: "Geography", title: "Challenger Deep is deeper than Everest is tall", body: "The deepest point in the Pacific's Mariana Trench is about 11 km down. Mount Everest is 8.8 km tall. You could sink Everest into Challenger Deep and still have 2 km of water on top." },
+      { tag: "Navigation", title: "Polynesian wayfinders sailed by stars", body: "Without compasses or maps, Polynesians crossed thousands of miles of open ocean using star paths, swell patterns, bird flight, and even the color of distant clouds. The knowledge was passed down by memorized chants." },
+      { tag: "Science", title: "The Post-it Note was a happy accident", body: "A 3M chemist tried to make a super-strong glue. He made a super-weak one instead — and shelved it. Years later, a colleague used it to keep bookmarks from falling out of a hymnal. Boom, $1B product." },
+      { tag: "Brain", title: "Why déjà vu happens", body: "One theory: your brain briefly mis-files a present moment as a memory before it catches up. Scientists who can trigger déjà vu in labs find it tied to the temporal lobe. It's most common in young people and tired people." },
+      { tag: "History", title: "The Library of Alexandria's real loss", body: "It probably didn't burn in one dramatic fire. It declined slowly — funding cuts, scrolls not recopied, multiple smaller fires. Most of what we lost was lost to neglect, not flames. Lesson: maintenance matters." },
+      { tag: "Engineering", title: "The Eiffel Tower was supposed to be temporary", body: "Built for the 1889 World's Fair, it was meant to come down after 20 years. It was saved because the army found it useful as a giant radio antenna. The tallest structure in the world for 41 years, until the Chrysler Building." },
+    ],
+    books: [
+      { tag: "Biography", title: "Open — Andre Agassi", body: "The most honest sports memoir ever written. Agassi opens with: 'I hate tennis.' Then takes you through pigtails, the mullet, drug tests, and his late-career renaissance. A book about identity dressed as a tennis book." },
+      { tag: "Biography", title: "The Wright Brothers — David McCullough", body: "Two bike mechanics from Ohio who solved heavier-than-air flight while trained engineers failed. Famous for the careful, scientific way they worked — wind tunnels, hand-built propellers, thousands of glides before any engine." },
+      { tag: "Young Readers", title: "I Am Malala (Young Readers Edition)", body: "Malala Yousafzai's account of growing up in Pakistan's Swat Valley, the Taliban's ban on girls' schools, and surviving being shot at 15. If you're researching Finding Joy, read this first — same region, same era." },
+      { tag: "Young Readers", title: "The Boy Who Harnessed the Wind", body: "William Kamkwamba, age 14, built a working windmill from scrap to bring electricity to his Malawian village during a famine. The young readers edition is hand-on-heart inspiring." },
+      { tag: "Big Thinker", title: "Range — David Epstein", body: "Argues that generalists — people who try lots of things — often outperform specialists in complex fields. Roger Federer is exhibit A: he played soccer, badminton, basketball, and skied before settling on tennis." },
+      { tag: "Biography", title: "Hidden Figures (Young Readers Edition)", body: "Black women mathematicians at NASA who calculated trajectories for the first American spaceflights. Katherine Johnson, Dorothy Vaughan, Mary Jackson — all worth a Google after." },
+      { tag: "Craft", title: "On Writing — Stephen King", body: "Half memoir, half writing manual. King's central rule: read a lot and write a lot. His advice on cutting adverbs ('she said softly' is almost always worse than 'she said') will stick with you for life." },
+      { tag: "Big Thinker", title: "The Boy, the Mole, the Fox and the Horse", body: "Charlie Mackesy's illustrated book of conversations between four friends. Short, kind, deep. 'What's the bravest thing you've ever said?' asked the boy. 'Help,' said the horse." },
+    ],
+    author: [
+      { tag: "Habit", title: "Roald Dahl wrote in a tiny shed", body: "Six feet square. He had a sleeping bag for his legs, a homemade lap-board, and yellow legal pads. He wrote four hours a day — two morning, two afternoon — and refused to be disturbed. Routine beats inspiration." },
+      { tag: "Inspiration", title: "Christopher Paolini wrote Eragon at 15", body: "Homeschooled, he started Eragon at fifteen and his family self-published it. Carl Hiaasen's stepson read a copy on vacation and passed it to his stepdad. Knopf bought it. The series sold 35+ million copies." },
+      { tag: "Tip", title: "Cut adverbs (the Stephen King rule)", body: "'She said softly,' 'he ran quickly' — strong verbs almost always beat weak verb + adverb. 'She whispered.' 'He sprinted.' Hunt for -ly words on a second pass and ask: is the adverb earning its place?" },
+      { tag: "Tip", title: "Read your work aloud", body: "Your eye glides over clunky sentences. Your tongue can't. Read each chapter aloud once before you call it done — you'll hear the rhythm, the awkward repetitions, the run-on you missed. Cheap, instant editor." },
+      { tag: "Inspiration", title: "Harry Potter was rejected 12 times", body: "JK Rowling sent the manuscript to publisher after publisher. Bloomsbury only said yes because the chairman's eight-year-old daughter read the first chapter and demanded the next. Believe in your manuscript longer than other people believe in it." },
+      { tag: "Tip", title: "Show, don't tell", body: "Don't write 'she was nervous.' Write 'her hand shook as she reached for the doorknob.' Trust the reader to draw the conclusion. The trick is selecting one specific physical detail — not three." },
+      { tag: "Tip", title: "The index card trick for plotting", body: "One card per scene. Title at the top, two-line summary below. Lay them out on a table. Move them around until the story shape feels right. You'll see plot holes a week before you'd see them in prose." },
+      { tag: "Habit", title: "Hemingway: stop while you still know what's next", body: "He never wrote himself into a corner. He'd quit each day mid-thought, knowing exactly the next sentence. That way starting tomorrow wasn't terrifying — you already had the first line." },
+    ],
+    prestige: [
+      { tag: "Contest", title: "Scholastic Art & Writing Awards", body: "The big one. Open to US students grades 7–12 (work from 6th graders is accepted in some categories). Categories include short story, poetry, flash fiction, journalism, and personal essay. Gold Key winners get published nationally. Entry fee but waivers available." },
+      { tag: "Magazine", title: "Stone Soup magazine", body: "A literary magazine written entirely by kids 13 and under, since 1973. Submit short stories, poetry, art, and book reviews year-round. Getting published in Stone Soup is a real, citable credit. Free to submit." },
+      { tag: "Contest", title: "Foyle Young Poets of the Year Award", body: "International poetry contest run by the UK's Poetry Society. Ages 11–17. Free to enter. Up to 100 winners get mentorship and publication. One of the most respected youth poetry prizes in the world." },
+      { tag: "Contest", title: "NYT Learning Network Student Contests", body: "The New York Times runs ~10 different student contests a year — review writing, personal narrative, op-ed, podcasting, photo essay, vocabulary video. Free to enter, ages 13–19. Past winners have been quoted in the actual NYT." },
+      { tag: "Contest", title: "Bow Seat Ocean Awareness Contest", body: "Annual contest for ages 11–18. Categories: creative writing, poetry, visual art, film, music, interactive media — all on ocean conservation themes. Cash prizes up to $1,500. Free to enter. Closes in June each year." },
+      { tag: "Magazine", title: "Cricket Magazine and Cicada", body: "Both publish work by young writers. Cricket runs monthly contests with themes (story, art, photo). Cicada is teen-focused literary fiction. A surprisingly easy first publishing credit if you watch the prompts." },
+      { tag: "Award", title: "Betty Award (PBS Kids)", body: "Local PBS stations and reading councils run kid writing/illustration contests under various names. Worth googling 'children's writing contest [your state]' — many are tiny, free, and underentered, which means a real shot at winning." },
+    ],
+    engineer: [
+      { tag: "Kit", title: "Arduino Starter Kit", body: "The classic intro to electronics + code. Comes with a board, breadboard, sensors, motors, and a project book. By the end you've built a light theremin, a digital lock, and a motorized model. ~$90 well-spent." },
+      { tag: "Kit", title: "Makey Makey", body: "A small board that turns anything conductive into a key. Hook up bananas as a piano. Make a Play-Doh game controller. Brilliant for thinking about input/output — and basically impossible not to laugh while using it." },
+      { tag: "Project", title: "Build a Rube Goldberg machine", body: "Pick one tiny end goal — pop a balloon, ring a bell — and chain together 8+ steps to get there. Marbles, dominoes, levers, fans. Failure is mandatory. Iterate. Film the run that finally works." },
+      { tag: "Kit", title: "Snap Circuits", body: "Plastic snap-together components — no soldering, no breadboard. You build real working circuits: alarms, radios, light sensors, motors. The 300-project version is the sweet spot. Great if you're new to electronics." },
+      { tag: "Kit", title: "LEGO Technic + Powered Up", body: "Technic is the engineering branch of LEGO — gears, pneumatics, motors. Add the Powered Up motors and Bluetooth hub and you can program models from an app. Build a working robotic arm or remote-control car." },
+      { tag: "Project", title: "Make a desk catapult", body: "Popsicle sticks, rubber bands, a plastic spoon. Tweak the angle, the band tension, the load — same physics as a trebuchet, just smaller. Bonus: make a little aluminum-foil target with rings and score points." },
+      { tag: "Project", title: "3D-print something useful (not just decorative)", body: "Skip the trinkets. Print a phone stand, a cable holder, a custom drawer divider. Tinkercad is free and teaches the core skill: thinking in 3D. Most public libraries now have 3D printers you can use for cheap." },
+      { tag: "Inspiration", title: "Read about Fix-It Felix engineering", body: "Real-world: study Tesla's Roadster teardowns, SpaceX Raptor engine evolutions, James Dyson's 5,127 vacuum prototypes. Engineering is iterating through bad versions until one works. Failure isn't a setback — it's the curriculum." },
+    ],
+    radar: [
+      { tag: "LEGO", title: "LEGO Botanical Collection", body: "The flower bouquet, succulents, bonsai tree, orchid. Build them once, display forever — they don't die, don't need water, don't shed petals. Genuinely meditative builds with mostly small pieces." },
+      { tag: "LEGO", title: "LEGO Ideas — fan-designed sets", body: "These are sets designed by fans and voted into production. Past hits: the typewriter, the Friends central perk, the polaroid camera. New ones drop a few times a year. Often more interesting builds than the licensed sets." },
+      { tag: "Cubing", title: "GAN cubes vs MoYu vs QiYi", body: "GAN: smooth, premium, expensive. MoYu RS3M and Weilong: best price-to-speed ratio. QiYi MS: budget pick that punches above its weight. Magnetic cubes are now standard — once you've cubed magnetic, no going back." },
+      { tag: "Cubing", title: "Beyond the 3x3", body: "If you've cracked the 3x3, try the 4x4 (parity is a brain-bender), the Square-1 (different shape every time), or the Megaminx (12 sides). Or go small — the 2x2 you can solve in under 5 seconds with practice." },
+      { tag: "Tech", title: "iPad creative apps worth installing", body: "Procreate (drawing — one-time $13, no subscription). Notability (handwritten notes). GarageBand (music, free). Concepts (vector sketching). Skip apps with monthly fees if a pay-once option exists." },
+      { tag: "Tech", title: "Drawing tablets — the cheap path", body: "If you're not ready for an iPad: an XP-Pen Deco or Wacom Intuos plugs into a laptop and lets you draw straight into Photoshop, Krita (free), or Procreate's web sister apps. ~$60 entry point." },
+      { tag: "Tools", title: "Mechanical keyboards for typing", body: "If you do a lot of writing, a mechanical keyboard is a real upgrade. Browns are quietest, blues are clickiest, reds are smoothest. The Keychron K2 is the consensus 'first mechanical' pick." },
+      { tag: "Tech", title: "AI tools you can actually use as a kid", body: "ChatGPT and Claude for brainstorming, not for writing your novel for you. NotebookLM turns your research notes into a podcast. Suno generates music from a prompt. Treat them as drafting partners — never let them replace your voice." },
+    ],
+  };
+
   const SECTIONS = {
     joy:       { emoji: "📖", title: "Finding Joy Studio", desc: "Write your novel here. Chapters, italics, paragraph indents.", body: joyBody },
     reminders: { emoji: "⏰", title: "Reminders", desc: "Things to remember. Tap a date to make it deadline-aware.", body: remindersBody },
-    author:    { emoji: "✍️", title: "Author World", desc: "Author interviews, writing advice, book craft, publishing inspiration.", body: comingSoonBody("Author articles will load from RSS feeds when wired up.") },
-    prestige:  { emoji: "🏆", title: "Prestige Mode", desc: "Cool, low-commitment writing contests and prizes for kids.", body: comingSoonBody("Contest listings will appear here from RSS.") },
-    engineer:  { emoji: "🛠️", title: "Engineering Lab", desc: "Cool kits, invention ideas, robotics, maker projects.", body: comingSoonBody("Maker and engineering posts will land here.") },
-    tennis:    { emoji: "🎾", title: "Tennis HQ", desc: "ATP/WTA stories, tactics, comebacks, rising players.", body: comingSoonBody("Tennis stories will load from your tennis RSS feeds.") },
-    books:     { emoji: "📚", title: "Books", desc: "Biographies, big thinkers, author news, new releases.", body: comingSoonBody("Book news will appear here.") },
-    radar:     { emoji: "🚀", title: "New Releases Radar", desc: "LEGO, tech, gadgets, cubing, creative tools.", body: comingSoonBody("New release alerts will land here.") },
-    rabbit:    { emoji: "🐇", title: "Rabbit Holes", desc: "One-off fascinating topics: science, history, design, strange facts.", body: comingSoonBody("Rabbit-hole articles will appear here.") },
+    author:    { emoji: "✍️", title: "Author World", desc: "Author interviews, writing advice, book craft, publishing inspiration.", body: itemsBody("author") },
+    prestige:  { emoji: "🏆", title: "Prestige Mode", desc: "Cool, low-commitment writing contests and prizes for kids.", body: itemsBody("prestige") },
+    engineer:  { emoji: "🛠️", title: "Engineering Lab", desc: "Cool kits, invention ideas, robotics, maker projects.", body: itemsBody("engineer") },
+    tennis:    { emoji: "🎾", title: "Tennis HQ", desc: "ATP/WTA stories, tactics, comebacks, rising players.", body: itemsBody("tennis") },
+    books:     { emoji: "📚", title: "Books", desc: "Biographies, big thinkers, author news, new releases.", body: itemsBody("books") },
+    radar:     { emoji: "🚀", title: "New Releases Radar", desc: "LEGO, tech, gadgets, cubing, creative tools.", body: itemsBody("radar") },
+    rabbit:    { emoji: "🐇", title: "Rabbit Holes", desc: "One-off fascinating topics: science, history, design, strange facts.", body: itemsBody("rabbit") },
   };
 
   function openSection(key) {
@@ -536,14 +661,48 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function comingSoonBody(text) {
+  const VOTES_KEY = "vortex_votes";
+  function loadVotes() {
+    try { return JSON.parse(localStorage.getItem(VOTES_KEY) || "{}"); }
+    catch { return {}; }
+  }
+  function saveVotes(v) { localStorage.setItem(VOTES_KEY, JSON.stringify(v)); }
+
+  function itemsBody(key) {
     return (root) => {
-      root.innerHTML = `
-        <div class="coming-soon">
-          <h4>✨ Coming soon</h4>
-          <p>${text}</p>
-        </div>
-      `;
+      const items = CONTENT[key] || [];
+      const votes = loadVotes();
+      const tagClass = "tag-" + key;
+      const grid = document.createElement("div");
+      grid.className = "items";
+      items.forEach((it, idx) => {
+        const id = `${key}-${idx}`;
+        const v = votes[id];
+        const card = document.createElement("article");
+        card.className = "item";
+        card.innerHTML = `
+          <span class="tag ${tagClass}">${it.tag}</span>
+          <h4>${it.title}</h4>
+          <p>${it.body}</p>
+          <div class="item-actions">
+            <button class="vote-btn ${v === 'up' ? 'active' : ''}" data-vote="up" title="More like this">👍</button>
+            <button class="vote-btn ${v === 'down' ? 'active' : ''}" data-vote="down" title="Less like this">👎</button>
+            <button class="vote-btn ${v === 'save' ? 'active' : ''}" data-vote="save" title="Save">⭐</button>
+          </div>
+        `;
+        card.querySelectorAll(".vote-btn").forEach(b => {
+          b.addEventListener("click", () => {
+            const all = loadVotes();
+            const action = b.dataset.vote;
+            all[id] = all[id] === action ? null : action;
+            saveVotes(all);
+            card.querySelectorAll(".vote-btn").forEach(x => x.classList.remove("active"));
+            if (all[id]) b.classList.add("active");
+          });
+        });
+        grid.appendChild(card);
+      });
+      root.appendChild(grid);
     };
   }
 
