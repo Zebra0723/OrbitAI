@@ -4,6 +4,10 @@ A personal discovery + writing superapp for Arjun Jain, age 10.
 
 Built with RSS only. No APIs. No scraping. No complicated nonsense.
 
+## Access
+
+Vortex is password-protected. Password: `vortex123`.
+
 ## Core rule
 
 Vortex pulls from high-quality, interesting websites only — not random internet sludge.
@@ -112,6 +116,13 @@ Vortex pulls from high-quality, interesting websites only — not random interne
 
 - one-off fascinating topics
 - science, history, design, architecture, inventions, strange facts
+
+### 9. Reminders
+
+- quick add: type a reminder, optional date, hit Add
+- check off when done
+- dates show as chips; overdue chips turn red
+- saved locally in the browser (localStorage), no account needed
 
 ## RSS system
 
