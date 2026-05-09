@@ -6,23 +6,39 @@
 <title>Vortex</title>
 <style>
   :root {
-    --bg: #0f1115;
-    --panel: #171a21;
-    --panel-2: #1f232c;
-    --text: #e8eaf0;
-    --muted: #9aa1ad;
-    --accent: #ffb84d;
-    --accent-2: #6ad6ff;
-    --border: #2a2f3a;
-    --danger: #ff6b6b;
+    --text: #1a1235;
+    --text-soft: #4a3a7a;
+    --white: #ffffff;
+    --glass: rgba(255, 255, 255, 0.55);
+    --glass-strong: rgba(255, 255, 255, 0.85);
+    --border: rgba(255, 255, 255, 0.7);
+    --shadow: 0 12px 40px rgba(80, 30, 120, 0.18);
+    --danger: #ff3b6b;
   }
   * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Avenir Next", sans-serif;
     color: var(--text);
     min-height: 100vh;
+    background: linear-gradient(120deg, #ffd1e8 0%, #c5a8ff 25%, #8be3ff 55%, #b8ffd1 80%, #fff5a8 100%);
+    background-size: 300% 300%;
+    animation: bgShift 20s ease infinite;
+  }
+  @keyframes bgShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,180,220,0.6) 0%, transparent 40%),
+      radial-gradient(circle at 85% 75%, rgba(140,220,255,0.55) 0%, transparent 45%),
+      radial-gradient(circle at 70% 15%, rgba(255,230,140,0.5) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 0;
   }
   .hidden { display: none !important; }
 
@@ -30,186 +46,328 @@
   #lock {
     position: fixed; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(circle at top, #1c2030 0%, #0f1115 60%);
     z-index: 100;
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.25);
   }
   .lock-card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    padding: 32px;
-    border-radius: 16px;
-    width: min(360px, 90vw);
+    background: var(--glass-strong);
+    border: 2px solid var(--border);
+    padding: 40px 32px;
+    border-radius: 28px;
+    width: min(380px, 90vw);
     text-align: center;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(20px);
   }
   .lock-card h1 {
     margin: 0 0 8px;
-    font-size: 28px;
-    letter-spacing: 1px;
-  }
-  .lock-card p { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
-  .lock-card input {
-    width: 100%;
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--panel-2);
-    color: var(--text);
-    font-size: 16px;
-    outline: none;
-  }
-  .lock-card input:focus { border-color: var(--accent); }
-  .lock-card button {
-    margin-top: 12px;
-    width: 100%;
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: none;
-    background: var(--accent);
-    color: #1a1300;
-    font-weight: 700;
-    font-size: 16px;
-    cursor: pointer;
-  }
-  .lock-card button:hover { filter: brightness(1.05); }
-  .lock-error { color: var(--danger); margin-top: 10px; font-size: 13px; min-height: 18px; }
-
-  /* App */
-  header {
-    padding: 20px 28px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0;
-    background: rgba(15,17,21,0.85);
-    backdrop-filter: blur(8px);
-    z-index: 10;
-  }
-  header h1 {
-    margin: 0; font-size: 22px; letter-spacing: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    font-size: 38px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: linear-gradient(90deg, #ff3b9a, #8b5cf6, #06b6d4);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-  .logout {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 6px 12px;
-    border-radius: 8px;
+  .lock-card p { color: var(--text-soft); margin: 0 0 24px; font-size: 14px; font-weight: 500; }
+  .lock-card input {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 2px solid #e0d4ff;
+    background: white;
+    color: var(--text);
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .lock-card input:focus {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2);
+  }
+  .lock-card button {
+    margin-top: 14px;
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: none;
+    background: linear-gradient(90deg, #ff3b9a, #8b5cf6);
+    color: white;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
+    transition: transform 0.1s, box-shadow 0.15s;
+  }
+  .lock-card button:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(139, 92, 246, 0.45); }
+  .lock-card button:active { transform: translateY(0); }
+  .lock-error { color: var(--danger); margin-top: 10px; font-size: 13px; min-height: 18px; font-weight: 600; }
+
+  /* App */
+  header {
+    padding: 20px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0;
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+  }
+  header h1 {
+    margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 4px;
+    background: linear-gradient(90deg, #ff3b9a, #8b5cf6, #06b6d4);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    cursor: pointer;
+    user-select: none;
+  }
+  .header-btns { display: flex; gap: 8px; }
+  .icon-btn {
+    background: white;
+    border: 2px solid white;
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 999px;
     cursor: pointer;
     font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(80,30,120,0.15);
+    transition: transform 0.1s;
   }
-  .logout:hover { color: var(--text); border-color: var(--accent); }
+  .icon-btn:hover { transform: translateY(-1px); }
 
-  main { max-width: 1100px; margin: 0 auto; padding: 28px; }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 16px;
+  main { max-width: 1100px; margin: 0 auto; padding: 32px; position: relative; z-index: 1; }
+
+  .greeting {
+    font-size: 32px;
+    font-weight: 900;
+    margin: 8px 0 4px;
+    color: var(--text);
   }
-  .section-card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 18px;
-    transition: transform 0.15s, border-color 0.15s;
+  .subtitle {
+    color: var(--text-soft);
+    font-size: 15px;
+    margin: 0 0 28px;
+    font-weight: 500;
   }
-  .section-card:hover { transform: translateY(-2px); border-color: var(--accent); }
-  .section-card h3 { margin: 0 0 6px; font-size: 17px; }
-  .section-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 
   h2.section-title {
     margin: 32px 0 14px;
-    font-size: 14px;
+    font-size: 13px;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--muted);
+    letter-spacing: 3px;
+    font-weight: 800;
+    color: var(--text-soft);
   }
 
-  /* Reminders */
-  .reminders {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 20px;
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 18px;
   }
+  .section-card {
+    border-radius: 22px;
+    padding: 22px;
+    cursor: pointer;
+    color: white;
+    border: none;
+    text-align: left;
+    font-family: inherit;
+    transition: transform 0.18s, box-shadow 0.18s;
+    box-shadow: 0 10px 28px rgba(60, 20, 90, 0.18);
+    position: relative;
+    overflow: hidden;
+    min-height: 140px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .section-card::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .section-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 16px 36px rgba(60, 20, 90, 0.28); }
+  .section-card .emoji { font-size: 34px; margin-bottom: 8px; }
+  .section-card h3 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
+  .section-card p { margin: 0; opacity: 0.92; font-size: 13px; line-height: 1.45; font-weight: 500; }
+
+  .c-joy       { background: linear-gradient(135deg, #ff6b9d 0%, #ff8c42 100%); }
+  .c-author    { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); }
+  .c-prestige  { background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); }
+  .c-engineer  { background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); }
+  .c-tennis    { background: linear-gradient(135deg, #10b981 0%, #84cc16 100%); }
+  .c-books     { background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%); }
+  .c-radar     { background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%); }
+  .c-rabbit    { background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%); }
+  .c-reminders { background: linear-gradient(135deg, #fbbf24 0%, #f97316 100%); }
+
+  /* Detail page */
+  .detail {
+    background: var(--glass-strong);
+    border: 2px solid var(--border);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+  }
+  .back-btn {
+    background: white;
+    border: 2px solid white;
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 12px rgba(80,30,120,0.15);
+  }
+  .back-btn:hover { transform: translateY(-1px); }
+  .detail-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 8px;
+  }
+  .detail-emoji { font-size: 44px; }
+  .detail h2 { margin: 0; font-size: 28px; font-weight: 900; }
+  .detail-desc { color: var(--text-soft); font-size: 15px; margin: 6px 0 22px; font-weight: 500; }
+  .coming-soon {
+    background: linear-gradient(135deg, #fef3c7, #fce7f3);
+    border: 2px dashed #c084fc;
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+  }
+  .coming-soon h4 { margin: 0 0 6px; font-size: 18px; font-weight: 800; }
+  .coming-soon p { margin: 0; color: var(--text-soft); font-size: 14px; }
+
+  /* Reminders */
   .reminder-form {
     display: flex; gap: 8px; flex-wrap: wrap;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
   }
   .reminder-form input[type="text"] {
     flex: 2 1 200px;
-    padding: 10px 12px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
+    padding: 12px 14px;
+    background: white;
+    border: 2px solid #ffd9a8;
     color: var(--text);
-    border-radius: 8px;
+    border-radius: 12px;
     font-size: 14px;
     outline: none;
+    font-family: inherit;
   }
   .reminder-form input[type="date"] {
     flex: 1 1 140px;
-    padding: 10px 12px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
+    padding: 12px 14px;
+    background: white;
+    border: 2px solid #ffd9a8;
     color: var(--text);
-    border-radius: 8px;
+    border-radius: 12px;
     font-size: 14px;
     outline: none;
+    font-family: inherit;
   }
-  .reminder-form input:focus { border-color: var(--accent); }
+  .reminder-form input:focus { border-color: #f97316; box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.2); }
   .reminder-form button {
-    padding: 10px 18px;
-    background: var(--accent);
-    color: #1a1300;
+    padding: 12px 22px;
+    background: linear-gradient(90deg, #fbbf24, #f97316);
+    color: white;
     border: none;
-    border-radius: 8px;
-    font-weight: 700;
+    border-radius: 12px;
+    font-weight: 800;
     cursor: pointer;
     font-size: 14px;
+    box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
   }
+  .reminder-form button:hover { transform: translateY(-1px); }
   .reminder-list { list-style: none; padding: 0; margin: 0; }
   .reminder-item {
     display: flex; align-items: center; gap: 12px;
-    padding: 12px;
-    background: var(--panel-2);
-    border-radius: 10px;
-    margin-bottom: 8px;
-    border: 1px solid transparent;
+    padding: 14px;
+    background: white;
+    border-radius: 14px;
+    margin-bottom: 10px;
+    border: 2px solid #ffe9c8;
+    box-shadow: 0 4px 12px rgba(80,30,120,0.06);
   }
+  .reminder-item.done { background: #f3f4f6; }
   .reminder-item.done .reminder-text {
     text-decoration: line-through;
-    color: var(--muted);
+    color: var(--text-soft);
   }
   .reminder-item input[type="checkbox"] {
-    width: 18px; height: 18px;
-    accent-color: var(--accent);
+    width: 20px; height: 20px;
+    accent-color: #f97316;
     cursor: pointer;
   }
-  .reminder-text { flex: 1; font-size: 14px; }
+  .reminder-text { flex: 1; font-size: 15px; font-weight: 500; }
   .reminder-date {
     font-size: 12px;
-    color: var(--accent-2);
-    background: rgba(106,214,255,0.1);
-    padding: 3px 8px;
-    border-radius: 6px;
+    color: white;
+    background: linear-gradient(90deg, #06b6d4, #3b82f6);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 700;
   }
-  .reminder-date.overdue { color: var(--danger); background: rgba(255,107,107,0.1); }
+  .reminder-date.overdue { background: linear-gradient(90deg, #ef4444, #f97316); }
   .reminder-delete {
     background: transparent;
     border: none;
-    color: var(--muted);
+    color: #c084fc;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 22px;
     padding: 0 6px;
+    font-weight: 700;
   }
   .reminder-delete:hover { color: var(--danger); }
   .empty {
     text-align: center;
-    color: var(--muted);
-    padding: 24px;
+    color: var(--text-soft);
+    padding: 28px;
     font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* Finding Joy Studio */
+  .joy-tools {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .joy-tools button {
+    background: white;
+    border: 2px solid #ffd1e8;
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .joy-tools button:hover { background: #fff0f7; }
+  .joy-editor {
+    width: 100%;
+    min-height: 320px;
+    border: 2px solid #ffd1e8;
+    border-radius: 14px;
+    padding: 18px 22px;
+    font-size: 16px;
+    line-height: 1.7;
+    background: white;
+    outline: none;
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--text);
+  }
+  .joy-editor:focus { border-color: #ff6b9d; box-shadow: 0 0 0 4px rgba(255, 107, 157, 0.2); }
+  .joy-editor p { margin: 0 0 0.8em; text-indent: 1.5em; }
+  .joy-editor p:first-child { text-indent: 0; }
+  .joy-hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-soft);
+    font-weight: 500;
   }
 </style>
 </head>
@@ -218,7 +376,7 @@
 <div id="lock">
   <div class="lock-card">
     <h1>VORTEX</h1>
-    <p>Enter password to continue</p>
+    <p>✨ Enter your password ✨</p>
     <form id="lock-form">
       <input id="lock-input" type="password" placeholder="Password" autocomplete="off" autofocus />
       <button type="submit">Unlock</button>
@@ -229,33 +387,60 @@
 
 <div id="app" class="hidden">
   <header>
-    <h1>VORTEX</h1>
-    <button class="logout" id="logout-btn">Lock</button>
+    <h1 id="logo">VORTEX</h1>
+    <div class="header-btns">
+      <button class="icon-btn" id="logout-btn">🔒 Lock</button>
+    </div>
   </header>
 
   <main>
-    <h2 class="section-title">Reminders</h2>
-    <div class="reminders">
-      <form class="reminder-form" id="reminder-form">
-        <input type="text" id="reminder-input" placeholder="Add a reminder…" required />
-        <input type="date" id="reminder-date-input" />
-        <button type="submit">Add</button>
-      </form>
-      <ul class="reminder-list" id="reminder-list"></ul>
-      <div class="empty hidden" id="reminder-empty">No reminders yet. Add one above.</div>
+    <!-- HOME VIEW -->
+    <div id="view-home">
+      <div class="greeting">Hey Arjun 👋</div>
+      <p class="subtitle">Pick a section to dive in.</p>
+
+      <div class="grid">
+        <button class="section-card c-joy" data-section="joy">
+          <div><div class="emoji">📖</div><h3>Finding Joy Studio</h3></div>
+          <p>Write your novel. Chapters, italics, manuscript preview.</p>
+        </button>
+        <button class="section-card c-reminders" data-section="reminders">
+          <div><div class="emoji">⏰</div><h3>Reminders</h3></div>
+          <p>Add things to remember. Check them off when done.</p>
+        </button>
+        <button class="section-card c-author" data-section="author">
+          <div><div class="emoji">✍️</div><h3>Author World</h3></div>
+          <p>Author interviews, writing advice, book craft.</p>
+        </button>
+        <button class="section-card c-prestige" data-section="prestige">
+          <div><div class="emoji">🏆</div><h3>Prestige Mode</h3></div>
+          <p>Cool, low-commitment writing contests & prizes.</p>
+        </button>
+        <button class="section-card c-engineer" data-section="engineer">
+          <div><div class="emoji">🛠️</div><h3>Engineering Lab</h3></div>
+          <p>Cool kits, inventions, robotics, maker projects.</p>
+        </button>
+        <button class="section-card c-tennis" data-section="tennis">
+          <div><div class="emoji">🎾</div><h3>Tennis HQ</h3></div>
+          <p>ATP/WTA stories, breakthroughs, tactics, comebacks.</p>
+        </button>
+        <button class="section-card c-books" data-section="books">
+          <div><div class="emoji">📚</div><h3>Books</h3></div>
+          <p>Biographies, big thinkers, author news, releases.</p>
+        </button>
+        <button class="section-card c-radar" data-section="radar">
+          <div><div class="emoji">🚀</div><h3>New Releases Radar</h3></div>
+          <p>LEGO, tech, gadgets, cubing, creative tools.</p>
+        </button>
+        <button class="section-card c-rabbit" data-section="rabbit">
+          <div><div class="emoji">🐇</div><h3>Rabbit Holes</h3></div>
+          <p>Fascinating one-offs — science, history, design.</p>
+        </button>
+      </div>
     </div>
 
-    <h2 class="section-title">Sections</h2>
-    <div class="grid">
-      <div class="section-card"><h3>📖 Finding Joy Studio</h3><p>Proper book editor — chapters, preface, TOC, italics, manuscript preview.</p></div>
-      <div class="section-card"><h3>✍️ Author / Writing World</h3><p>Author interviews, writing advice, book craft, publishing inspiration.</p></div>
-      <div class="section-card"><h3>🏆 Prestige Mode</h3><p>Cool low-commitment writing contests, kid prizes, poetry & short story comps.</p></div>
-      <div class="section-card"><h3>🛠️ Engineering Lab</h3><p>Cool kits, invention ideas, maker projects, robotics inspiration.</p></div>
-      <div class="section-card"><h3>🎾 Tennis HQ</h3><p>ATP/WTA stories, breakthroughs, tactics, comeback stories.</p></div>
-      <div class="section-card"><h3>📚 Books</h3><p>Biographies, big thinker books, author news, new releases.</p></div>
-      <div class="section-card"><h3>🚀 New Releases Radar</h3><p>LEGO, tech, creative tools, gadgets, cubing stuff, cool kits.</p></div>
-      <div class="section-card"><h3>🐇 Rabbit Holes</h3><p>One-off fascinating topics — science, history, design, strange facts.</p></div>
-    </div>
+    <!-- DETAIL VIEW (filled in by JS) -->
+    <div id="view-detail" class="hidden"></div>
   </main>
 </div>
 
@@ -263,6 +448,7 @@
   const PASSWORD = "vortex123";
   const SESSION_KEY = "vortex_unlocked";
   const REMINDERS_KEY = "vortex_reminders";
+  const JOY_KEY = "vortex_joy_draft";
 
   const lock = document.getElementById("lock");
   const app = document.getElementById("app");
@@ -270,11 +456,13 @@
   const lockInput = document.getElementById("lock-input");
   const lockError = document.getElementById("lock-error");
   const logoutBtn = document.getElementById("logout-btn");
+  const viewHome = document.getElementById("view-home");
+  const viewDetail = document.getElementById("view-detail");
+  const logo = document.getElementById("logo");
 
   function unlock() {
     lock.classList.add("hidden");
     app.classList.remove("hidden");
-    renderReminders();
   }
   function relock() {
     sessionStorage.removeItem(SESSION_KEY);
@@ -282,6 +470,7 @@
     lock.classList.remove("hidden");
     lockInput.value = "";
     lockInput.focus();
+    showHome();
   }
 
   if (sessionStorage.getItem(SESSION_KEY) === "1") unlock();
@@ -300,21 +489,70 @@
   });
 
   logoutBtn.addEventListener("click", relock);
+  logo.addEventListener("click", showHome);
+
+  // Navigation
+  function showHome() {
+    viewDetail.classList.add("hidden");
+    viewDetail.innerHTML = "";
+    viewHome.classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  document.querySelectorAll(".section-card").forEach(btn => {
+    btn.addEventListener("click", () => openSection(btn.dataset.section));
+  });
+
+  const SECTIONS = {
+    joy:       { emoji: "📖", title: "Finding Joy Studio", desc: "Write your novel here. Chapters, italics, paragraph indents.", body: joyBody },
+    reminders: { emoji: "⏰", title: "Reminders", desc: "Things to remember. Tap a date to make it deadline-aware.", body: remindersBody },
+    author:    { emoji: "✍️", title: "Author World", desc: "Author interviews, writing advice, book craft, publishing inspiration.", body: comingSoonBody("Author articles will load from RSS feeds when wired up.") },
+    prestige:  { emoji: "🏆", title: "Prestige Mode", desc: "Cool, low-commitment writing contests and prizes for kids.", body: comingSoonBody("Contest listings will appear here from RSS.") },
+    engineer:  { emoji: "🛠️", title: "Engineering Lab", desc: "Cool kits, invention ideas, robotics, maker projects.", body: comingSoonBody("Maker and engineering posts will land here.") },
+    tennis:    { emoji: "🎾", title: "Tennis HQ", desc: "ATP/WTA stories, tactics, comebacks, rising players.", body: comingSoonBody("Tennis stories will load from your tennis RSS feeds.") },
+    books:     { emoji: "📚", title: "Books", desc: "Biographies, big thinkers, author news, new releases.", body: comingSoonBody("Book news will appear here.") },
+    radar:     { emoji: "🚀", title: "New Releases Radar", desc: "LEGO, tech, gadgets, cubing, creative tools.", body: comingSoonBody("New release alerts will land here.") },
+    rabbit:    { emoji: "🐇", title: "Rabbit Holes", desc: "One-off fascinating topics: science, history, design, strange facts.", body: comingSoonBody("Rabbit-hole articles will appear here.") },
+  };
+
+  function openSection(key) {
+    const s = SECTIONS[key];
+    if (!s) return;
+    viewHome.classList.add("hidden");
+    viewDetail.classList.remove("hidden");
+    viewDetail.innerHTML = `
+      <button class="back-btn" id="back-btn">← Back</button>
+      <div class="detail">
+        <div class="detail-header">
+          <div class="detail-emoji">${s.emoji}</div>
+          <h2>${s.title}</h2>
+        </div>
+        <p class="detail-desc">${s.desc}</p>
+        <div id="detail-body"></div>
+      </div>
+    `;
+    document.getElementById("back-btn").addEventListener("click", showHome);
+    s.body(document.getElementById("detail-body"));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function comingSoonBody(text) {
+    return (root) => {
+      root.innerHTML = `
+        <div class="coming-soon">
+          <h4>✨ Coming soon</h4>
+          <p>${text}</p>
+        </div>
+      `;
+    };
+  }
 
   // Reminders
-  const reminderForm = document.getElementById("reminder-form");
-  const reminderInput = document.getElementById("reminder-input");
-  const reminderDateInput = document.getElementById("reminder-date-input");
-  const reminderList = document.getElementById("reminder-list");
-  const reminderEmpty = document.getElementById("reminder-empty");
-
   function loadReminders() {
     try { return JSON.parse(localStorage.getItem(REMINDERS_KEY) || "[]"); }
     catch { return []; }
   }
-  function saveReminders(arr) {
-    localStorage.setItem(REMINDERS_KEY, JSON.stringify(arr));
-  }
+  function saveReminders(arr) { localStorage.setItem(REMINDERS_KEY, JSON.stringify(arr)); }
 
   function formatDate(iso) {
     if (!iso) return "";
@@ -328,83 +566,132 @@
     return d < today;
   }
 
-  function renderReminders() {
-    const reminders = loadReminders();
-    reminderList.innerHTML = "";
-    if (reminders.length === 0) {
-      reminderEmpty.classList.remove("hidden");
-      return;
-    }
-    reminderEmpty.classList.add("hidden");
+  function remindersBody(root) {
+    root.innerHTML = `
+      <form class="reminder-form" id="reminder-form">
+        <input type="text" id="reminder-input" placeholder="Add a reminder…" required />
+        <input type="date" id="reminder-date-input" />
+        <button type="submit">Add</button>
+      </form>
+      <ul class="reminder-list" id="reminder-list"></ul>
+      <div class="empty hidden" id="reminder-empty">No reminders yet. Add one above.</div>
+    `;
+    const reminderForm = document.getElementById("reminder-form");
+    const reminderInput = document.getElementById("reminder-input");
+    const reminderDateInput = document.getElementById("reminder-date-input");
+    const reminderList = document.getElementById("reminder-list");
+    const reminderEmpty = document.getElementById("reminder-empty");
 
-    reminders.sort((a, b) => {
-      if (a.done !== b.done) return a.done ? 1 : -1;
-      if (a.date && b.date) return a.date.localeCompare(b.date);
-      if (a.date) return -1;
-      if (b.date) return 1;
-      return b.created - a.created;
+    function render() {
+      const reminders = loadReminders();
+      reminderList.innerHTML = "";
+      if (reminders.length === 0) {
+        reminderEmpty.classList.remove("hidden");
+        return;
+      }
+      reminderEmpty.classList.add("hidden");
+      reminders.sort((a, b) => {
+        if (a.done !== b.done) return a.done ? 1 : -1;
+        if (a.date && b.date) return a.date.localeCompare(b.date);
+        if (a.date) return -1;
+        if (b.date) return 1;
+        return b.created - a.created;
+      });
+      for (const r of reminders) {
+        const li = document.createElement("li");
+        li.className = "reminder-item" + (r.done ? " done" : "");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = r.done;
+        cb.addEventListener("change", () => {
+          const all = loadReminders();
+          const t = all.find(x => x.id === r.id);
+          if (t) { t.done = cb.checked; saveReminders(all); render(); }
+        });
+        const text = document.createElement("div");
+        text.className = "reminder-text";
+        text.textContent = r.text;
+        li.appendChild(cb);
+        li.appendChild(text);
+        if (r.date) {
+          const date = document.createElement("span");
+          date.className = "reminder-date" + (!r.done && isOverdue(r.date) ? " overdue" : "");
+          date.textContent = formatDate(r.date);
+          li.appendChild(date);
+        }
+        const del = document.createElement("button");
+        del.className = "reminder-delete";
+        del.title = "Delete";
+        del.textContent = "×";
+        del.addEventListener("click", () => {
+          const all = loadReminders().filter(x => x.id !== r.id);
+          saveReminders(all);
+          render();
+        });
+        li.appendChild(del);
+        reminderList.appendChild(li);
+      }
+    }
+
+    reminderForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = reminderInput.value.trim();
+      if (!text) return;
+      const all = loadReminders();
+      all.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        text,
+        date: reminderDateInput.value || null,
+        done: false,
+        created: Date.now()
+      });
+      saveReminders(all);
+      reminderInput.value = "";
+      reminderDateInput.value = "";
+      render();
+      reminderInput.focus();
     });
 
-    for (const r of reminders) {
-      const li = document.createElement("li");
-      li.className = "reminder-item" + (r.done ? " done" : "");
-
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = r.done;
-      cb.addEventListener("change", () => {
-        const all = loadReminders();
-        const t = all.find(x => x.id === r.id);
-        if (t) { t.done = cb.checked; saveReminders(all); renderReminders(); }
-      });
-
-      const text = document.createElement("div");
-      text.className = "reminder-text";
-      text.textContent = r.text;
-
-      li.appendChild(cb);
-      li.appendChild(text);
-
-      if (r.date) {
-        const date = document.createElement("span");
-        date.className = "reminder-date" + (!r.done && isOverdue(r.date) ? " overdue" : "");
-        date.textContent = formatDate(r.date);
-        li.appendChild(date);
-      }
-
-      const del = document.createElement("button");
-      del.className = "reminder-delete";
-      del.title = "Delete";
-      del.textContent = "×";
-      del.addEventListener("click", () => {
-        const all = loadReminders().filter(x => x.id !== r.id);
-        saveReminders(all);
-        renderReminders();
-      });
-      li.appendChild(del);
-
-      reminderList.appendChild(li);
-    }
+    render();
   }
 
-  reminderForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const text = reminderInput.value.trim();
-    if (!text) return;
-    const all = loadReminders();
-    all.push({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      text,
-      date: reminderDateInput.value || null,
-      done: false,
-      created: Date.now()
+  // Finding Joy Studio (mini editor)
+  function joyBody(root) {
+    root.innerHTML = `
+      <div class="joy-tools">
+        <button type="button" data-cmd="bold"><b>B</b></button>
+        <button type="button" data-cmd="italic"><i>I</i></button>
+        <button type="button" data-cmd="newchapter">+ Chapter</button>
+        <button type="button" id="joy-clear">Clear</button>
+      </div>
+      <div class="joy-editor" id="joy-editor" contenteditable="true"></div>
+      <p class="joy-hint">💾 Auto-saves to your browser as you type.</p>
+    `;
+    const editor = document.getElementById("joy-editor");
+    const saved = localStorage.getItem(JOY_KEY);
+    editor.innerHTML = saved || "<p><em>Chapter 1</em></p><p>Start writing here…</p>";
+    editor.addEventListener("input", () => {
+      localStorage.setItem(JOY_KEY, editor.innerHTML);
     });
-    saveReminders(all);
-    reminderInput.value = "";
-    reminderDateInput.value = "";
-    renderReminders();
-    reminderInput.focus();
-  });
+    root.querySelectorAll(".joy-tools button[data-cmd]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const cmd = btn.dataset.cmd;
+        if (cmd === "bold") document.execCommand("bold");
+        else if (cmd === "italic") document.execCommand("italic");
+        else if (cmd === "newchapter") {
+          const num = (editor.innerHTML.match(/Chapter \d+/g) || []).length + 1;
+          document.execCommand("insertHTML", false, `<p><em>Chapter ${num}</em></p><p>&nbsp;</p>`);
+        }
+        editor.focus();
+      });
+    });
+    document.getElementById("joy-clear").addEventListener("click", () => {
+      if (confirm("Clear the whole draft? This can't be undone.")) {
+        editor.innerHTML = "<p><em>Chapter 1</em></p><p>Start writing here…</p>";
+        localStorage.setItem(JOY_KEY, editor.innerHTML);
+      }
+    });
+  }
 </script>
 
 </body>
