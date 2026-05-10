@@ -212,7 +212,25 @@
   .refresh-status {
     font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums;
   }
-  .refresh-status.error { color: var(--warn); }
+  .refresh-status.error { color: var(--warn); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+  .refresh-errors {
+    width: 100%;
+    margin-top: 8px;
+    padding: 0;
+    font-size: 12px;
+    color: var(--muted);
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .refresh-errors.open { display: block; padding: 10px 12px; }
+  .refresh-errors .feed-line { padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  .refresh-errors .feed-line:last-child { border-bottom: 0; }
+  .refresh-errors .feed-host { color: var(--ink); font-weight: 600; }
+  .refresh-errors .feed-attempt { display: block; padding-left: 10px; color: var(--muted); }
+  .refresh-errors .feed-ok { color: #2c8a4a; }
 
   /* Custom modal (replaces native prompt/confirm) */
   .modal-backdrop {
@@ -808,11 +826,15 @@ const LIVE_FEEDS = {
 };
 // Public CORS proxies tried in order. The daily cron fetches feeds
 // server-side without a proxy; this chain only matters for the
-// in-browser "Refresh now" button.
+// in-browser "Refresh now" button. We try a direct fetch first since
+// some feeds send permissive CORS headers; if that throws we walk
+// the proxy list.
 const CORS_PROXIES = [
   (url) => "https://corsproxy.io/?url=" + encodeURIComponent(url),
   (url) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
   (url) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url),
+  (url) => "https://thingproxy.freeboard.io/fetch/" + url,
+  (url) => "https://api.cors.lol/?url=" + encodeURIComponent(url),
 ];
 
 /* ── Section catalogue ────────────────────────────────────────── */
@@ -1107,6 +1129,27 @@ function shortHost(url) {
   try { return new URL(url).hostname.replace(/^www\./, ""); }
   catch { return url; }
 }
+function renderRefreshErrors(el, perFeed) {
+  el.innerHTML = "";
+  for (const r of perFeed) {
+    const line = document.createElement("div"); line.className = "feed-line";
+    const host = document.createElement("span"); host.className = "feed-host";
+    host.textContent = shortHost(r.url);
+    line.appendChild(host);
+    if (r.ok) {
+      const ok = document.createElement("span"); ok.className = "feed-ok";
+      ok.textContent = `  · ${r.count} items`;
+      line.appendChild(ok);
+    } else {
+      for (const a of r.attempts) {
+        const att = document.createElement("span"); att.className = "feed-attempt";
+        att.textContent = "↳ " + a;
+        line.appendChild(att);
+      }
+    }
+    el.appendChild(line);
+  }
+}
 
 function parseRss(xml, sectionKey, sourceUrl) {
   let doc;
@@ -1145,29 +1188,39 @@ function parseRss(xml, sectionKey, sourceUrl) {
   return out;
 }
 
-async function fetchFeed(url) {
-  let lastErr = null;
-  for (const buildProxy of CORS_PROXIES) {
-    const target = buildProxy(url);
-    try {
-      const resp = await fetch(target, { cache: "no-store", redirect: "follow" });
-      if (!resp.ok) { lastErr = new Error("HTTP " + resp.status); continue; }
-      const txt = await resp.text();
-      // Sanity check: must look like XML, not an HTML error page.
-      const head = txt.slice(0, 400).toLowerCase();
-      if (!head.includes("<rss") && !head.includes("<feed") && !head.includes("<?xml") && !head.includes("<channel")) {
-        lastErr = new Error("Proxy returned non-XML");
-        continue;
-      }
-      return txt;
-    } catch (err) {
-      lastErr = err;
-    }
+function looksLikeFeed(txt) {
+  const head = (txt || "").slice(0, 800).toLowerCase();
+  if (!head) return false;
+  if (head.includes("<!doctype html") || head.startsWith("<html")) return false;
+  return head.includes("<rss") || head.includes("<feed") || head.includes("<?xml") || head.includes("<channel");
+}
+async function tryFetch(target, label, attempts) {
+  try {
+    const resp = await fetch(target, { cache: "no-store", redirect: "follow" });
+    if (!resp.ok) { attempts.push(`${label}: HTTP ${resp.status}`); return null; }
+    const txt = await resp.text();
+    if (!looksLikeFeed(txt)) { attempts.push(`${label}: not XML (${txt.length} bytes)`); return null; }
+    return txt;
+  } catch (err) {
+    attempts.push(`${label}: ${err.name === "TypeError" ? "blocked (CORS/network)" : err.message}`);
+    return null;
   }
-  throw lastErr || new Error("All proxies failed");
+}
+async function fetchFeed(url, attempts) {
+  // 1) Try the feed directly — some hosts send permissive CORS headers.
+  const direct = await tryFetch(url, "direct", attempts);
+  if (direct) return direct;
+  // 2) Walk the proxy chain.
+  for (let i = 0; i < CORS_PROXIES.length; i++) {
+    const target = CORS_PROXIES[i](url);
+    const label = "proxy" + (i + 1);
+    const txt = await tryFetch(target, label, attempts);
+    if (txt) return txt;
+  }
+  return null;
 }
 
-async function refreshSection(key, btn, statusEl) {
+async function refreshSection(key, btn, statusEl, errorEl) {
   const urls = LIVE_FEEDS[key];
   if (!urls || !urls.length) {
     if (statusEl) statusEl.textContent = "No live feeds for this section.";
@@ -1175,20 +1228,23 @@ async function refreshSection(key, btn, statusEl) {
   }
   if (btn) { btn.disabled = true; btn.classList.add("spinning"); }
   if (statusEl) { statusEl.textContent = `Fetching ${urls.length} feeds…`; statusEl.classList.remove("error"); }
+  if (errorEl) { errorEl.innerHTML = ""; errorEl.classList.remove("open"); }
+
   const fetched = [];
   let failures = 0;
-  const errors = [];
+  const perFeed = [];
   await Promise.all(urls.map(async (u) => {
-    try {
-      const xml = await fetchFeed(u);
-      const items = parseRss(xml, key, u);
-      if (!items.length) errors.push(`empty: ${shortHost(u)}`);
-      fetched.push(...items);
-    } catch (err) {
+    const attempts = [];
+    const xml = await fetchFeed(u, attempts);
+    if (!xml) {
       failures++;
-      errors.push(`${shortHost(u)} (${err.message})`);
-      console.error("[refresh] failed:", u, err);
+      perFeed.push({ url: u, ok: false, attempts });
+      console.warn("[refresh]", shortHost(u), "all attempts failed:", attempts);
+      return;
     }
+    const items = parseRss(xml, key, u);
+    perFeed.push({ url: u, ok: true, count: items.length, attempts });
+    fetched.push(...items);
   }));
 
   if (!fetched.length) {
@@ -1196,10 +1252,10 @@ async function refreshSection(key, btn, statusEl) {
     if (statusEl) {
       statusEl.classList.add("error");
       statusEl.textContent = failures === urls.length
-        ? `All ${urls.length} feeds blocked. Check console.`
+        ? `All ${urls.length} feeds blocked — tap for details`
         : "No new items returned.";
-      statusEl.title = errors.join(" · ");
     }
+    if (errorEl) renderRefreshErrors(errorEl, perFeed);
     return;
   }
 
@@ -1491,6 +1547,7 @@ function renderSection(key) {
   }));
   row.appendChild(tabs);
 
+  let errorPanel = null;
   if (hasLive) {
     const btn = document.createElement("button");
     btn.className = "refresh-btn";
@@ -1506,9 +1563,15 @@ function renderSection(key) {
     status.className = "refresh-status";
     const last = manualRefreshTimeFor(key);
     if (last) status.textContent = "Last refresh " + relTime(last);
-    btn.addEventListener("click", () => refreshSection(key, btn, status));
+    errorPanel = document.createElement("div");
+    errorPanel.className = "refresh-errors";
+    status.addEventListener("click", () => {
+      if (status.classList.contains("error")) errorPanel.classList.toggle("open");
+    });
+    btn.addEventListener("click", () => refreshSection(key, btn, status, errorPanel));
     row.appendChild(btn);
     row.appendChild(status);
+    row.appendChild(errorPanel);
   }
 
   const list = document.createElement("div");
