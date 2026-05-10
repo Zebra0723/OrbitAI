@@ -788,53 +788,35 @@ const STUDIO_KEY     = "vortex_studio";
 const LEGACY_JOY_KEY = "vortex_joy_draft";
 const OVERLAY_KEY    = "vortex_overlay";
 
-// Live RSS feeds for on-command refresh (mirrors scripts/refresh-content.mjs).
-// Note: Reddit/Twitter/etc. are intentionally excluded — they 403 most CORS
-// proxies. These are all plain RSS/Atom feeds that public proxies can fetch.
-const LIVE_FEEDS = {
-  tennis: [
-    "https://www.atptour.com/en/media/rss-feed/xml-feed",
-    "https://www.tennis.com/rss/all",
-    "https://www.si.com/.rss/full/tennis",
-  ],
-  rabbit: [
-    "https://aeon.co/feed.rss",
-    "https://www.atlasobscura.com/feeds/latest",
-    "https://www.quantamagazine.org/feed/",
-  ],
-  books: [
-    "https://lithub.com/feed/",
-    "https://www.themarginalian.org/feed/",
-    "https://www.publishersweekly.com/rss/childrens.xml",
-  ],
-  author: [
-    "https://janefriedman.com/feed/",
-    "https://lithub.com/feed/",
-    "https://writerunboxed.com/feed/",
-  ],
-  engineer: [
-    "https://hackaday.com/feed/",
-    "https://makezine.com/feed/",
-    "https://blog.adafruit.com/feed/",
-  ],
-  radar: [
-    "https://www.theverge.com/rss/index.xml",
-    "https://www.wired.com/feed/rss",
-    "https://arstechnica.com/feed/",
-  ],
-  // prestige: no live feeds — the daily script keeps the seed
+// Live refresh uses Google News RSS as a single reliable source for every
+// section. Publisher-specific feeds were too brittle — half 404, half
+// 403 the public proxies, half return HTML instead of RSS. Google News
+// gives us a stable RSS endpoint that works for any topic query, and
+// rss2json gives us a JSON wrapper with permissive CORS so we don't
+// need an XML proxy chain at all in the common case.
+const NEWS_QUERIES = {
+  tennis:   "tennis ATP WTA",
+  rabbit:   "history archaeology curiosity science",
+  books:    "books new novel literature",
+  author:   "writing craft advice authors",
+  engineer: "engineering makers DIY robotics",
+  radar:    "new gadget product launch tech",
+  prestige: "youth writing contest student scholarship",
 };
-// Public CORS proxies tried in order. The daily cron fetches feeds
-// server-side without a proxy; this chain only matters for the
-// in-browser "Refresh now" button. We try a direct fetch first since
-// some feeds send permissive CORS headers; if that throws we walk
-// the proxy list.
+function googleNewsUrl(key) {
+  const q = (NEWS_QUERIES[key] || "") + " when:14d";
+  return "https://news.google.com/rss/search?q=" + encodeURIComponent(q) +
+         "&hl=en-US&gl=US&ceid=US:en";
+}
+// Same shape as before so the rest of the code is unchanged.
+const LIVE_FEEDS = Object.fromEntries(
+  Object.keys(NEWS_QUERIES).map(k => [k, [googleNewsUrl(k)]])
+);
+// XML proxy fallback chain (only used if rss2json itself fails).
 const CORS_PROXIES = [
+  (url) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url),
   (url) => "https://corsproxy.io/?url=" + encodeURIComponent(url),
   (url) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
-  (url) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url),
-  (url) => "https://thingproxy.freeboard.io/fetch/" + url,
-  (url) => "https://api.cors.lol/?url=" + encodeURIComponent(url),
 ];
 
 /* ── Section catalogue ────────────────────────────────────────── */
@@ -1220,6 +1202,63 @@ async function fetchFeed(url, attempts) {
   return null;
 }
 
+function itemsFromJson(data, sectionKey) {
+  const arr = Array.isArray(data?.items) ? data.items : [];
+  const out = [];
+  for (const it of arr.slice(0, 10)) {
+    const title = stripText(it.title || "");
+    if (!title) continue;
+    const link = (it.link || "").trim() || null;
+    const desc = it.description || it.content || "";
+    // Google News descriptions end with the source name in a <font> tag.
+    const srcMatch = desc.match(/<font[^>]*>([^<]+)<\/font>\s*$/i);
+    let tag = srcMatch ? srcMatch[1].trim() : (data.feed?.title || "News");
+    if (tag.length > 22) tag = tag.slice(0, 22) + "…";
+    const bodyHtml = desc.replace(/<font[^>]*>[^<]*<\/font>\s*$/i, "");
+    const body = trimBody(bodyHtml, 320);
+    const idSeed = (link || title).replace(/[^a-z0-9]/gi, "").slice(-60);
+    out.push({
+      id: "live-" + sectionKey + "-" + idSeed,
+      tag,
+      title,
+      body: body || title,
+      link,
+      published: it.pubDate || null,
+    });
+  }
+  return out;
+}
+
+// Primary path: rss2json wraps the feed in JSON and sets permissive
+// CORS headers, so we get one short hop instead of an XML proxy chain.
+async function fetchViaRss2Json(rssUrl, sectionKey, attempts) {
+  const target = "https://api.rss2json.com/v1/api.json?count=12&rss_url=" + encodeURIComponent(rssUrl);
+  try {
+    const resp = await fetch(target, { cache: "no-store" });
+    if (!resp.ok) { attempts.push(`rss2json: HTTP ${resp.status}`); return null; }
+    const data = await resp.json();
+    if (data.status !== "ok") {
+      attempts.push(`rss2json: ${data.message || data.status || "no items"}`);
+      return null;
+    }
+    const items = itemsFromJson(data, sectionKey);
+    if (!items.length) { attempts.push("rss2json: 0 items"); return null; }
+    return items;
+  } catch (err) {
+    attempts.push(`rss2json: ${err.name === "TypeError" ? "blocked (CORS/network)" : err.message}`);
+    return null;
+  }
+}
+
+// Combined fetch: rss2json first, XML proxy chain as fallback.
+async function fetchFeedItems(url, sectionKey, attempts) {
+  const viaJson = await fetchViaRss2Json(url, sectionKey, attempts);
+  if (viaJson && viaJson.length) return viaJson;
+  const xml = await fetchFeed(url, attempts);
+  if (!xml) return [];
+  return parseRss(xml, sectionKey, url);
+}
+
 async function refreshSection(key, btn, statusEl, errorEl) {
   const urls = LIVE_FEEDS[key];
   if (!urls || !urls.length) {
@@ -1235,14 +1274,13 @@ async function refreshSection(key, btn, statusEl, errorEl) {
   const perFeed = [];
   await Promise.all(urls.map(async (u) => {
     const attempts = [];
-    const xml = await fetchFeed(u, attempts);
-    if (!xml) {
+    const items = await fetchFeedItems(u, key, attempts);
+    if (!items.length) {
       failures++;
       perFeed.push({ url: u, ok: false, attempts });
       console.warn("[refresh]", shortHost(u), "all attempts failed:", attempts);
       return;
     }
-    const items = parseRss(xml, key, u);
     perFeed.push({ url: u, ok: true, count: items.length, attempts });
     fetched.push(...items);
   }));
