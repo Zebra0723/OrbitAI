@@ -6,22 +6,24 @@
 <title>Vortex</title>
 <style>
   :root {
-    /* Palette: warm cream surfaces, near-black ink, three accents */
-    --bg:        #f4f0e8;
+    --bg:        #fafaf7;
     --surface:   #ffffff;
     --ink:       #15161d;
-    --muted:     #6b6b78;
-    --line:      #e6e0d2;
-    --line-soft: #efeadd;
-    --coral:     #f04e45;
-    --cobalt:    #1f3bff;
-    --saffron:   #e8a317;
-    --shadow:    0 6px 24px rgba(20, 16, 8, 0.06);
-    --shadow-lg: 0 16px 40px rgba(20, 16, 8, 0.10);
-    --radius:    18px;
-    --radius-sm: 10px;
+    --ink-soft:  #3a3a44;
+    --muted:     #71717a;
+    --line:      #e7e5dd;
+    --line-soft: #f1efe8;
+    --accent:    #2647ff;
+    --accent-soft: #eef0ff;
+    --warn:      #c9591a;
+    --good:      #1d7a47;
+    --save:      #b07d10;
+    --shadow-sm: 0 1px 2px rgba(20, 16, 8, 0.04);
+    --shadow:    0 8px 28px rgba(20, 16, 8, 0.08);
+    --shadow-lg: 0 24px 60px rgba(20, 16, 8, 0.18);
+    --radius:    14px;
+    --radius-sm: 8px;
   }
-
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
@@ -32,357 +34,218 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+  button { font-family: inherit; cursor: pointer; }
   .hidden { display: none !important; }
-  button { font-family: inherit; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
 
-  /* ── Lock screen ──────────────────────────────────────────────── */
+  /* ── Lock screen ─────────────────────────────────────────────── */
   #lock {
-    position: fixed; inset: 0;
+    position: fixed; inset: 0; z-index: 200;
     display: flex; align-items: center; justify-content: center;
-    z-index: 100;
     background: var(--bg);
-    overflow: hidden;
   }
-  #lock::before, #lock::after {
-    content: "";
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(80px);
-    opacity: 0.45;
-  }
-  #lock::before { background: var(--coral);  width: 380px; height: 380px; top: -120px; left: -100px; }
-  #lock::after  { background: var(--cobalt); width: 420px; height: 420px; bottom: -160px; right: -120px; }
   .lock-card {
-    position: relative;
     background: var(--surface);
-    padding: 44px 36px 32px;
-    border-radius: 22px;
-    width: min(380px, 90vw);
-    box-shadow: var(--shadow-lg);
     border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 40px 32px 28px;
+    width: min(360px, 90vw);
+    box-shadow: var(--shadow);
   }
-  .lock-mark {
-    width: 44px; height: 44px;
-    margin-bottom: 22px;
-  }
-  .lock-card h1 {
-    margin: 0 0 4px;
-    font-size: 30px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
-  .lock-card .lock-sub {
-    color: var(--muted); margin: 0 0 24px; font-size: 14px;
-  }
+  .lock-mark { width: 36px; height: 36px; margin-bottom: 22px; display: block; }
+  .lock-card h1 { margin: 0 0 4px; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  .lock-card .lock-sub { color: var(--muted); margin: 0 0 22px; font-size: 14px; }
   .lock-card input {
-    width: 100%;
-    padding: 13px 14px;
-    border-radius: 10px;
-    border: 1.5px solid var(--line);
-    background: var(--bg);
-    color: var(--ink);
-    font-size: 15px;
-    outline: none;
+    width: 100%; padding: 12px 14px;
+    border: 1.5px solid var(--line); border-radius: 10px;
+    background: var(--bg); color: var(--ink);
+    font-size: 15px; outline: none;
     transition: border-color 0.15s, background 0.15s;
   }
-  .lock-card input:focus { border-color: var(--cobalt); background: white; }
+  .lock-card input:focus { border-color: var(--accent); background: white; }
   .lock-card button[type="submit"] {
-    margin-top: 12px;
-    width: 100%;
-    padding: 13px 14px;
-    border-radius: 10px;
-    border: none;
-    background: var(--ink);
-    color: white;
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
-    transition: transform 0.1s, opacity 0.15s;
+    margin-top: 10px; width: 100%; padding: 12px 14px;
+    border: none; border-radius: 10px;
+    background: var(--ink); color: white;
+    font-weight: 600; font-size: 15px;
   }
   .lock-card button[type="submit"]:hover { opacity: 0.88; }
-  .lock-card button[type="submit"]:active { transform: translateY(1px); }
-  .lock-error { color: var(--coral); margin-top: 10px; font-size: 13px; min-height: 18px; }
+  .lock-error { color: var(--warn); margin-top: 10px; font-size: 13px; min-height: 18px; }
 
-  /* ── App shell ────────────────────────────────────────────────── */
-  #app {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    min-height: 100vh;
+  /* ── Topbar ──────────────────────────────────────────────────── */
+  header.topbar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 30;
   }
-
-  /* Sidebar */
-  aside.sidebar {
-    background: var(--surface);
-    border-right: 1px solid var(--line);
-    padding: 22px 14px;
-    position: sticky; top: 0; align-self: start;
-    height: 100vh;
-    overflow-y: auto;
-    display: flex; flex-direction: column;
+  .icon-btn {
+    background: transparent; border: 1px solid transparent;
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--ink);
+    transition: background 0.12s, border-color 0.12s;
   }
+  .icon-btn:hover { background: var(--line-soft); }
+  .icon-btn svg { width: 18px; height: 18px; }
   .brand {
-    display: flex; align-items: center; gap: 10px;
-    padding: 0 8px 22px;
-    cursor: pointer;
-    user-select: none;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; user-select: none;
   }
-  .brand-mark { width: 28px; height: 28px; flex: none; }
-  .brand-name {
-    font-size: 18px; font-weight: 800; letter-spacing: 0.02em;
+  .brand svg { width: 22px; height: 22px; }
+  .brand span { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; }
+  .topbar-spacer { flex: 1; }
+  .topbar-meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ── Drawer ──────────────────────────────────────────────────── */
+  .scrim {
+    position: fixed; inset: 0; background: rgba(20,16,8,0.34);
+    z-index: 80; opacity: 0; pointer-events: none;
+    transition: opacity 0.18s;
   }
+  .scrim.show { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed; top: 0; bottom: 0; left: 0;
+    width: 280px; background: var(--surface);
+    border-right: 1px solid var(--line);
+    z-index: 90;
+    transform: translateX(-100%);
+    transition: transform 0.22s cubic-bezier(.4,.0,.2,1);
+    display: flex; flex-direction: column;
+    box-shadow: var(--shadow-lg);
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .drawer-head .brand { padding: 0; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 12px 10px; }
+  .drawer-foot { padding: 12px 10px; border-top: 1px solid var(--line); }
   .nav-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); font-weight: 600;
     padding: 14px 10px 6px;
-    font-weight: 600;
   }
   .nav-btn {
     display: flex; align-items: center; gap: 10px;
-    width: 100%;
-    padding: 9px 10px;
-    background: transparent;
-    border: none;
-    color: var(--ink);
-    text-align: left;
+    width: 100%; padding: 9px 10px;
+    background: transparent; border: none;
+    color: var(--ink); text-align: left;
     border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
+    font-size: 14px; font-weight: 500;
     transition: background 0.12s;
   }
   .nav-btn:hover { background: var(--line-soft); }
-  .nav-btn.active {
-    background: var(--ink);
-    color: white;
-  }
-  .nav-btn .nav-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
-  .nav-btn.coral   .nav-dot { background: var(--coral); }
-  .nav-btn.cobalt  .nav-dot { background: var(--cobalt); }
-  .nav-btn.saffron .nav-dot { background: var(--saffron); }
-  .nav-btn.active .nav-dot { background: rgba(255,255,255,0.85); }
-  .nav-divider { height: 1px; background: var(--line); margin: 12px 6px; border: 0; }
-  .sidebar-foot { margin-top: auto; padding-top: 16px; }
+  .nav-btn.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.45; flex: none; }
+  .nav-divider { height: 1px; background: var(--line); margin: 10px 6px; border: 0; }
 
-  /* Topbar */
-  .main-wrap { min-width: 0; }
-  header.topbar {
-    display: flex; align-items: center; gap: 16px;
-    padding: 18px 32px;
-    border-bottom: 1px solid var(--line);
-    background: var(--bg);
-    position: sticky; top: 0; z-index: 5;
-  }
-  .menu-toggle {
-    display: none;
-    background: transparent;
-    border: 1px solid var(--line);
-    padding: 8px;
-    border-radius: 8px;
-    cursor: pointer;
-    color: var(--ink);
-  }
-  .crumb {
-    display: flex; align-items: baseline; gap: 12px;
-    flex: 1; min-width: 0;
-  }
-  .crumb h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
-  .crumb .crumb-sub { color: var(--muted); font-size: 13px; }
-  .updated {
-    color: var(--muted);
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
+  /* ── Main ────────────────────────────────────────────────────── */
+  main#main { padding: 28px 22px 80px; max-width: 880px; margin: 0 auto; }
+  .page-head { margin-bottom: 26px; }
+  .page-head h1 { margin: 0 0 4px; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  .page-head p { margin: 0; color: var(--muted); font-size: 14.5px; }
 
-  main#main { padding: 28px 32px 80px; max-width: 1180px; }
-
-  /* ── Dashboard ────────────────────────────────────────────────── */
-  .hero {
+  /* ── Dashboard cards ─────────────────────────────────────────── */
+  .nav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
     margin-bottom: 28px;
   }
-  .hero h1 {
-    margin: 0 0 6px;
-    font-size: 30px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
-  .hero p {
-    margin: 0;
-    color: var(--muted);
-    font-size: 15px;
-  }
-
-  .grid-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 16px;
-  }
-  .card {
+  .nav-card {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    padding: 0;
+    padding: 16px 16px 14px;
     text-align: left;
-    cursor: pointer;
-    overflow: hidden;
-    display: flex; flex-direction: column;
-    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-    font-family: inherit;
+    transition: border-color 0.12s, background 0.12s;
   }
-  .card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-    border-color: #d8d1bf;
+  .nav-card:hover { border-color: #cfccc1; background: var(--surface); }
+  .nav-card .nav-card-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .nav-card .mark {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--ink); flex: none;
   }
-  .card-art {
-    height: 110px;
-    position: relative;
-    overflow: hidden;
-    background: var(--bg);
-    border-bottom: 1px solid var(--line);
-  }
-  .card-art svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-  .card-meta {
-    padding: 14px 16px 16px;
-  }
-  .card-eyebrow {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-  .card h3 { margin: 0 0 4px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
-  .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+  .nav-card.workspace .mark { background: var(--accent); }
+  .nav-card.discover .mark  { background: var(--ink); opacity: 0.5; }
+  .nav-card.library  .mark  { background: var(--save); }
+  .nav-card h3 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+  .nav-card p  { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 
-  /* Section page */
+  .group-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); font-weight: 600; margin: 24px 0 10px;
+  }
+
+  /* ── Section items ───────────────────────────────────────────── */
   .section-tabs {
     display: inline-flex;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 999px;
-    padding: 4px;
+    padding: 3px;
     gap: 2px;
     margin-bottom: 22px;
   }
   .tab-btn {
-    background: transparent;
-    border: none;
-    padding: 7px 16px;
-    border-radius: 999px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--muted);
-    transition: background 0.12s, color 0.12s;
+    background: transparent; border: none;
+    padding: 7px 14px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; color: var(--muted);
   }
   .tab-btn:hover { color: var(--ink); }
-  .tab-btn.active {
-    background: var(--ink);
-    color: white;
-  }
+  .tab-btn.active { background: var(--ink); color: white; }
   .tab-count {
-    margin-left: 6px;
-    background: rgba(255,255,255,0.18);
-    padding: 1px 7px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 600;
+    margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px;
+    background: var(--line-soft); color: var(--muted);
   }
-  .tab-btn:not(.active) .tab-count {
-    background: var(--line-soft);
-    color: var(--muted);
-  }
+  .tab-btn.active .tab-count { background: rgba(255,255,255,0.18); color: white; }
 
   .items {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 14px;
+    gap: 12px;
   }
   .item {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    padding: 18px 18px 14px;
+    padding: 16px 16px 12px;
     display: flex; flex-direction: column;
-    position: relative;
-    transition: transform 0.12s, box-shadow 0.15s, border-color 0.15s;
+    transition: border-color 0.12s;
   }
-  .item:hover { box-shadow: var(--shadow); border-color: #d8d1bf; }
-  .item.starred {
-    border-color: var(--saffron);
-    box-shadow: 0 0 0 1px var(--saffron) inset;
-  }
-  .item-stripe {
-    position: absolute; top: 0; left: 18px; right: 18px; height: 3px;
-    border-radius: 0 0 3px 3px;
-  }
-  .item-stripe.coral   { background: var(--coral); }
-  .item-stripe.cobalt  { background: var(--cobalt); }
-  .item-stripe.saffron { background: var(--saffron); }
+  .item:hover { border-color: #cfccc1; }
+  .item.starred { border-color: var(--save); box-shadow: 0 0 0 1px var(--save) inset; }
   .item-tag {
-    display: inline-flex; align-items: center;
-    align-self: flex-start;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    margin-bottom: 10px;
-    margin-top: 6px;
+    font-size: 10.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 6px;
   }
-  .item h4 {
-    margin: 0 0 8px;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    line-height: 1.3;
-  }
-  .item p {
-    margin: 0 0 14px;
-    color: var(--muted);
-    font-size: 13.5px;
-    line-height: 1.55;
-    flex: 1;
-  }
+  .item h4 { margin: 0 0 6px; font-size: 15px; font-weight: 700; line-height: 1.35; letter-spacing: -0.01em; }
+  .item p { margin: 0 0 12px; color: var(--ink-soft); font-size: 13px; line-height: 1.55; flex: 1; }
   .item-foot {
     display: flex; align-items: center; justify-content: space-between;
-    border-top: 1px solid var(--line-soft);
-    padding-top: 10px;
-    gap: 8px;
+    border-top: 1px solid var(--line-soft); padding-top: 8px; gap: 8px;
   }
-  .item-link {
-    color: var(--cobalt);
-    text-decoration: none;
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .item-link:hover { text-decoration: underline; }
-  .item-date { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .item-link { font-size: 12px; font-weight: 600; }
+  .item-date { color: var(--muted); font-size: 12px; }
   .vote-row { display: flex; gap: 4px; }
   .vote-btn {
-    width: 30px; height: 30px;
+    width: 28px; height: 28px;
     display: inline-flex; align-items: center; justify-content: center;
-    background: transparent;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    cursor: pointer;
+    background: transparent; border: 1px solid var(--line); border-radius: 8px;
     color: var(--muted);
     transition: background 0.12s, color 0.12s, border-color 0.12s;
   }
   .vote-btn:hover { background: var(--line-soft); color: var(--ink); }
-  .vote-btn svg { width: 14px; height: 14px; }
-  .vote-btn.active.up      { background: #e7faef; border-color: #88d6a4; color: #1d7a47; }
-  .vote-btn.active.down    { background: #fde8e7; border-color: #f0a7a3; color: #b03a35; }
-  .vote-btn.active.save    { background: #fff5dd; border-color: #f1c869; color: #8c6010; }
+  .vote-btn svg { width: 13px; height: 13px; }
+  .vote-btn.active.up   { background: #e7faef; border-color: #88d6a4; color: var(--good); }
+  .vote-btn.active.down { background: #fde8e7; border-color: #f0a7a3; color: var(--warn); }
+  .vote-btn.active.save { background: #fff5dd; border-color: #f1c869; color: var(--save); }
 
   .empty {
     background: var(--surface);
@@ -393,157 +256,281 @@
     color: var(--muted);
     font-size: 14px;
   }
-  .empty strong { display: block; color: var(--ink); font-size: 15px; margin-bottom: 4px; }
+  .empty strong { display: block; color: var(--ink); font-size: 15px; margin-bottom: 4px; font-weight: 700; }
 
-  /* Starred view */
-  .starred-group {
-    margin-bottom: 28px;
-  }
+  .starred-group { margin-bottom: 24px; }
   .starred-group h3 {
-    margin: 0 0 12px;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-    font-weight: 700;
+    margin: 0 0 10px;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); font-weight: 700;
     display: flex; align-items: center; gap: 8px;
   }
   .starred-group h3 .pill {
-    background: var(--line-soft);
-    color: var(--ink);
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 11px;
-    letter-spacing: 0.06em;
+    background: var(--line-soft); color: var(--ink);
+    padding: 1px 8px; border-radius: 999px;
+    font-size: 11px; letter-spacing: 0.06em;
   }
 
-  /* ── Reminders ────────────────────────────────────────────────── */
+  /* ── Reminders ───────────────────────────────────────────────── */
   .panel {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 22px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 22px;
   }
-  .reminder-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
-  .reminder-form input[type="text"] {
-    flex: 2 1 220px;
-    padding: 11px 13px;
-    border: 1.5px solid var(--line);
-    border-radius: 10px;
-    background: var(--bg);
-    color: var(--ink);
-    font-size: 14px;
-    outline: none;
+  .reminder-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .reminder-form input[type="text"] { flex: 2 1 220px; }
+  .reminder-form input[type="date"] { flex: 1 1 140px; }
+  .reminder-form input {
+    padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px;
+    background: var(--bg); color: var(--ink); font-size: 14px; outline: none;
     font-family: inherit;
   }
-  .reminder-form input[type="date"] {
-    flex: 1 1 140px;
-    padding: 11px 13px;
-    border: 1.5px solid var(--line);
-    border-radius: 10px;
-    background: var(--bg);
-    color: var(--ink);
-    font-size: 14px;
-    outline: none;
-    font-family: inherit;
-  }
-  .reminder-form input:focus { border-color: var(--cobalt); background: white; }
+  .reminder-form input:focus { border-color: var(--accent); background: white; }
   .reminder-form button {
-    padding: 11px 20px;
-    background: var(--ink);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 14px;
+    padding: 10px 18px; background: var(--ink); color: white;
+    border: none; border-radius: 10px; font-weight: 600; font-size: 14px;
   }
   .reminder-form button:hover { opacity: 0.88; }
   .reminder-list { list-style: none; padding: 0; margin: 0; }
   .reminder-item {
     display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    margin-bottom: 8px;
+    padding: 12px 14px; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px;
   }
-  .reminder-item.done { opacity: 0.6; }
+  .reminder-item.done { opacity: 0.55; }
   .reminder-item.done .reminder-text { text-decoration: line-through; }
-  .reminder-item input[type="checkbox"] {
-    width: 18px; height: 18px;
-    accent-color: var(--ink);
-    cursor: pointer;
-  }
+  .reminder-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--ink); }
   .reminder-text { flex: 1; font-size: 14px; }
   .reminder-date {
-    font-size: 11px;
-    color: var(--muted);
-    background: var(--surface);
-    padding: 3px 9px;
-    border-radius: 999px;
-    font-weight: 600;
+    font-size: 11px; color: var(--muted); background: var(--surface);
+    padding: 3px 9px; border-radius: 999px; font-weight: 600;
     border: 1px solid var(--line);
   }
-  .reminder-date.overdue { color: var(--coral); border-color: #f0a7a3; background: #fde8e7; }
-  .reminder-delete {
-    background: transparent; border: none; color: var(--muted);
-    cursor: pointer; font-size: 18px; line-height: 1; padding: 4px 8px;
-  }
-  .reminder-delete:hover { color: var(--coral); }
+  .reminder-date.overdue { color: var(--warn); border-color: #f0a7a3; background: #fde8e7; }
+  .reminder-delete { background: transparent; border: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 4px 8px; }
+  .reminder-delete:hover { color: var(--warn); }
 
-  /* ── Studio ──────────────────────────────────────────────────── */
-  .studio-tools {
-    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+  /* ── Studio: library ─────────────────────────────────────────── */
+  .lib-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 10px; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--ink); color: white; border: none;
+    padding: 9px 14px; border-radius: 9px;
+    font-weight: 600; font-size: 13.5px;
+    display: inline-flex; align-items: center; gap: 7px;
   }
-  .studio-tools button {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    color: var(--ink);
-    padding: 7px 12px;
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary svg { width: 14px; height: 14px; }
+  .btn-secondary {
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); padding: 9px 14px; border-radius: 9px;
+    font-weight: 600; font-size: 13.5px;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn-secondary:hover { background: var(--line-soft); }
+  .btn-ghost {
+    background: transparent; color: var(--muted);
+    border: none; padding: 6px 10px; border-radius: 8px;
+    font-size: 13px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-ghost:hover { background: var(--line-soft); color: var(--ink); }
+  .btn-ghost svg { width: 14px; height: 14px; }
+
+  .book-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+  .book-card { background: transparent; border: none; padding: 0; text-align: left; }
+  .book-cover-thumb {
+    width: 100%; aspect-ratio: 2 / 3;
     border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 14px;
+    color: white;
+    box-shadow: var(--shadow);
+    transition: transform 0.15s, box-shadow 0.15s;
+    overflow: hidden;
+    position: relative;
   }
-  .studio-tools button:hover { background: var(--line-soft); }
-  .studio-editor {
-    width: 100%;
-    min-height: 460px;
+  .book-card:hover .book-cover-thumb { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .book-cover-thumb .cv-title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; word-break: break-word; }
+  .book-cover-thumb .cv-author { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+  .book-card .book-meta { padding: 10px 2px 0; }
+  .book-card .book-meta .bm-title { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .book-card .book-meta .bm-sub { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+
+  /* ── Studio: editor (book workspace) ─────────────────────────── */
+  .studio-view {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    z-index: 60;          /* above the main topbar */
+  }
+  .studio-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 18px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    flex: none;
+  }
+  .studio-bar .sb-title { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
+  .studio-bar .sb-spacer { flex: 1; }
+  .studio-bar .sb-meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .studio-body {
+    flex: 1; min-height: 0;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+  }
+  .studio-body.outline-collapsed { grid-template-columns: 0 1fr; }
+  .studio-body.outline-collapsed .outline { display: none; }
+
+  .outline {
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+    padding: 10px 8px 24px;
+  }
+  .outline-group-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); font-weight: 600;
+    padding: 14px 10px 4px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .outline-group-label .add-mini {
+    background: transparent; border: 1px solid var(--line);
+    border-radius: 6px; padding: 0 6px; height: 22px;
+    color: var(--muted); font-size: 12px; line-height: 1; cursor: pointer;
+  }
+  .outline-group-label .add-mini:hover { background: var(--line-soft); color: var(--ink); }
+  .outline-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 8px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    position: relative;
+  }
+  .outline-row:hover { background: var(--line-soft); }
+  .outline-row.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .outline-row .or-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .outline-row .or-words { font-size: 11px; color: var(--muted); margin-right: 4px; font-variant-numeric: tabular-nums; }
+  .outline-row .or-actions {
+    display: none; gap: 2px;
+  }
+  .outline-row:hover .or-actions { display: inline-flex; }
+  .outline-row .or-actions button {
+    background: transparent; border: none; color: var(--muted);
+    padding: 2px 4px; border-radius: 4px; line-height: 1;
+  }
+  .outline-row .or-actions button:hover { background: var(--bg); color: var(--ink); }
+  .outline-row .or-actions svg { width: 12px; height: 12px; }
+  .outline-row .or-rename-input {
+    flex: 1;
+    background: var(--surface); border: 1px solid var(--accent);
+    border-radius: 6px; padding: 3px 6px; font-size: 13.5px; outline: none; color: var(--ink);
+    font-family: inherit;
+  }
+
+  .editor-pane {
+    overflow-y: auto;
+    padding: 28px 16px 80px;
+    background: var(--bg);
+  }
+  .editor-shell {
+    max-width: 720px; margin: 0 auto;
+    background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 12px;
-    padding: 24px 28px;
-    font-size: 16px;
-    line-height: 1.7;
-    background: var(--surface);
-    outline: none;
-    font-family: "Iowan Old Style", "Charter", Georgia, "Times New Roman", serif;
-    color: var(--ink);
+    padding: 28px 36px 36px;
+    box-shadow: var(--shadow-sm);
   }
-  .studio-editor:focus { border-color: var(--cobalt); }
-  .studio-editor p { margin: 0 0 0.85em; text-indent: 1.5em; }
-  .studio-editor p:first-child { text-indent: 0; }
-  .studio-hint { margin-top: 10px; font-size: 12px; color: var(--muted); }
+  .editor-eyebrow {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em;
+    color: var(--muted); font-weight: 600; margin: 0 0 6px;
+  }
+  .editor-heading {
+    font-size: 26px; font-weight: 700; letter-spacing: -0.015em;
+    margin: 0 0 22px;
+    background: transparent; border: none; padding: 0; outline: none;
+    width: 100%; color: var(--ink);
+    font-family: inherit;
+  }
+  .editor-toolbar {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line-soft);
+    padding: 6px 0 8px; margin: -8px 0 14px;
+    display: flex; gap: 4px; flex-wrap: wrap;
+  }
+  .editor-toolbar button {
+    background: transparent; border: 1px solid transparent;
+    padding: 5px 9px; border-radius: 6px;
+    font-size: 13px; color: var(--ink-soft); font-weight: 600;
+  }
+  .editor-toolbar button:hover { background: var(--line-soft); color: var(--ink); }
+  .editor-toolbar .sep { width: 1px; background: var(--line); margin: 4px 4px; }
+  .editor-content {
+    min-height: 360px;
+    font-family: "Iowan Old Style", "Charter", Georgia, "Times New Roman", serif;
+    font-size: 17px; line-height: 1.7; color: var(--ink);
+    outline: none;
+  }
+  .editor-content p  { margin: 0 0 0.85em; text-indent: 1.5em; }
+  .editor-content p:first-child { text-indent: 0; }
+  .editor-content h2 {
+    text-indent: 0;
+    text-align: center; font-weight: 600; letter-spacing: 0.04em;
+    margin: 1.6em 0 1em; font-size: 1em;
+    text-transform: uppercase;
+  }
+  .editor-content blockquote {
+    margin: 0 0 0.85em 1.5em; padding: 0 0 0 14px;
+    border-left: 2px solid var(--line);
+    color: var(--ink-soft); font-style: italic;
+  }
+  .editor-content hr {
+    border: 0; height: 1px; background: var(--line);
+    margin: 2em auto; width: 80px;
+  }
+  .editor-empty {
+    color: var(--muted); font-style: italic;
+    pointer-events: none;
+  }
 
-  /* ── Responsive ──────────────────────────────────────────────── */
-  @media (max-width: 820px) {
-    #app { grid-template-columns: 1fr; }
-    aside.sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0;
-      width: 260px; z-index: 50;
-      transform: translateX(-100%);
-      transition: transform 0.2s;
-    }
-    aside.sidebar.open { transform: translateX(0); box-shadow: var(--shadow-lg); }
-    .menu-toggle { display: inline-flex; }
-    .scrim {
-      position: fixed; inset: 0; background: rgba(20,16,8,0.4);
-      z-index: 40; opacity: 0; pointer-events: none;
-      transition: opacity 0.2s;
-    }
-    .scrim.show { opacity: 1; pointer-events: auto; }
-    main#main { padding: 22px 18px 60px; }
-    header.topbar { padding: 14px 18px; }
+  /* Cover editor */
+  .cover-editor { display: grid; grid-template-columns: minmax(180px, 240px) 1fr; gap: 28px; align-items: start; }
+  .cover-preview {
+    aspect-ratio: 2 / 3; border-radius: 10px;
+    box-shadow: var(--shadow);
+    color: white;
+    padding: 22px; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .cover-preview .cp-title { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+  .cover-preview .cp-author { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.9; }
+  .cover-form .field { display: block; margin-bottom: 14px; }
+  .cover-form label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .cover-form input[type="text"] {
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 9px;
+    background: var(--bg); color: var(--ink); font-size: 14px; outline: none; font-family: inherit;
+  }
+  .cover-form input:focus { border-color: var(--accent); background: white; }
+  .swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+  .swatch {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+  }
+  .swatch.selected { border-color: var(--ink); }
+
+  @media (max-width: 720px) {
+    .studio-body { grid-template-columns: 1fr; }
+    .outline { position: fixed; top: 60px; bottom: 0; left: 0; width: 280px;
+               transform: translateX(-100%); transition: transform 0.2s; z-index: 25; box-shadow: var(--shadow-lg); }
+    .outline.open { transform: translateX(0); }
+    .editor-shell { padding: 22px; }
+    .cover-editor { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -552,13 +539,13 @@
 <!-- ── Lock screen ─────────────────────────────────────────────── -->
 <div id="lock">
   <div class="lock-card">
-    <svg class="lock-mark" viewBox="0 0 44 44" fill="none">
-      <circle cx="22" cy="22" r="20" stroke="#15161d" stroke-width="2"/>
-      <circle cx="22" cy="22" r="12" stroke="#f04e45" stroke-width="2"/>
-      <circle cx="22" cy="22" r="4" fill="#1f3bff"/>
+    <svg class="lock-mark" viewBox="0 0 36 36" fill="none">
+      <circle cx="18" cy="18" r="16" stroke="#15161d" stroke-width="1.6"/>
+      <circle cx="18" cy="18" r="9"  stroke="#2647ff" stroke-width="1.6"/>
+      <circle cx="18" cy="18" r="3"  fill="#15161d"/>
     </svg>
     <h1>Vortex</h1>
-    <p class="lock-sub">Enter your password to continue.</p>
+    <p class="lock-sub">Enter your password.</p>
     <form id="lock-form">
       <input id="lock-input" type="password" placeholder="Password" autocomplete="off" autofocus />
       <button type="submit">Unlock</button>
@@ -569,181 +556,188 @@
 
 <!-- ── App ─────────────────────────────────────────────────────── -->
 <div id="app" class="hidden">
-  <div class="scrim" id="scrim"></div>
-
-  <aside class="sidebar" id="sidebar">
-    <div class="brand" id="brand">
-      <svg class="brand-mark" viewBox="0 0 28 28" fill="none">
-        <circle cx="14" cy="14" r="13" stroke="#15161d" stroke-width="1.6"/>
-        <circle cx="14" cy="14" r="7"  stroke="#f04e45" stroke-width="1.6"/>
-        <circle cx="14" cy="14" r="2.2" fill="#1f3bff"/>
+  <header class="topbar">
+    <button class="icon-btn" id="menu-toggle" title="Menu">
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <path d="M3 5h12M3 9h12M3 13h12"/>
       </svg>
-      <span class="brand-name">VORTEX</span>
+    </button>
+    <div class="brand" id="brand">
+      <svg viewBox="0 0 22 22" fill="none">
+        <circle cx="11" cy="11" r="10" stroke="#15161d" stroke-width="1.4"/>
+        <circle cx="11" cy="11" r="5.5" stroke="#2647ff" stroke-width="1.4"/>
+        <circle cx="11" cy="11" r="1.8" fill="#15161d"/>
+      </svg>
+      <span>VORTEX</span>
     </div>
+    <div class="topbar-spacer"></div>
+    <span class="topbar-meta" id="updated"></span>
+    <button class="icon-btn" id="logout-btn" title="Lock">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="7" width="10" height="7" rx="1.5"/>
+        <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/>
+      </svg>
+    </button>
+  </header>
 
-    <nav id="nav"></nav>
-
-    <div class="sidebar-foot">
-      <button class="nav-btn" id="logout-btn">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="7" width="10" height="7" rx="1.5"/>
-          <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/>
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div class="brand">
+        <svg viewBox="0 0 22 22" fill="none">
+          <circle cx="11" cy="11" r="10" stroke="#15161d" stroke-width="1.4"/>
+          <circle cx="11" cy="11" r="5.5" stroke="#2647ff" stroke-width="1.4"/>
+          <circle cx="11" cy="11" r="1.8" fill="#15161d"/>
         </svg>
-        Lock
+        <span>VORTEX</span>
+      </div>
+      <button class="icon-btn" id="drawer-close" title="Close">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M4 4l8 8M12 4l-8 8"/>
+        </svg>
       </button>
     </div>
+    <div class="drawer-body" id="drawer-nav"></div>
   </aside>
 
-  <div class="main-wrap">
-    <header class="topbar">
-      <button class="menu-toggle" id="menu-toggle" aria-label="Menu">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-          <path d="M3 5h12M3 9h12M3 13h12"/>
-        </svg>
-      </button>
-      <div class="crumb">
-        <h2 id="crumb-title">Dashboard</h2>
-        <span class="crumb-sub" id="crumb-sub"></span>
-      </div>
-      <div class="updated" id="updated"></div>
-    </header>
-
-    <main id="main"></main>
-  </div>
+  <main id="main"></main>
 </div>
+
+<!-- Studio editor mounts here, full-bleed -->
+<div id="studio-mount"></div>
 
 <script>
 "use strict";
 
-const PASSWORD = "vortex123";
-const SESSION_KEY  = "vortex_unlocked";
-const REMINDERS_KEY = "vortex_reminders";
-const JOY_KEY      = "vortex_joy_draft";
-const VOTES_KEY    = "vortex_votes";
+const PASSWORD       = "vortex123";
+const SESSION_KEY    = "vortex_unlocked";
+const REMINDERS_KEY  = "vortex_reminders";
+const VOTES_KEY      = "vortex_votes";
+const STUDIO_KEY     = "vortex_studio";
+const LEGACY_JOY_KEY = "vortex_joy_draft";
 
-/* Section catalogue ------------------------------------------------ */
+/* ── Section catalogue ────────────────────────────────────────── */
 
 const SECTIONS = [
-  { key: "tennis",   label: "Tennis",      desc: "ATP/WTA stories, tactics, comebacks.",            color: "coral",   art: "arc"     },
-  { key: "books",    label: "Books",       desc: "Biographies, big thinkers, new releases.",        color: "coral",   art: "spines"  },
-  { key: "rabbit",   label: "Curiosity",   desc: "Science, history, design, strange facts.",        color: "coral",   art: "spiral"  },
-  { key: "author",   label: "Author",      desc: "Writing craft, interviews, inspiration.",         color: "cobalt",  art: "lines"   },
-  { key: "engineer", label: "Engineering", desc: "Kits, projects, robotics, makers.",               color: "cobalt",  art: "gear"    },
-  { key: "radar",    label: "Releases",    desc: "LEGO, tech, gadgets, cubing, tools.",             color: "cobalt",  art: "bars"    },
-  { key: "prestige", label: "Prestige",    desc: "Writing contests, prizes, magazines.",            color: "saffron", art: "pyramid" },
+  { key: "tennis",   label: "Tennis",      desc: "ATP/WTA stories, tactics, comebacks." },
+  { key: "books",    label: "Books",       desc: "Biographies, big thinkers, new releases." },
+  { key: "rabbit",   label: "Curiosity",   desc: "Science, history, design, strange facts." },
+  { key: "author",   label: "Author",      desc: "Writing craft, interviews, inspiration." },
+  { key: "engineer", label: "Engineering", desc: "Kits, projects, robotics, makers." },
+  { key: "radar",    label: "Releases",    desc: "LEGO, tech, gadgets, cubing, tools." },
+  { key: "prestige", label: "Prestige",    desc: "Writing contests, prizes, magazines." },
 ];
-
 const SECTION_BY_KEY = Object.fromEntries(SECTIONS.map(s => [s.key, s]));
 
-/* ── Abstract SVG illustrations (one per section) ─────────────── */
+/* ── Cover gradient palette ──────────────────────────────────── */
 
-function artSVG(kind, colorVar) {
-  const c = `var(--${colorVar})`;
-  switch (kind) {
-    case "arc": return `
-      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
-        <circle cx="80" cy="140" r="80" fill="none" stroke="${c}" stroke-width="2" opacity="0.85"/>
-        <circle cx="80" cy="140" r="55" fill="none" stroke="${c}" stroke-width="2" opacity="0.55"/>
-        <circle cx="80" cy="140" r="30" fill="none" stroke="${c}" stroke-width="2" opacity="0.35"/>
-        <circle cx="220" cy="38" r="6" fill="${c}"/>
-      </svg>`;
-    case "spines": return `
-      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
-        <rect x="40"  y="22" width="14" height="74" rx="2" fill="${c}" opacity="0.85"/>
-        <rect x="62"  y="34" width="14" height="62" rx="2" fill="${c}" opacity="0.55"/>
-        <rect x="84"  y="14" width="14" height="82" rx="2" fill="${c}" opacity="0.35"/>
-        <rect x="106" y="42" width="14" height="54" rx="2" fill="${c}" opacity="0.7"/>
-        <circle cx="220" cy="55" r="22" fill="none" stroke="${c}" stroke-width="2"/>
-      </svg>`;
-    case "spiral": return `
-      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
-        <path d="M140,55 m-30,0 a30,30 0 1,1 60,0 a22,22 0 1,1 -44,0 a14,14 0 1,1 28,0 a6,6 0 1,1 -12,0"
-              fill="none" stroke="${c}" stroke-width="2"/>
-        <circle cx="40" cy="20" r="4" fill="${c}"/>
-        <circle cx="240" cy="90" r="4" fill="${c}"/>
-      </svg>`;
-    case "lines": return `
-      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
-        <line x1="50"  y1="20" x2="50"  y2="90" stroke="${c}" stroke-width="2"/>
-        <line x1="70"  y1="30" x2="70"  y2="80" stroke="${c}" stroke-width="2" opacity="0.7"/>
-        <line x1="90"  y1="14" x2="90"  y2="96" stroke="${c}" stroke-width="2" opacity="0.85"/>
-        <line x1="110" y1="40" x2="110" y2="70" stroke="${c}" stroke-width="2" opacity="0.5"/>
-        <line x1="130" y1="22" x2="130" y2="88" stroke="${c}" stroke-width="2" opacity="0.7"/>
-        <circle cx="200" cy="55" r="22" fill="none" stroke="${c}" stroke-width="2"/>
-        <circle cx="200" cy="55" r="6" fill="${c}"/>
-      </svg>`;
-    case "gear": return `
-      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
-        <g transform="translate(80,55)">
-          <circle r="32" fill="none" stroke="${c}" stroke-width="2"/>
-          <circle r="14" fill="none" stroke="${c}" stroke-width="2"/>
-          ${Array.from({length:8}).map((_,i)=>{
-            const a=i*45*Math.PI/180; const x1=Math.cos(a)*32, y1=Math.sin(a)*32, x2=Math.cos(a)*40, y2=Math.sin(a)*40;
-            return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c}" stroke-width="2"/>`;
-          }).join('')}
-        </g>
-        <rect x="170" y="40" width="60" height="6" fill="${c}" opacity="0.7"/>
-        <rect x="170" y="56" width="40" height="6" fill="${c}" opacity="0.45"/>
-      </svg>`;
-    case "bars": return `
-      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
-        <rect x="40"  y="70" width="16" height="26" fill="${c}" opacity="0.45"/>
-        <rect x="64"  y="56" width="16" height="40" fill="${c}" opacity="0.65"/>
-        <rect x="88"  y="38" width="16" height="58" fill="${c}" opacity="0.85"/>
-        <rect x="112" y="20" width="16" height="76" fill="${c}"/>
-        <circle cx="210" cy="40" r="22" fill="none" stroke="${c}" stroke-width="2"/>
-        <line x1="200" y1="30" x2="220" y2="50" stroke="${c}" stroke-width="2"/>
-      </svg>`;
-    case "pyramid": return `
-      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
-        <polygon points="100,90 60,90 80,40" fill="none" stroke="${c}" stroke-width="2"/>
-        <polygon points="140,90 100,90 120,30" fill="none" stroke="${c}" stroke-width="2"/>
-        <polygon points="180,90 140,90 160,55" fill="none" stroke="${c}" stroke-width="2"/>
-        <circle cx="220" cy="55" r="14" fill="${c}"/>
-        <circle cx="240" cy="35" r="6" fill="${c}" opacity="0.6"/>
-      </svg>`;
-    case "dots": return `
-      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
-        ${Array.from({length:6}).map((_,r)=>Array.from({length:14}).map((_,c)=>{
-          const x=20+c*18, y=14+r*16;
-          const op = 0.18 + ((r+c)%5)*0.16;
-          return `<circle cx="${x}" cy="${y}" r="2.4" fill="${`var(--${colorVar})`}" opacity="${op.toFixed(2)}"/>`;
-        }).join('')).join('')}
-      </svg>`;
-    case "circles": return `
-      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
-        <circle cx="80"  cy="55" r="40" fill="none" stroke="${c}" stroke-width="2"/>
-        <circle cx="80"  cy="55" r="26" fill="none" stroke="${c}" stroke-width="2" opacity="0.65"/>
-        <circle cx="80"  cy="55" r="12" fill="${c}"/>
-        <line x1="140" y1="55" x2="240" y2="55" stroke="${c}" stroke-width="2" opacity="0.6"/>
-      </svg>`;
+const COVER_PALETTE = [
+  { id: "cobalt",  bg: "linear-gradient(160deg, #1f3bff 0%, #4a5ee8 100%)" },
+  { id: "coral",   bg: "linear-gradient(160deg, #f04e45 0%, #e85a78 100%)" },
+  { id: "saffron", bg: "linear-gradient(160deg, #e8a317 0%, #f5c14e 100%)" },
+  { id: "olive",   bg: "linear-gradient(160deg, #4a7c2a 0%, #7ba84d 100%)" },
+  { id: "plum",    bg: "linear-gradient(160deg, #6b3d8c 0%, #9b6cb8 100%)" },
+  { id: "slate",   bg: "linear-gradient(160deg, #1a1a1f 0%, #4a4a55 100%)" },
+  { id: "rose",    bg: "linear-gradient(160deg, #d04f78 0%, #e879a3 100%)" },
+];
+const coverGradient = (id) => (COVER_PALETTE.find(p => p.id === id) || COVER_PALETTE[0]).bg;
+
+/* ── Studio data model ───────────────────────────────────────── */
+
+const SECTION_TYPES = {
+  cover:           { label: "Cover",            group: "front", emoji: null },
+  "title-page":    { label: "Title Page",       group: "front" },
+  copyright:       { label: "Copyright",        group: "front" },
+  dedication:      { label: "Dedication",       group: "front" },
+  foreword:        { label: "Foreword",         group: "front" },
+  preface:         { label: "Preface",          group: "front" },
+  prologue:        { label: "Prologue",         group: "front" },
+  chapter:         { label: "Chapter",          group: "body"  },
+  part:            { label: "Part",             group: "body"  },
+  custom:          { label: "Section",          group: "body"  },
+  epilogue:        { label: "Epilogue",         group: "back"  },
+  acknowledgments: { label: "Acknowledgments",  group: "back"  },
+  "about-author":  { label: "About the Author", group: "back"  },
+};
+const FRONT_OPTIONAL = ["foreword", "preface", "prologue", "dedication", "copyright"];
+const BACK_OPTIONAL  = ["epilogue", "acknowledgments", "about-author"];
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function loadStudio() {
+  let s;
+  try { s = JSON.parse(localStorage.getItem(STUDIO_KEY) || "null"); } catch { s = null; }
+  if (!s || !s.books) {
+    s = { books: {}, activeBookId: null };
+    // Migrate legacy single draft if present
+    const legacy = localStorage.getItem(LEGACY_JOY_KEY);
+    if (legacy && legacy.trim()) {
+      const book = newBook("Finding Joy", "Arjun");
+      // Pull legacy HTML into Chapter 1
+      const ch = book.sections.find(x => x.type === "chapter");
+      if (ch) ch.content = legacy;
+      s.books[book.id] = book;
+      s.activeBookId = book.id;
+    } else {
+      const book = newBook("Finding Joy", "Arjun");
+      s.books[book.id] = book;
+      s.activeBookId = book.id;
+    }
+    localStorage.setItem(STUDIO_KEY, JSON.stringify(s));
   }
-  return "";
+  return s;
+}
+function saveStudio(s) { localStorage.setItem(STUDIO_KEY, JSON.stringify(s)); }
+
+function newBook(title, author) {
+  const id = uid();
+  const now = Date.now();
+  const sections = [
+    { id: uid(), type: "cover",      title: "Cover",      content: "" },
+    { id: uid(), type: "title-page", title: "Title Page", content: "" },
+    { id: uid(), type: "chapter",    title: "Chapter 1",  content: "" },
+  ];
+  return {
+    id, title, author,
+    cover: { color: "cobalt" },
+    sections,
+    activeSectionId: sections[2].id,
+    createdAt: now, updatedAt: now,
+  };
+}
+function bookWordCount(book) {
+  return book.sections.reduce((n, s) => n + sectionWordCount(s), 0);
+}
+function sectionWordCount(s) {
+  if (!s.content) return 0;
+  const text = s.content.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").trim();
+  if (!text) return 0;
+  return text.split(/\s+/).length;
 }
 
 /* ── DOM refs ─────────────────────────────────────────────────── */
 
-const lock      = document.getElementById("lock");
-const app       = document.getElementById("app");
-const lockForm  = document.getElementById("lock-form");
-const lockInput = document.getElementById("lock-input");
-const lockError = document.getElementById("lock-error");
-const logoutBtn = document.getElementById("logout-btn");
-const brand     = document.getElementById("brand");
-const navEl     = document.getElementById("nav");
-const main      = document.getElementById("main");
-const crumbT    = document.getElementById("crumb-title");
-const crumbS    = document.getElementById("crumb-sub");
-const updatedEl = document.getElementById("updated");
-const sidebar   = document.getElementById("sidebar");
-const scrim     = document.getElementById("scrim");
-const menuTog   = document.getElementById("menu-toggle");
+const lockEl     = document.getElementById("lock");
+const appEl      = document.getElementById("app");
+const lockForm   = document.getElementById("lock-form");
+const lockInput  = document.getElementById("lock-input");
+const lockError  = document.getElementById("lock-error");
+const drawer     = document.getElementById("drawer");
+const drawerNav  = document.getElementById("drawer-nav");
+const drawerClose = document.getElementById("drawer-close");
+const scrim      = document.getElementById("scrim");
+const menuToggle = document.getElementById("menu-toggle");
+const logoutBtn  = document.getElementById("logout-btn");
+const brand      = document.getElementById("brand");
+const main       = document.getElementById("main");
+const studioMount = document.getElementById("studio-mount");
+const updatedEl  = document.getElementById("updated");
 
 /* ── Lock ─────────────────────────────────────────────────────── */
 
 function unlock() {
-  lock.classList.add("hidden");
-  app.classList.remove("hidden");
+  lockEl.classList.add("hidden");
+  appEl.classList.remove("hidden");
   navigate("home");
   loadContent().then(() => {
     if (currentView !== "home") navigate(currentView);
@@ -751,9 +745,10 @@ function unlock() {
   });
 }
 function relock() {
+  closeStudio();
   sessionStorage.removeItem(SESSION_KEY);
-  app.classList.add("hidden");
-  lock.classList.remove("hidden");
+  appEl.classList.add("hidden");
+  lockEl.classList.remove("hidden");
   lockInput.value = "";
   lockInput.focus();
 }
@@ -774,32 +769,31 @@ lockForm.addEventListener("submit", (e) => {
 logoutBtn.addEventListener("click", relock);
 brand.addEventListener("click", () => navigate("home"));
 
-/* ── Sidebar nav ──────────────────────────────────────────────── */
+/* ── Drawer ───────────────────────────────────────────────────── */
 
-function buildNav() {
-  navEl.innerHTML = "";
-  const home = navBtn("home", "Dashboard", null, "circles");
-  navEl.appendChild(home);
-  navEl.appendChild(navBtn("starred", "Starred", "saffron"));
+function openDrawer()  { drawer.classList.add("open");  scrim.classList.add("show");  drawer.setAttribute("aria-hidden","false"); }
+function closeDrawer() { drawer.classList.remove("open"); scrim.classList.remove("show"); drawer.setAttribute("aria-hidden","true"); }
+menuToggle.addEventListener("click", openDrawer);
+drawerClose.addEventListener("click", closeDrawer);
+scrim.addEventListener("click", closeDrawer);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
 
-  const sep = document.createElement("hr"); sep.className = "nav-divider"; navEl.appendChild(sep);
-
-  navEl.appendChild(navBtn("studio", "Studio", "coral"));
-  navEl.appendChild(navBtn("reminders", "Reminders", "saffron"));
-
-  const lab = document.createElement("div"); lab.className = "nav-label"; lab.textContent = "Discover";
-  navEl.appendChild(lab);
-
-  for (const s of SECTIONS) {
-    navEl.appendChild(navBtn("section:" + s.key, s.label, s.color));
-  }
+function buildDrawerNav() {
+  drawerNav.innerHTML = "";
+  drawerNav.appendChild(navBtn("home", "Dashboard"));
+  drawerNav.appendChild(navBtn("studio", "Studio"));
+  drawerNav.appendChild(navBtn("reminders", "Reminders"));
+  drawerNav.appendChild(navBtn("starred", "Starred"));
+  const sep = document.createElement("hr"); sep.className = "nav-divider"; drawerNav.appendChild(sep);
+  const lab = document.createElement("div"); lab.className = "nav-label"; lab.textContent = "Discover"; drawerNav.appendChild(lab);
+  for (const s of SECTIONS) drawerNav.appendChild(navBtn("section:" + s.key, s.label));
 }
-function navBtn(view, label, color) {
+function navBtn(view, label) {
   const b = document.createElement("button");
-  b.className = "nav-btn" + (color ? " " + color : "");
+  b.className = "nav-btn";
   b.dataset.view = view;
-  b.innerHTML = (color ? '<span class="nav-dot"></span>' : '<span class="nav-dot" style="background:var(--ink);"></span>') + label;
-  b.addEventListener("click", () => navigate(view));
+  b.innerHTML = `<span class="nav-dot"></span>${escapeHtml(label)}`;
+  b.addEventListener("click", () => { navigate(view); closeDrawer(); });
   return b;
 }
 function setNavActive(view) {
@@ -807,17 +801,9 @@ function setNavActive(view) {
     b.classList.toggle("active", b.dataset.view === view);
   });
 }
+buildDrawerNav();
 
-menuTog.addEventListener("click", () => {
-  sidebar.classList.add("open");
-  scrim.classList.add("show");
-});
-scrim.addEventListener("click", () => {
-  sidebar.classList.remove("open");
-  scrim.classList.remove("show");
-});
-
-/* ── Content loading ──────────────────────────────────────────── */
+/* ── Content (RSS) loading ───────────────────────────────────── */
 
 let CONTENT = null;
 let LAST_UPDATED = null;
@@ -837,13 +823,9 @@ async function loadContent() {
   }
 }
 function updateLastUpdated() {
-  if (!LAST_UPDATED) {
-    updatedEl.textContent = "Seed content";
-    return;
-  }
+  if (!LAST_UPDATED) { updatedEl.textContent = ""; return; }
   const d = new Date(LAST_UPDATED);
-  const now = new Date();
-  const diffH = (now - d) / 36e5;
+  const diffH = (Date.now() - d.getTime()) / 36e5;
   let label;
   if (diffH < 1) label = "Updated " + Math.max(1, Math.round(diffH * 60)) + "m ago";
   else if (diffH < 24) label = "Updated " + Math.round(diffH) + "h ago";
@@ -853,49 +835,44 @@ function updateLastUpdated() {
 
 /* ── Votes & ranking ──────────────────────────────────────────── */
 
-function loadVotes() {
-  try { return JSON.parse(localStorage.getItem(VOTES_KEY) || "{}"); }
-  catch { return {}; }
-}
+function loadVotes() { try { return JSON.parse(localStorage.getItem(VOTES_KEY) || "{}"); } catch { return {}; } }
 function saveVotes(v) { localStorage.setItem(VOTES_KEY, JSON.stringify(v)); }
 
 function tagAffinity(sectionKey) {
-  // Returns { tagName: score } for items in this section based on current votes
   const votes = loadVotes();
   const items = (CONTENT && CONTENT[sectionKey]) || [];
   const aff = {};
   for (const it of items) {
-    const v = votes[it.id];
-    if (!v) continue;
+    const v = votes[it.id]; if (!v) continue;
     const w = v === "up" ? 1 : v === "down" ? -2 : v === "save" ? 3 : 0;
     aff[it.tag] = (aff[it.tag] || 0) + w;
   }
   return aff;
 }
-
 function rankItems(sectionKey, items) {
   const votes = loadVotes();
   const aff = tagAffinity(sectionKey);
-  const decorated = items.map((it, idx) => {
+  const dec = items.map((it, idx) => {
     const v = votes[it.id];
-    const tagScore = aff[it.tag] || 0;
-    const isSave = v === "save";
-    const ts = it.published ? Date.parse(it.published) : 0;
-    return { it, idx, isSave, tagScore, ts, isDown: v === "down" };
+    return {
+      it, idx,
+      isSave: v === "save",
+      isDown: v === "down",
+      tagScore: aff[it.tag] || 0,
+      ts: it.published ? Date.parse(it.published) : 0,
+    };
   });
-  decorated.sort((a, b) => {
+  dec.sort((a, b) => {
     if (a.isSave !== b.isSave) return a.isSave ? -1 : 1;
     if (a.tagScore !== b.tagScore) return b.tagScore - a.tagScore;
     if (a.ts !== b.ts) return b.ts - a.ts;
     return a.idx - b.idx;
   });
-  // Push hard-downvoted items to the very end
-  const positives = decorated.filter(x => !x.isDown);
-  const negatives = decorated.filter(x => x.isDown);
-  return [...positives, ...negatives].map(x => x.it);
+  const pos = dec.filter(x => !x.isDown);
+  const neg = dec.filter(x => x.isDown);
+  return [...pos, ...neg].map(x => x.it);
 }
-
-function starredItemsBySection() {
+function starredBySection() {
   const votes = loadVotes();
   const out = {};
   for (const s of SECTIONS) {
@@ -908,120 +885,97 @@ function starredItemsBySection() {
 /* ── Routing ──────────────────────────────────────────────────── */
 
 let currentView = "home";
-let currentTab = "all"; // section view tab
+let currentTab  = "all";
 
 function navigate(view) {
+  closeStudio();             // tear down studio editor if active
   currentView = view;
-  currentTab = "all";
+  currentTab  = "all";
   setNavActive(view);
-  sidebar.classList.remove("open");
-  scrim.classList.remove("show");
-
-  if (view === "home") return renderHome();
-  if (view === "starred") return renderStarred();
-  if (view === "studio") return renderStudio();
-  if (view === "reminders") return renderReminders();
+  document.title = "Vortex";
+  if (view === "home")           return renderHome();
+  if (view === "starred")        return renderStarred();
+  if (view === "studio")         return renderStudioLibrary();
+  if (view === "reminders")      return renderReminders();
   if (view.startsWith("section:")) return renderSection(view.slice(8));
   renderHome();
 }
 
-/* ── Render: Dashboard ────────────────────────────────────────── */
+/* ── Dashboard ────────────────────────────────────────────────── */
 
 function renderHome() {
-  crumbT.textContent = "Dashboard";
-  crumbS.textContent = "Pick a section to dive in.";
-  const grid = document.createElement("div");
-  grid.className = "grid-cards";
+  const head = pageHead("Hey Arjun", "Pick what to dive into.");
 
-  // Studio
-  grid.appendChild(makeCard({ key: "studio", label: "Studio", desc: "Write your novel. Chapters, italics, autosave.", color: "coral", art: "circles", eyebrow: "Workspace" }, () => navigate("studio")));
-  // Reminders
-  grid.appendChild(makeCard({ key: "reminders", label: "Reminders", desc: "Things to remember, with deadlines.", color: "saffron", art: "dots", eyebrow: "Workspace" }, () => navigate("reminders")));
-  // Starred
-  grid.appendChild(makeCard({ key: "starred", label: "Starred", desc: "Your saved items across every section.", color: "saffron", art: "pyramid", eyebrow: "Library" }, () => navigate("starred")));
+  const work = document.createElement("div"); work.className = "nav-grid";
+  work.appendChild(navCard("Studio",     "Write your books. Multiple drafts, autosave.",        "workspace", () => navigate("studio")));
+  work.appendChild(navCard("Reminders",  "Things to remember. Mark them done.",                  "workspace", () => navigate("reminders")));
+  work.appendChild(navCard("Starred",    "Items you've saved across sections.",                  "library",   () => navigate("starred")));
 
-  for (const s of SECTIONS) {
-    grid.appendChild(makeCard({ ...s, eyebrow: "Discover" }, () => navigate("section:" + s.key)));
-  }
+  const lab = document.createElement("div"); lab.className = "group-label"; lab.textContent = "Discover";
 
-  main.replaceChildren(hero("Hey Arjun", "Pick a section to dive in."), grid);
+  const disc = document.createElement("div"); disc.className = "nav-grid";
+  for (const s of SECTIONS) disc.appendChild(navCard(s.label, s.desc, "discover", () => navigate("section:" + s.key)));
+
+  main.replaceChildren(head, work, lab, disc);
 }
-
-function hero(t, sub) {
-  const wrap = document.createElement("div");
-  wrap.className = "hero";
-  wrap.innerHTML = `<h1>${escapeHtml(t)}</h1><p>${escapeHtml(sub)}</p>`;
-  return wrap;
-}
-
-function makeCard(s, onClick) {
-  const btn = document.createElement("button");
-  btn.className = "card";
-  btn.innerHTML = `
-    <div class="card-art">${artSVG(s.art, s.color)}</div>
-    <div class="card-meta">
-      <div class="card-eyebrow">${escapeHtml(s.eyebrow || "")}</div>
-      <h3>${escapeHtml(s.label)}</h3>
-      <p>${escapeHtml(s.desc)}</p>
-    </div>
+function navCard(title, desc, kind, onClick) {
+  const b = document.createElement("button");
+  b.className = "nav-card " + kind;
+  b.innerHTML = `
+    <div class="nav-card-row"><span class="mark"></span><h3>${escapeHtml(title)}</h3></div>
+    <p>${escapeHtml(desc)}</p>
   `;
-  btn.addEventListener("click", onClick);
-  return btn;
+  b.addEventListener("click", onClick);
+  return b;
+}
+function pageHead(title, sub) {
+  const h = document.createElement("div"); h.className = "page-head";
+  h.innerHTML = `<h1>${escapeHtml(title)}</h1><p>${escapeHtml(sub)}</p>`;
+  return h;
 }
 
-/* ── Render: Section ──────────────────────────────────────────── */
+/* ── Section view ─────────────────────────────────────────────── */
 
 function renderSection(key) {
-  const s = SECTION_BY_KEY[key];
-  if (!s) return renderHome();
-  crumbT.textContent = s.label;
-  crumbS.textContent = s.desc;
-
+  const s = SECTION_BY_KEY[key]; if (!s) return renderHome();
   const items = (CONTENT && CONTENT[key]) || [];
   const votes = loadVotes();
   const starredCount = items.filter(it => votes[it.id] === "save").length;
 
-  const tabs = document.createElement("div");
-  tabs.className = "section-tabs";
+  const head = pageHead(s.label, s.desc);
+
+  const tabs = document.createElement("div"); tabs.className = "section-tabs";
   tabs.innerHTML = `
     <button class="tab-btn ${currentTab === 'all' ? 'active' : ''}" data-tab="all">All <span class="tab-count">${items.length}</span></button>
     <button class="tab-btn ${currentTab === 'starred' ? 'active' : ''}" data-tab="starred">Starred <span class="tab-count">${starredCount}</span></button>
   `;
-  tabs.querySelectorAll(".tab-btn").forEach(b => {
-    b.addEventListener("click", () => {
-      currentTab = b.dataset.tab;
-      renderSection(key);
-    });
-  });
+  tabs.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => {
+    currentTab = b.dataset.tab; renderSection(key);
+  }));
 
   const list = document.createElement("div");
-  let visible = items;
-  if (currentTab === "starred") visible = items.filter(it => votes[it.id] === "save");
-  else visible = rankItems(key, items);
+  let visible = currentTab === "starred"
+    ? items.filter(it => votes[it.id] === "save")
+    : rankItems(key, items);
 
-  if (visible.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.innerHTML = currentTab === "starred"
-      ? `<strong>No starred items yet</strong>Tap the star on any card in this section to save it here.`
+  if (!visible.length) {
+    const e = document.createElement("div"); e.className = "empty";
+    e.innerHTML = currentTab === "starred"
+      ? `<strong>No starred items yet</strong>Tap the star on any card to save it.`
       : `<strong>Nothing here yet</strong>Content will appear once the daily refresh runs.`;
-    list.appendChild(empty);
+    list.appendChild(e);
   } else {
-    const grid = document.createElement("div");
-    grid.className = "items";
-    for (const it of visible) grid.appendChild(makeItem(it, s));
+    const grid = document.createElement("div"); grid.className = "items";
+    for (const it of visible) grid.appendChild(makeItem(it));
     list.appendChild(grid);
   }
-
-  main.replaceChildren(tabs, list);
+  main.replaceChildren(head, tabs, list);
 }
 
-function makeItem(it, s) {
-  const votes = loadVotes();
-  const v = votes[it.id];
+function makeItem(it) {
+  const votes = loadVotes(); const v = votes[it.id];
   const card = document.createElement("article");
   card.className = "item" + (v === "save" ? " starred" : "");
-
   const dateStr = it.published ? formatPublishedDate(it.published) : "";
   const linkHtml = it.link
     ? `<a class="item-link" href="${escapeAttr(it.link)}" target="_blank" rel="noopener noreferrer">Read source</a>`
@@ -1029,21 +983,20 @@ function makeItem(it, s) {
   const dateInFoot = it.link && dateStr ? `<span class="item-date">${escapeHtml(dateStr)}</span>` : "";
 
   card.innerHTML = `
-    <div class="item-stripe ${s.color}"></div>
-    <span class="item-tag">${escapeHtml(it.tag || "")}</span>
+    <div class="item-tag">${escapeHtml(it.tag || "")}</div>
     <h4>${escapeHtml(it.title)}</h4>
     <p>${escapeHtml(it.body)}</p>
     <div class="item-foot">
       <div>${linkHtml}${dateInFoot ? ' &middot; ' + dateInFoot : ''}</div>
       <div class="vote-row">
         <button class="vote-btn up   ${v === 'up'   ? 'active' : ''}" data-vote="up"   title="More like this">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>
         </button>
         <button class="vote-btn down ${v === 'down' ? 'active' : ''}" data-vote="down" title="Less like this">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
         </button>
         <button class="vote-btn save ${v === 'save' ? 'active' : ''}" data-vote="save" title="Save">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><polygon points="8,2 10,6.2 14.5,6.7 11.2,9.7 12.1,14.2 8,12 3.9,14.2 4.8,9.7 1.5,6.7 6,6.2"/></svg>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><polygon points="8,2 10,6.2 14.5,6.7 11.2,9.7 12.1,14.2 8,12 3.9,14.2 4.8,9.7 1.5,6.7 6,6.2"/></svg>
         </button>
       </div>
     </div>
@@ -1052,200 +1005,626 @@ function makeItem(it, s) {
     b.addEventListener("click", () => {
       const action = b.dataset.vote;
       const all = loadVotes();
-      all[it.id] = all[it.id] === action ? null : action;
-      if (!all[it.id]) delete all[it.id];
+      if (all[it.id] === action) delete all[it.id]; else all[it.id] = action;
       saveVotes(all);
-      // Re-render the section so ranking + starred state update
       if (currentView.startsWith("section:")) renderSection(currentView.slice(8));
       else if (currentView === "starred") renderStarred();
     });
   });
   return card;
 }
-
 function formatPublishedDate(iso) {
-  const d = new Date(iso);
-  if (isNaN(d)) return "";
-  const now = new Date();
-  const diffH = (now - d) / 36e5;
+  const d = new Date(iso); if (isNaN(d)) return "";
+  const diffH = (Date.now() - d.getTime()) / 36e5;
   if (diffH < 1) return Math.max(1, Math.round(diffH * 60)) + "m ago";
   if (diffH < 24) return Math.round(diffH) + "h ago";
   if (diffH < 24 * 7) return Math.round(diffH / 24) + "d ago";
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-/* ── Render: Starred (global) ─────────────────────────────────── */
+/* ── Starred ──────────────────────────────────────────────────── */
 
 function renderStarred() {
-  crumbT.textContent = "Starred";
-  crumbS.textContent = "Your saved items, grouped by section.";
-  const groups = starredItemsBySection();
+  const head = pageHead("Starred", "Your saved items, grouped by section.");
+  const groups = starredBySection();
   const wrap = document.createElement("div");
-
-  const totalCount = Object.values(groups).reduce((n, arr) => n + arr.length, 0);
-  if (totalCount === 0) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.innerHTML = `<strong>Nothing saved yet</strong>Tap the star on any card to save it. Saved items show up here.`;
-    wrap.appendChild(empty);
-    main.replaceChildren(wrap);
-    return;
+  const total = Object.values(groups).reduce((n, a) => n + a.length, 0);
+  if (!total) {
+    const e = document.createElement("div"); e.className = "empty";
+    e.innerHTML = `<strong>Nothing saved yet</strong>Tap the star on any card to save it.`;
+    wrap.appendChild(e);
+  } else {
+    for (const s of SECTIONS) {
+      const items = groups[s.key]; if (!items?.length) continue;
+      const g = document.createElement("section"); g.className = "starred-group";
+      const h = document.createElement("h3");
+      h.innerHTML = `${escapeHtml(s.label)} <span class="pill">${items.length}</span>`;
+      g.appendChild(h);
+      const grid = document.createElement("div"); grid.className = "items";
+      for (const it of items) grid.appendChild(makeItem(it));
+      g.appendChild(grid);
+      wrap.appendChild(g);
+    }
   }
-
-  for (const s of SECTIONS) {
-    const items = groups[s.key];
-    if (!items || !items.length) continue;
-    const group = document.createElement("section");
-    group.className = "starred-group";
-    const h = document.createElement("h3");
-    h.innerHTML = `${escapeHtml(s.label)} <span class="pill">${items.length}</span>`;
-    group.appendChild(h);
-    const grid = document.createElement("div");
-    grid.className = "items";
-    for (const it of items) grid.appendChild(makeItem(it, s));
-    group.appendChild(grid);
-    wrap.appendChild(group);
-  }
-  main.replaceChildren(wrap);
+  main.replaceChildren(head, wrap);
 }
 
-/* ── Render: Reminders ────────────────────────────────────────── */
+/* ── Reminders ────────────────────────────────────────────────── */
 
-function loadReminders() {
-  try { return JSON.parse(localStorage.getItem(REMINDERS_KEY) || "[]"); }
-  catch { return []; }
-}
-function saveReminders(arr) { localStorage.setItem(REMINDERS_KEY, JSON.stringify(arr)); }
+function loadReminders() { try { return JSON.parse(localStorage.getItem(REMINDERS_KEY) || "[]"); } catch { return []; } }
+function saveReminders(a) { localStorage.setItem(REMINDERS_KEY, JSON.stringify(a)); }
 
 function renderReminders() {
-  crumbT.textContent = "Reminders";
-  crumbS.textContent = "Things to remember.";
-
-  const panel = document.createElement("div");
-  panel.className = "panel";
+  const head = pageHead("Reminders", "Things to remember.");
+  const panel = document.createElement("div"); panel.className = "panel";
   panel.innerHTML = `
     <form class="reminder-form" id="reminder-form">
-      <input type="text" id="reminder-input" placeholder="Add a reminder…" required />
-      <input type="date" id="reminder-date-input" />
+      <input type="text" id="r-input" placeholder="Add a reminder…" required />
+      <input type="date" id="r-date" />
       <button type="submit">Add</button>
     </form>
-    <ul class="reminder-list" id="reminder-list"></ul>
-    <div class="empty hidden" id="reminder-empty"><strong>No reminders yet.</strong>Add one above.</div>
+    <ul class="reminder-list" id="r-list"></ul>
+    <div class="empty hidden" id="r-empty"><strong>No reminders yet.</strong>Add one above.</div>
   `;
-  main.replaceChildren(panel);
+  main.replaceChildren(head, panel);
 
   const form = document.getElementById("reminder-form");
-  const input = document.getElementById("reminder-input");
-  const dateIn = document.getElementById("reminder-date-input");
-  const list = document.getElementById("reminder-list");
-  const empty = document.getElementById("reminder-empty");
-
-  function isOverdue(iso) {
-    if (!iso) return false;
-    const today = new Date(); today.setHours(0,0,0,0);
-    return new Date(iso + "T00:00:00") < today;
-  }
-  function fmtDate(iso) {
-    if (!iso) return "";
-    return new Date(iso + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  }
-
+  const input = document.getElementById("r-input");
+  const dateIn = document.getElementById("r-date");
+  const list = document.getElementById("r-list");
+  const empty = document.getElementById("r-empty");
+  const isOver = (iso) => { if (!iso) return false; const t = new Date(); t.setHours(0,0,0,0); return new Date(iso + "T00:00:00") < t; };
+  const fmt = (iso) => iso ? new Date(iso + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
   function render() {
     const all = loadReminders();
     list.innerHTML = "";
     if (!all.length) { empty.classList.remove("hidden"); return; }
     empty.classList.add("hidden");
-    all.sort((a, b) => {
+    all.sort((a,b) => {
       if (a.done !== b.done) return a.done ? 1 : -1;
       if (a.date && b.date) return a.date.localeCompare(b.date);
-      if (a.date) return -1;
-      if (b.date) return 1;
+      if (a.date) return -1; if (b.date) return 1;
       return b.created - a.created;
     });
     for (const r of all) {
       const li = document.createElement("li");
       li.className = "reminder-item" + (r.done ? " done" : "");
-      const cb = document.createElement("input");
-      cb.type = "checkbox"; cb.checked = r.done;
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = r.done;
       cb.addEventListener("change", () => {
-        const cur = loadReminders();
-        const t = cur.find(x => x.id === r.id);
+        const cur = loadReminders(); const t = cur.find(x => x.id === r.id);
         if (t) { t.done = cb.checked; saveReminders(cur); render(); }
       });
-      const text = document.createElement("div");
-      text.className = "reminder-text"; text.textContent = r.text;
-      li.appendChild(cb); li.appendChild(text);
+      const txt = document.createElement("div"); txt.className = "reminder-text"; txt.textContent = r.text;
+      li.appendChild(cb); li.appendChild(txt);
       if (r.date) {
         const d = document.createElement("span");
-        d.className = "reminder-date" + (!r.done && isOverdue(r.date) ? " overdue" : "");
-        d.textContent = fmtDate(r.date);
+        d.className = "reminder-date" + (!r.done && isOver(r.date) ? " overdue" : "");
+        d.textContent = fmt(r.date);
         li.appendChild(d);
       }
-      const del = document.createElement("button");
-      del.className = "reminder-delete"; del.textContent = "×"; del.title = "Delete";
-      del.addEventListener("click", () => {
-        saveReminders(loadReminders().filter(x => x.id !== r.id));
-        render();
-      });
+      const del = document.createElement("button"); del.className = "reminder-delete"; del.textContent = "×"; del.title = "Delete";
+      del.addEventListener("click", () => { saveReminders(loadReminders().filter(x => x.id !== r.id)); render(); });
       li.appendChild(del);
       list.appendChild(li);
     }
   }
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const t = input.value.trim();
-    if (!t) return;
+    const t = input.value.trim(); if (!t) return;
     const all = loadReminders();
-    all.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), text: t, date: dateIn.value || null, done: false, created: Date.now() });
+    all.push({ id: uid(), text: t, date: dateIn.value || null, done: false, created: Date.now() });
     saveReminders(all);
-    input.value = ""; dateIn.value = "";
-    render(); input.focus();
+    input.value = ""; dateIn.value = ""; render(); input.focus();
   });
   render();
 }
 
-/* ── Render: Studio ───────────────────────────────────────────── */
+/* ── Studio: library ──────────────────────────────────────────── */
 
-function renderStudio() {
-  crumbT.textContent = "Studio";
-  crumbS.textContent = "Write. Auto-saves to this browser.";
+function renderStudioLibrary() {
+  const studio = loadStudio();
+  const head = pageHead("Studio", "Your books. Keep multiple drafts. Autosaves to this browser.");
 
-  const panel = document.createElement("div");
-  panel.className = "panel";
-  panel.innerHTML = `
-    <div class="studio-tools">
-      <button type="button" data-cmd="bold"><b>B</b></button>
-      <button type="button" data-cmd="italic"><i>I</i></button>
-      <button type="button" data-cmd="newchapter">+ Chapter</button>
-      <button type="button" id="studio-clear">Clear</button>
+  const tools = document.createElement("div"); tools.className = "lib-toolbar";
+  const left = document.createElement("div");
+  const newBtn = document.createElement("button"); newBtn.className = "btn-primary";
+  newBtn.innerHTML = `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 2v10M2 7h10"/></svg> New Book`;
+  newBtn.addEventListener("click", () => {
+    const title = prompt("Book title?", "Untitled"); if (title === null) return;
+    const author = prompt("Author?", "Arjun") || "";
+    const b = newBook(title.trim() || "Untitled", author.trim());
+    studio.books[b.id] = b; studio.activeBookId = b.id;
+    saveStudio(studio); openStudio(b.id);
+  });
+  left.appendChild(newBtn);
+  tools.appendChild(left);
+
+  main.replaceChildren(head, tools);
+
+  const books = Object.values(studio.books).sort((a, b) => b.updatedAt - a.updatedAt);
+  if (!books.length) {
+    const e = document.createElement("div"); e.className = "empty";
+    e.innerHTML = `<strong>No books yet</strong>Click "New Book" to start.`;
+    main.appendChild(e);
+    return;
+  }
+  const grid = document.createElement("div"); grid.className = "book-grid";
+  for (const b of books) grid.appendChild(bookCard(b));
+  main.appendChild(grid);
+}
+function bookCard(book) {
+  const wc = bookWordCount(book);
+  const wrap = document.createElement("button"); wrap.className = "book-card";
+  wrap.innerHTML = `
+    <div class="book-cover-thumb" style="background:${coverGradient(book.cover.color)}">
+      <div></div>
+      <div>
+        <div class="cv-title">${escapeHtml(book.title)}</div>
+        <div class="cv-author">${escapeHtml(book.author || "")}</div>
+      </div>
     </div>
-    <div class="studio-editor" id="studio-editor" contenteditable="true"></div>
-    <p class="studio-hint">Auto-saves to your browser as you type.</p>
+    <div class="book-meta">
+      <p class="bm-title">${escapeHtml(book.title)}</p>
+      <p class="bm-sub">${wc.toLocaleString()} words · edited ${relTime(book.updatedAt)}</p>
+    </div>
   `;
-  main.replaceChildren(panel);
+  wrap.addEventListener("click", () => openStudio(book.id));
+  return wrap;
+}
+function relTime(ts) {
+  const d = (Date.now() - ts) / 1000;
+  if (d < 60) return "just now";
+  if (d < 3600) return Math.round(d / 60) + "m ago";
+  if (d < 86400) return Math.round(d / 3600) + "h ago";
+  if (d < 604800) return Math.round(d / 86400) + "d ago";
+  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
-  const editor = document.getElementById("studio-editor");
-  const saved = localStorage.getItem(JOY_KEY);
-  editor.innerHTML = saved || "<p><em>Chapter 1</em></p><p>Start writing here…</p>";
-  editor.addEventListener("input", () => localStorage.setItem(JOY_KEY, editor.innerHTML));
-  panel.querySelectorAll(".studio-tools button[data-cmd]").forEach(b => {
-    b.addEventListener("click", () => {
-      const cmd = b.dataset.cmd;
-      if (cmd === "bold") document.execCommand("bold");
-      else if (cmd === "italic") document.execCommand("italic");
-      else if (cmd === "newchapter") {
-        const n = (editor.innerHTML.match(/Chapter \d+/g) || []).length + 1;
-        document.execCommand("insertHTML", false, `<p><em>Chapter ${n}</em></p><p>&nbsp;</p>`);
-      }
-      editor.focus();
+/* ── Studio: editor ───────────────────────────────────────────── */
+
+let activeBookId = null;
+let activeSectionId = null;
+let saveTimer = null;
+let outlineCollapsed = false;
+
+function openStudio(bookId) {
+  const studio = loadStudio();
+  if (!studio.books[bookId]) return;
+  activeBookId = bookId;
+  activeSectionId = studio.books[bookId].activeSectionId || studio.books[bookId].sections[0].id;
+  studio.activeBookId = bookId;
+  saveStudio(studio);
+  renderStudioEditor();
+}
+function closeStudio() {
+  if (!activeBookId) return;
+  flushSave();
+  studioMount.innerHTML = "";
+  activeBookId = null;
+  activeSectionId = null;
+}
+
+function renderStudioEditor() {
+  const studio = loadStudio();
+  const book = studio.books[activeBookId]; if (!book) return;
+  const sec = book.sections.find(s => s.id === activeSectionId) || book.sections[0];
+  activeSectionId = sec.id;
+
+  const view = document.createElement("div"); view.className = "studio-view";
+
+  // Bar
+  const bar = document.createElement("div"); bar.className = "studio-bar";
+  bar.innerHTML = `
+    <button class="icon-btn" id="st-back" title="Back to Library">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l-5 5 5 5"/></svg>
+    </button>
+    <button class="icon-btn" id="st-outline" title="Toggle outline">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 4h10M3 8h10M3 12h10"/></svg>
+    </button>
+    <span class="sb-title" id="st-title-disp">${escapeHtml(book.title)}</span>
+    <span class="sb-spacer"></span>
+    <span class="sb-meta" id="st-status">Saved</span>
+    <span class="sb-meta" id="st-words"></span>
+  `;
+
+  // Body
+  const body = document.createElement("div"); body.className = "studio-body" + (outlineCollapsed ? " outline-collapsed" : "");
+  const outline = document.createElement("div"); outline.className = "outline"; outline.id = "st-outline-pane";
+  const editor  = document.createElement("div"); editor.className  = "editor-pane";
+  body.appendChild(outline); body.appendChild(editor);
+
+  view.appendChild(bar); view.appendChild(body);
+  studioMount.replaceChildren(view);
+
+  // Wire up bar
+  document.getElementById("st-back").addEventListener("click", () => {
+    closeStudio();
+    navigate("studio");
+  });
+  document.getElementById("st-outline").addEventListener("click", () => {
+    outlineCollapsed = !outlineCollapsed;
+    body.classList.toggle("outline-collapsed", outlineCollapsed);
+  });
+
+  renderOutline(book);
+  renderSectionEditor(book, sec);
+  updateWordCount();
+}
+
+function renderOutline(book) {
+  const pane = document.getElementById("st-outline-pane"); if (!pane) return;
+  pane.innerHTML = "";
+
+  const groups = [
+    { id: "front", label: "Front Matter", sections: [], optionalTypes: FRONT_OPTIONAL },
+    { id: "body",  label: "Manuscript",   sections: [], canAddChapter: true },
+    { id: "back",  label: "Back Matter",  sections: [], optionalTypes: BACK_OPTIONAL },
+  ];
+  for (const s of book.sections) {
+    const meta = SECTION_TYPES[s.type];
+    if (!meta) { groups[1].sections.push(s); continue; }
+    const g = groups.find(x => x.id === meta.group); if (g) g.sections.push(s);
+  }
+
+  for (const g of groups) {
+    const lab = document.createElement("div"); lab.className = "outline-group-label";
+    lab.appendChild(textNode(g.label));
+    if (g.canAddChapter || g.optionalTypes) {
+      const add = document.createElement("button"); add.className = "add-mini"; add.textContent = "+"; add.title = "Add";
+      add.addEventListener("click", (e) => { e.stopPropagation(); openAddMenu(add, g, book); });
+      lab.appendChild(add);
+    }
+    pane.appendChild(lab);
+    for (const s of g.sections) pane.appendChild(outlineRow(book, s));
+  }
+}
+function textNode(t) { return document.createTextNode(t); }
+
+function outlineRow(book, sec) {
+  const row = document.createElement("div");
+  row.className = "outline-row" + (sec.id === activeSectionId ? " active" : "");
+  const wc = sectionWordCount(sec);
+  row.innerHTML = `
+    <span class="or-title"></span>
+    ${wc ? `<span class="or-words">${wc}</span>` : ""}
+    <span class="or-actions">
+      <button data-act="rename" title="Rename"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.5L8.5 2l1.5 1.5L3.5 10H2v-1.5z"/></svg></button>
+      <button data-act="up"     title="Move up"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l3-3 3 3"/></svg></button>
+      <button data-act="down"   title="Move down"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l3 3 3-3"/></svg></button>
+      <button data-act="delete" title="Delete"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h8M4 4V2.5h4V4M4.5 4v5M7.5 4v5M3 4l.5 6h5L9 4"/></svg></button>
+    </span>
+  `;
+  row.querySelector(".or-title").textContent = sec.title;
+  row.addEventListener("click", () => {
+    if (activeSectionId === sec.id) return;
+    flushSave();
+    activeSectionId = sec.id;
+    const studio = loadStudio();
+    studio.books[book.id].activeSectionId = sec.id;
+    saveStudio(studio);
+    renderOutline(book);
+    renderSectionEditor(book, sec);
+    updateWordCount();
+  });
+  row.querySelectorAll(".or-actions button").forEach(b => {
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const act = b.dataset.act;
+      if (act === "rename") inlineRename(row, sec, book);
+      else if (act === "up")   moveSection(book, sec, -1);
+      else if (act === "down") moveSection(book, sec, +1);
+      else if (act === "delete") deleteSection(book, sec);
     });
   });
-  document.getElementById("studio-clear").addEventListener("click", () => {
-    if (confirm("Clear the whole draft? This can't be undone.")) {
-      editor.innerHTML = "<p><em>Chapter 1</em></p><p>Start writing here…</p>";
-      localStorage.setItem(JOY_KEY, editor.innerHTML);
+  return row;
+}
+function inlineRename(row, sec, book) {
+  const titleSpan = row.querySelector(".or-title");
+  const input = document.createElement("input");
+  input.className = "or-rename-input"; input.value = sec.title;
+  titleSpan.replaceWith(input); input.focus(); input.select();
+  function commit(save) {
+    if (save) {
+      const v = input.value.trim();
+      if (v) {
+        sec.title = v;
+        const studio = loadStudio();
+        studio.books[book.id].sections.find(x => x.id === sec.id).title = v;
+        studio.books[book.id].updatedAt = Date.now();
+        saveStudio(studio);
+        if (sec.id === activeSectionId) {
+          const eyebrow = document.querySelector(".editor-eyebrow");
+          if (eyebrow) eyebrow.textContent = SECTION_TYPES[sec.type]?.label || "Section";
+          const heading = document.querySelector(".editor-heading");
+          if (heading) heading.value = v;
+        }
+      }
     }
+    renderOutline(book);
+  }
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") commit(true);
+    if (e.key === "Escape") commit(false);
   });
+  input.addEventListener("blur", () => commit(true));
+}
+function moveSection(book, sec, dir) {
+  const studio = loadStudio();
+  const arr = studio.books[book.id].sections;
+  const i = arr.findIndex(x => x.id === sec.id);
+  // restrict moves to within the same group
+  const group = SECTION_TYPES[sec.type]?.group;
+  let j = i + dir;
+  while (j >= 0 && j < arr.length && SECTION_TYPES[arr[j].type]?.group !== group) j += dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  studio.books[book.id].updatedAt = Date.now();
+  saveStudio(studio);
+  renderOutline(studio.books[book.id]);
+}
+function deleteSection(book, sec) {
+  if (sec.type === "cover" || sec.type === "title-page") {
+    alert("Can't delete cover or title page."); return;
+  }
+  if (!confirm(`Delete "${sec.title}"? This can't be undone.`)) return;
+  const studio = loadStudio();
+  const arr = studio.books[book.id].sections;
+  const i = arr.findIndex(x => x.id === sec.id);
+  arr.splice(i, 1);
+  if (activeSectionId === sec.id) activeSectionId = arr[Math.max(0, i - 1)].id;
+  studio.books[book.id].activeSectionId = activeSectionId;
+  studio.books[book.id].updatedAt = Date.now();
+  saveStudio(studio);
+  renderOutline(studio.books[book.id]);
+  const newActive = arr.find(x => x.id === activeSectionId);
+  renderSectionEditor(studio.books[book.id], newActive);
+  updateWordCount();
+}
+function openAddMenu(anchor, group, book) {
+  // simple prompt-based add (minimal UI)
+  if (group.canAddChapter) {
+    const ch = book.sections.filter(s => s.type === "chapter").length;
+    const sec = { id: uid(), type: "chapter", title: `Chapter ${ch + 1}`, content: "" };
+    insertSectionAtEndOfGroup(book, sec, "body");
+    return;
+  }
+  // optional front/back items
+  const types = group.optionalTypes;
+  const present = new Set(book.sections.map(s => s.type));
+  const opts = types.filter(t => !present.has(t) || t === "custom");
+  if (!opts.length) { alert("All " + group.label.toLowerCase() + " sections already added."); return; }
+  const labels = opts.map(t => SECTION_TYPES[t].label).join("\n  ");
+  const pick = prompt("Add which section?\n  " + labels, SECTION_TYPES[opts[0]].label);
+  if (!pick) return;
+  const t = opts.find(x => SECTION_TYPES[x].label.toLowerCase() === pick.trim().toLowerCase());
+  if (!t) { alert("Couldn't match that. Try one of: " + labels); return; }
+  const sec = { id: uid(), type: t, title: SECTION_TYPES[t].label, content: "" };
+  insertSectionAtEndOfGroup(book, sec, group.id);
+}
+function insertSectionAtEndOfGroup(book, sec, groupId) {
+  const studio = loadStudio();
+  const arr = studio.books[book.id].sections;
+  // find last index in this group
+  let insertAt = arr.length;
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (SECTION_TYPES[arr[i].type]?.group === groupId) { insertAt = i + 1; break; }
+    if (groupId === "body" && SECTION_TYPES[arr[i].type]?.group === "front") { insertAt = i + 1; break; }
+  }
+  arr.splice(insertAt, 0, sec);
+  studio.books[book.id].updatedAt = Date.now();
+  studio.books[book.id].activeSectionId = sec.id;
+  saveStudio(studio);
+  activeSectionId = sec.id;
+  renderOutline(studio.books[book.id]);
+  renderSectionEditor(studio.books[book.id], sec);
+  updateWordCount();
+}
+
+function renderSectionEditor(book, sec) {
+  const pane = document.querySelector(".editor-pane"); if (!pane) return;
+
+  if (sec.type === "cover") return renderCoverEditor(book, pane);
+
+  const meta = SECTION_TYPES[sec.type] || { label: "Section" };
+  const shell = document.createElement("div"); shell.className = "editor-shell";
+  const isTitlePage = sec.type === "title-page";
+  shell.innerHTML = `
+    <div class="editor-eyebrow">${escapeHtml(meta.label)}</div>
+    <input type="text" class="editor-heading" value="${escapeAttr(sec.title)}" />
+    <div class="editor-toolbar">
+      <button data-cmd="bold"    title="Bold"><b>B</b></button>
+      <button data-cmd="italic"  title="Italic"><i>I</i></button>
+      <span class="sep"></span>
+      <button data-cmd="h2"      title="Scene heading">H</button>
+      <button data-cmd="quote"   title="Block quote">”</button>
+      <button data-cmd="hr"      title="Scene break">— —</button>
+      <span class="sep"></span>
+      <button data-cmd="ul"      title="Bulleted list">•</button>
+      <button data-cmd="ol"      title="Numbered list">1.</button>
+    </div>
+    <div class="editor-content" id="ed-content" contenteditable="true"></div>
+  `;
+  pane.replaceChildren(shell);
+
+  const content = document.getElementById("ed-content");
+  if (sec.content && sec.content.trim()) {
+    content.innerHTML = sec.content;
+  } else {
+    content.innerHTML = "<p></p>";
+    placeCaretAtEnd(content);
+  }
+
+  // toolbar
+  shell.querySelectorAll(".editor-toolbar button").forEach(b => {
+    b.addEventListener("mousedown", (e) => e.preventDefault());   // keep selection
+    b.addEventListener("click", () => {
+      const cmd = b.dataset.cmd;
+      content.focus();
+      if (cmd === "bold")     document.execCommand("bold");
+      else if (cmd === "italic") document.execCommand("italic");
+      else if (cmd === "h2")  document.execCommand("formatBlock", false, "H2");
+      else if (cmd === "quote") document.execCommand("formatBlock", false, "BLOCKQUOTE");
+      else if (cmd === "hr")  document.execCommand("insertHorizontalRule");
+      else if (cmd === "ul")  document.execCommand("insertUnorderedList");
+      else if (cmd === "ol")  document.execCommand("insertOrderedList");
+      scheduleSave();
+    });
+  });
+
+  // typing
+  content.addEventListener("input", scheduleSave);
+
+  // heading
+  const heading = shell.querySelector(".editor-heading");
+  heading.addEventListener("input", () => {
+    sec.title = heading.value || meta.label;
+    scheduleSave(/*titleOnly*/ true);
+  });
+  if (isTitlePage && (!sec.content || !sec.content.trim())) {
+    // helpful default for the title page
+    content.innerHTML = `<p style="text-align:center;font-size:1.3em;font-weight:600;">${escapeHtml(book.title)}</p><p style="text-align:center;">${escapeHtml(book.author || "")}</p>`;
+    persistContent(content);
+  }
+}
+
+function renderCoverEditor(book, pane) {
+  const shell = document.createElement("div"); shell.className = "editor-shell";
+  shell.innerHTML = `
+    <div class="editor-eyebrow">Cover</div>
+    <h1 class="editor-heading" style="margin-bottom:6px;">Cover &amp; Metadata</h1>
+    <p style="color:var(--muted);font-size:13.5px;margin:0 0 22px;">Pick a color and edit the title and author. Used in the library and on the title page.</p>
+    <div class="cover-editor">
+      <div class="cover-preview" id="cv-prev" style="background:${coverGradient(book.cover.color)}">
+        <div></div>
+        <div>
+          <div class="cp-title" id="cv-prev-title"></div>
+          <div class="cp-author" id="cv-prev-author"></div>
+        </div>
+      </div>
+      <div class="cover-form">
+        <div class="field">
+          <label for="cv-title">Title</label>
+          <input id="cv-title" type="text" value="${escapeAttr(book.title)}" />
+        </div>
+        <div class="field">
+          <label for="cv-author">Author</label>
+          <input id="cv-author" type="text" value="${escapeAttr(book.author || '')}" />
+        </div>
+        <div class="field">
+          <label>Color</label>
+          <div class="swatches" id="cv-swatches"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  pane.replaceChildren(shell);
+
+  const titleEl = document.getElementById("cv-title");
+  const authorEl = document.getElementById("cv-author");
+  const prevTitle = document.getElementById("cv-prev-title");
+  const prevAuthor = document.getElementById("cv-prev-author");
+  const prev = document.getElementById("cv-prev");
+  const swatches = document.getElementById("cv-swatches");
+
+  prevTitle.textContent = book.title;
+  prevAuthor.textContent = book.author || "";
+
+  for (const p of COVER_PALETTE) {
+    const s = document.createElement("button");
+    s.className = "swatch" + (book.cover.color === p.id ? " selected" : "");
+    s.style.background = p.bg;
+    s.title = p.id;
+    s.addEventListener("click", () => {
+      book.cover.color = p.id;
+      prev.style.background = p.bg;
+      swatches.querySelectorAll(".swatch").forEach(x => x.classList.remove("selected"));
+      s.classList.add("selected");
+      persistBookMeta(book);
+    });
+    swatches.appendChild(s);
+  }
+  titleEl.addEventListener("input", () => {
+    book.title = titleEl.value || "Untitled";
+    prevTitle.textContent = book.title;
+    document.getElementById("st-title-disp").textContent = book.title;
+    persistBookMeta(book);
+  });
+  authorEl.addEventListener("input", () => {
+    book.author = authorEl.value;
+    prevAuthor.textContent = book.author || "";
+    persistBookMeta(book);
+  });
+}
+
+function persistBookMeta(book) {
+  const studio = loadStudio();
+  const b = studio.books[book.id]; if (!b) return;
+  b.title = book.title; b.author = book.author; b.cover = book.cover;
+  b.updatedAt = Date.now();
+  saveStudio(studio);
+  setStatus("Saved");
+}
+
+function persistContent(content) {
+  const studio = loadStudio();
+  const b = studio.books[activeBookId]; if (!b) return;
+  const sec = b.sections.find(s => s.id === activeSectionId); if (!sec) return;
+  sec.content = content.innerHTML;
+  b.updatedAt = Date.now();
+  saveStudio(studio);
+  setStatus("Saved");
+  updateWordCount();
+  // refresh the row's word count quietly
+  renderOutline(b);
+}
+
+function scheduleSave(titleOnly) {
+  setStatus("Saving…");
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    if (titleOnly) {
+      const studio = loadStudio();
+      const b = studio.books[activeBookId];
+      const s = b?.sections.find(x => x.id === activeSectionId);
+      if (s) {
+        const heading = document.querySelector(".editor-heading");
+        s.title = heading ? heading.value : s.title;
+        b.updatedAt = Date.now();
+        saveStudio(studio);
+        renderOutline(b);
+      }
+      setStatus("Saved");
+    } else {
+      const c = document.getElementById("ed-content");
+      if (c) persistContent(c);
+    }
+  }, 500);
+}
+function flushSave() {
+  if (saveTimer) {
+    clearTimeout(saveTimer); saveTimer = null;
+    const c = document.getElementById("ed-content");
+    if (c) persistContent(c);
+  }
+}
+function setStatus(text) {
+  const el = document.getElementById("st-status");
+  if (el) el.textContent = text;
+}
+function updateWordCount() {
+  const studio = loadStudio();
+  const b = studio.books[activeBookId]; if (!b) return;
+  const w = bookWordCount(b);
+  const el = document.getElementById("st-words");
+  if (el) el.textContent = w.toLocaleString() + " words";
+}
+function placeCaretAtEnd(el) {
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el); range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges(); sel.addRange(range);
 }
 
 /* ── Helpers ──────────────────────────────────────────────────── */
@@ -1256,8 +1635,6 @@ function escapeHtml(s) {
   }[c]));
 }
 function escapeAttr(s) { return escapeHtml(s); }
-
-buildNav();
 </script>
 </body>
 </html>
