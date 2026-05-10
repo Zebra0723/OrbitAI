@@ -6,430 +6,559 @@
 <title>Vortex</title>
 <style>
   :root {
-    --text: #1a1235;
-    --text-soft: #4a3a7a;
-    --white: #ffffff;
-    --glass: rgba(255, 255, 255, 0.55);
-    --glass-strong: rgba(255, 255, 255, 0.85);
-    --border: rgba(255, 255, 255, 0.7);
-    --shadow: 0 12px 40px rgba(80, 30, 120, 0.18);
-    --danger: #ff3b6b;
+    /* Palette: warm cream surfaces, near-black ink, three accents */
+    --bg:        #f4f0e8;
+    --surface:   #ffffff;
+    --ink:       #15161d;
+    --muted:     #6b6b78;
+    --line:      #e6e0d2;
+    --line-soft: #efeadd;
+    --coral:     #f04e45;
+    --cobalt:    #1f3bff;
+    --saffron:   #e8a317;
+    --shadow:    0 6px 24px rgba(20, 16, 8, 0.06);
+    --shadow-lg: 0 16px 40px rgba(20, 16, 8, 0.10);
+    --radius:    18px;
+    --radius-sm: 10px;
   }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Avenir Next", sans-serif;
-    color: var(--text);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
     min-height: 100vh;
-    background: linear-gradient(120deg, #ffd1e8 0%, #c5a8ff 25%, #8be3ff 55%, #b8ffd1 80%, #fff5a8 100%);
-    background-size: 300% 300%;
-    animation: bgShift 20s ease infinite;
-  }
-  @keyframes bgShift {
-    0%   { background-position: 0% 50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-  body::before {
-    content: "";
-    position: fixed; inset: 0;
-    background:
-      radial-gradient(circle at 15% 20%, rgba(255,180,220,0.6) 0%, transparent 40%),
-      radial-gradient(circle at 85% 75%, rgba(140,220,255,0.55) 0%, transparent 45%),
-      radial-gradient(circle at 70% 15%, rgba(255,230,140,0.5) 0%, transparent 40%);
-    pointer-events: none;
-    z-index: 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   .hidden { display: none !important; }
+  button { font-family: inherit; }
 
-  /* Lock screen */
+  /* ── Lock screen ──────────────────────────────────────────────── */
   #lock {
     position: fixed; inset: 0;
     display: flex; align-items: center; justify-content: center;
     z-index: 100;
-    backdrop-filter: blur(20px);
-    background: rgba(255, 255, 255, 0.25);
+    background: var(--bg);
+    overflow: hidden;
   }
+  #lock::before, #lock::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.45;
+  }
+  #lock::before { background: var(--coral);  width: 380px; height: 380px; top: -120px; left: -100px; }
+  #lock::after  { background: var(--cobalt); width: 420px; height: 420px; bottom: -160px; right: -120px; }
   .lock-card {
-    background: var(--glass-strong);
-    border: 2px solid var(--border);
-    padding: 40px 32px;
-    border-radius: 28px;
+    position: relative;
+    background: var(--surface);
+    padding: 44px 36px 32px;
+    border-radius: 22px;
     width: min(380px, 90vw);
-    text-align: center;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--line);
+  }
+  .lock-mark {
+    width: 44px; height: 44px;
+    margin-bottom: 22px;
   }
   .lock-card h1 {
-    margin: 0 0 8px;
-    font-size: 38px;
-    font-weight: 900;
-    letter-spacing: 4px;
-    background: linear-gradient(90deg, #ff3b9a, #8b5cf6, #06b6d4);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    margin: 0 0 4px;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
   }
-  .lock-card p { color: var(--text-soft); margin: 0 0 24px; font-size: 14px; font-weight: 500; }
+  .lock-card .lock-sub {
+    color: var(--muted); margin: 0 0 24px; font-size: 14px;
+  }
   .lock-card input {
     width: 100%;
-    padding: 14px 16px;
-    border-radius: 14px;
-    border: 2px solid #e0d4ff;
-    background: white;
-    color: var(--text);
-    font-size: 16px;
+    padding: 13px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 15px;
     outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: border-color 0.15s, background 0.15s;
   }
-  .lock-card input:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2);
-  }
-  .lock-card button {
-    margin-top: 14px;
+  .lock-card input:focus { border-color: var(--cobalt); background: white; }
+  .lock-card button[type="submit"] {
+    margin-top: 12px;
     width: 100%;
-    padding: 14px 16px;
-    border-radius: 14px;
+    padding: 13px 14px;
+    border-radius: 10px;
     border: none;
-    background: linear-gradient(90deg, #ff3b9a, #8b5cf6);
+    background: var(--ink);
     color: white;
-    font-weight: 800;
-    font-size: 16px;
-    letter-spacing: 1px;
+    font-weight: 600;
+    font-size: 15px;
     cursor: pointer;
-    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
-    transition: transform 0.1s, box-shadow 0.15s;
+    transition: transform 0.1s, opacity 0.15s;
   }
-  .lock-card button:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(139, 92, 246, 0.45); }
-  .lock-card button:active { transform: translateY(0); }
-  .lock-error { color: var(--danger); margin-top: 10px; font-size: 13px; min-height: 18px; font-weight: 600; }
+  .lock-card button[type="submit"]:hover { opacity: 0.88; }
+  .lock-card button[type="submit"]:active { transform: translateY(1px); }
+  .lock-error { color: var(--coral); margin-top: 10px; font-size: 13px; min-height: 18px; }
 
-  /* App */
-  header {
-    padding: 20px 32px;
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0;
-    background: var(--glass);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
-    z-index: 10;
+  /* ── App shell ────────────────────────────────────────────────── */
+  #app {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
   }
-  header h1 {
-    margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 4px;
-    background: linear-gradient(90deg, #ff3b9a, #8b5cf6, #06b6d4);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+
+  /* Sidebar */
+  aside.sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    padding: 22px 14px;
+    position: sticky; top: 0; align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 8px 22px;
     cursor: pointer;
     user-select: none;
   }
-  .header-btns { display: flex; gap: 8px; }
-  .icon-btn {
-    background: white;
-    border: 2px solid white;
-    color: var(--text);
-    padding: 8px 16px;
-    border-radius: 999px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 700;
-    box-shadow: 0 4px 12px rgba(80,30,120,0.15);
-    transition: transform 0.1s;
+  .brand-mark { width: 28px; height: 28px; flex: none; }
+  .brand-name {
+    font-size: 18px; font-weight: 800; letter-spacing: 0.02em;
   }
-  .icon-btn:hover { transform: translateY(-1px); }
-
-  main { max-width: 1100px; margin: 0 auto; padding: 32px; position: relative; z-index: 1; }
-
-  .greeting {
-    font-size: 32px;
-    font-weight: 900;
-    margin: 8px 0 4px;
-    color: var(--text);
-  }
-  .subtitle {
-    color: var(--text-soft);
-    font-size: 15px;
-    margin: 0 0 28px;
-    font-weight: 500;
-  }
-
-  h2.section-title {
-    margin: 32px 0 14px;
-    font-size: 13px;
+  .nav-label {
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 3px;
-    font-weight: 800;
-    color: var(--text-soft);
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    padding: 14px 10px 6px;
+    font-weight: 600;
   }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 18px;
-  }
-  .section-card {
-    border-radius: 22px;
-    padding: 22px;
-    cursor: pointer;
-    color: white;
+  .nav-btn {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    background: transparent;
     border: none;
+    color: var(--ink);
     text-align: left;
-    font-family: inherit;
-    transition: transform 0.18s, box-shadow 0.18s;
-    box-shadow: 0 10px 28px rgba(60, 20, 90, 0.18);
-    position: relative;
-    overflow: hidden;
-    min-height: 140px;
-    display: flex; flex-direction: column; justify-content: space-between;
-  }
-  .section-card::after {
-    content: "";
-    position: absolute; inset: 0;
-    background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 60%);
-    pointer-events: none;
-  }
-  .section-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 16px 36px rgba(60, 20, 90, 0.28); }
-  .section-card .emoji { font-size: 34px; margin-bottom: 8px; }
-  .section-card h3 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
-  .section-card p { margin: 0; opacity: 0.92; font-size: 13px; line-height: 1.45; font-weight: 500; }
-
-  .c-joy       { background: linear-gradient(135deg, #ff6b9d 0%, #ff8c42 100%); }
-  .c-author    { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); }
-  .c-prestige  { background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); }
-  .c-engineer  { background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); }
-  .c-tennis    { background: linear-gradient(135deg, #10b981 0%, #84cc16 100%); }
-  .c-books     { background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%); }
-  .c-radar     { background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%); }
-  .c-rabbit    { background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%); }
-  .c-reminders { background: linear-gradient(135deg, #fbbf24 0%, #f97316 100%); }
-
-  /* Detail page */
-  .detail {
-    background: var(--glass-strong);
-    border: 2px solid var(--border);
-    border-radius: 24px;
-    padding: 28px;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(16px);
-  }
-  .back-btn {
-    background: white;
-    border: 2px solid white;
-    color: var(--text);
-    padding: 8px 16px;
-    border-radius: 999px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
-    font-size: 13px;
-    font-weight: 700;
-    margin-bottom: 18px;
-    box-shadow: 0 4px 12px rgba(80,30,120,0.15);
+    transition: background 0.12s;
   }
-  .back-btn:hover { transform: translateY(-1px); }
-  .detail-header {
-    display: flex; align-items: center; gap: 14px;
-    margin-bottom: 8px;
+  .nav-btn:hover { background: var(--line-soft); }
+  .nav-btn.active {
+    background: var(--ink);
+    color: white;
   }
-  .detail-emoji { font-size: 44px; }
-  .detail h2 { margin: 0; font-size: 28px; font-weight: 900; }
-  .detail-desc { color: var(--text-soft); font-size: 15px; margin: 6px 0 22px; font-weight: 500; }
-  .coming-soon {
-    background: linear-gradient(135deg, #fef3c7, #fce7f3);
-    border: 2px dashed #c084fc;
-    border-radius: 16px;
-    padding: 24px;
-    text-align: center;
-  }
-  .coming-soon h4 { margin: 0 0 6px; font-size: 18px; font-weight: 800; }
-  .coming-soon p { margin: 0; color: var(--text-soft); font-size: 14px; }
+  .nav-btn .nav-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .nav-btn.coral   .nav-dot { background: var(--coral); }
+  .nav-btn.cobalt  .nav-dot { background: var(--cobalt); }
+  .nav-btn.saffron .nav-dot { background: var(--saffron); }
+  .nav-btn.active .nav-dot { background: rgba(255,255,255,0.85); }
+  .nav-divider { height: 1px; background: var(--line); margin: 12px 6px; border: 0; }
+  .sidebar-foot { margin-top: auto; padding-top: 16px; }
 
-  /* Content cards (per section items) */
-  .items {
+  /* Topbar */
+  .main-wrap { min-width: 0; }
+  header.topbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .menu-toggle {
+    display: none;
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .crumb {
+    display: flex; align-items: baseline; gap: 12px;
+    flex: 1; min-width: 0;
+  }
+  .crumb h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .crumb .crumb-sub { color: var(--muted); font-size: 13px; }
+  .updated {
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  main#main { padding: 28px 32px 80px; max-width: 1180px; }
+
+  /* ── Dashboard ────────────────────────────────────────────────── */
+  .hero {
+    margin-bottom: 28px;
+  }
+  .hero h1 {
+    margin: 0 0 6px;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .hero p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .grid-cards {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    font-family: inherit;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+    border-color: #d8d1bf;
+  }
+  .card-art {
+    height: 110px;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+  .card-art svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .card-meta {
+    padding: 14px 16px 16px;
+  }
+  .card-eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+  /* Section page */
+  .section-tabs {
+    display: inline-flex;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+    margin-bottom: 22px;
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    transition: background 0.12s, color 0.12s;
+  }
+  .tab-btn:hover { color: var(--ink); }
+  .tab-btn.active {
+    background: var(--ink);
+    color: white;
+  }
+  .tab-count {
+    margin-left: 6px;
+    background: rgba(255,255,255,0.18);
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .tab-btn:not(.active) .tab-count {
+    background: var(--line-soft);
+    color: var(--muted);
+  }
+
+  .items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 14px;
   }
   .item {
-    background: white;
-    border-radius: 16px;
-    padding: 18px;
-    border: 2px solid #f0e8ff;
-    box-shadow: 0 6px 18px rgba(80,30,120,0.08);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 18px 14px;
     display: flex; flex-direction: column;
-    transition: transform 0.15s, box-shadow 0.15s;
+    position: relative;
+    transition: transform 0.12s, box-shadow 0.15s, border-color 0.15s;
   }
-  .item:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(80,30,120,0.14); }
-  .item .tag {
-    display: inline-block;
+  .item:hover { box-shadow: var(--shadow); border-color: #d8d1bf; }
+  .item.starred {
+    border-color: var(--saffron);
+    box-shadow: 0 0 0 1px var(--saffron) inset;
+  }
+  .item-stripe {
+    position: absolute; top: 0; left: 18px; right: 18px; height: 3px;
+    border-radius: 0 0 3px 3px;
+  }
+  .item-stripe.coral   { background: var(--coral); }
+  .item-stripe.cobalt  { background: var(--cobalt); }
+  .item-stripe.saffron { background: var(--saffron); }
+  .item-tag {
+    display: inline-flex; align-items: center;
     align-self: flex-start;
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    color: white;
-    padding: 3px 10px;
-    border-radius: 999px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
     margin-bottom: 10px;
+    margin-top: 6px;
   }
-  .item h4 { margin: 0 0 6px; font-size: 16px; font-weight: 800; line-height: 1.3; }
-  .item p { margin: 0 0 12px; font-size: 13px; line-height: 1.55; color: var(--text-soft); flex: 1; }
-  .item-actions { display: flex; gap: 6px; }
-  .vote-btn {
-    background: #f5f0ff;
-    border: none;
-    border-radius: 999px;
-    padding: 5px 11px;
-    font-size: 14px;
-    cursor: pointer;
+  .item h4 {
+    margin: 0 0 8px;
+    font-size: 16px;
     font-weight: 700;
-    transition: transform 0.1s, background 0.15s;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
   }
-  .vote-btn:hover { transform: scale(1.1); background: #ede0ff; }
-  .vote-btn.active { background: #fde68a; }
-
-  /* Tag colors per section */
-  .tag-tennis    { background: linear-gradient(90deg, #10b981, #84cc16); }
-  .tag-rabbit    { background: linear-gradient(90deg, #8b5cf6, #d946ef); }
-  .tag-books     { background: linear-gradient(90deg, #ec4899, #8b5cf6); }
-  .tag-author    { background: linear-gradient(90deg, #a855f7, #ec4899); }
-  .tag-prestige  { background: linear-gradient(90deg, #f59e0b, #ef4444); }
-  .tag-engineer  { background: linear-gradient(90deg, #06b6d4, #3b82f6); }
-  .tag-radar     { background: linear-gradient(90deg, #0ea5e9, #14b8a6); }
-
-  /* Reminders */
-  .reminder-form {
-    display: flex; gap: 8px; flex-wrap: wrap;
-    margin-bottom: 18px;
+  .item p {
+    margin: 0 0 14px;
+    color: var(--muted);
+    font-size: 13.5px;
+    line-height: 1.55;
+    flex: 1;
   }
+  .item-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--line-soft);
+    padding-top: 10px;
+    gap: 8px;
+  }
+  .item-link {
+    color: var(--cobalt);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .item-link:hover { text-decoration: underline; }
+  .item-date { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .vote-row { display: flex; gap: 4px; }
+  .vote-btn {
+    width: 30px; height: 30px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .vote-btn:hover { background: var(--line-soft); color: var(--ink); }
+  .vote-btn svg { width: 14px; height: 14px; }
+  .vote-btn.active.up      { background: #e7faef; border-color: #88d6a4; color: #1d7a47; }
+  .vote-btn.active.down    { background: #fde8e7; border-color: #f0a7a3; color: #b03a35; }
+  .vote-btn.active.save    { background: #fff5dd; border-color: #f1c869; color: #8c6010; }
+
+  .empty {
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .empty strong { display: block; color: var(--ink); font-size: 15px; margin-bottom: 4px; }
+
+  /* Starred view */
+  .starred-group {
+    margin-bottom: 28px;
+  }
+  .starred-group h3 {
+    margin: 0 0 12px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .starred-group h3 .pill {
+    background: var(--line-soft);
+    color: var(--ink);
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Reminders ────────────────────────────────────────────────── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .reminder-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
   .reminder-form input[type="text"] {
-    flex: 2 1 200px;
-    padding: 12px 14px;
-    background: white;
-    border: 2px solid #ffd9a8;
-    color: var(--text);
-    border-radius: 12px;
+    flex: 2 1 220px;
+    padding: 11px 13px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--ink);
     font-size: 14px;
     outline: none;
     font-family: inherit;
   }
   .reminder-form input[type="date"] {
     flex: 1 1 140px;
-    padding: 12px 14px;
-    background: white;
-    border: 2px solid #ffd9a8;
-    color: var(--text);
-    border-radius: 12px;
+    padding: 11px 13px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--ink);
     font-size: 14px;
     outline: none;
     font-family: inherit;
   }
-  .reminder-form input:focus { border-color: #f97316; box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.2); }
+  .reminder-form input:focus { border-color: var(--cobalt); background: white; }
   .reminder-form button {
-    padding: 12px 22px;
-    background: linear-gradient(90deg, #fbbf24, #f97316);
+    padding: 11px 20px;
+    background: var(--ink);
     color: white;
     border: none;
-    border-radius: 12px;
-    font-weight: 800;
+    border-radius: 10px;
+    font-weight: 600;
     cursor: pointer;
     font-size: 14px;
-    box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
   }
-  .reminder-form button:hover { transform: translateY(-1px); }
+  .reminder-form button:hover { opacity: 0.88; }
   .reminder-list { list-style: none; padding: 0; margin: 0; }
   .reminder-item {
     display: flex; align-items: center; gap: 12px;
-    padding: 14px;
-    background: white;
-    border-radius: 14px;
-    margin-bottom: 10px;
-    border: 2px solid #ffe9c8;
-    box-shadow: 0 4px 12px rgba(80,30,120,0.06);
-  }
-  .reminder-item.done { background: #f3f4f6; }
-  .reminder-item.done .reminder-text {
-    text-decoration: line-through;
-    color: var(--text-soft);
-  }
-  .reminder-item input[type="checkbox"] {
-    width: 20px; height: 20px;
-    accent-color: #f97316;
-    cursor: pointer;
-  }
-  .reminder-text { flex: 1; font-size: 15px; font-weight: 500; }
-  .reminder-date {
-    font-size: 12px;
-    color: white;
-    background: linear-gradient(90deg, #06b6d4, #3b82f6);
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-weight: 700;
-  }
-  .reminder-date.overdue { background: linear-gradient(90deg, #ef4444, #f97316); }
-  .reminder-delete {
-    background: transparent;
-    border: none;
-    color: #c084fc;
-    cursor: pointer;
-    font-size: 22px;
-    padding: 0 6px;
-    font-weight: 700;
-  }
-  .reminder-delete:hover { color: var(--danger); }
-  .empty {
-    text-align: center;
-    color: var(--text-soft);
-    padding: 28px;
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  /* Finding Joy Studio */
-  .joy-tools {
-    display: flex; gap: 8px; flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-  .joy-tools button {
-    background: white;
-    border: 2px solid #ffd1e8;
-    color: var(--text);
-    padding: 8px 14px;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--line);
     border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .reminder-item.done { opacity: 0.6; }
+  .reminder-item.done .reminder-text { text-decoration: line-through; }
+  .reminder-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--ink);
+    cursor: pointer;
+  }
+  .reminder-text { flex: 1; font-size: 14px; }
+  .reminder-date {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface);
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-weight: 600;
+    border: 1px solid var(--line);
+  }
+  .reminder-date.overdue { color: var(--coral); border-color: #f0a7a3; background: #fde8e7; }
+  .reminder-delete {
+    background: transparent; border: none; color: var(--muted);
+    cursor: pointer; font-size: 18px; line-height: 1; padding: 4px 8px;
+  }
+  .reminder-delete:hover { color: var(--coral); }
+
+  /* ── Studio ──────────────────────────────────────────────────── */
+  .studio-tools {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .studio-tools button {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 7px 12px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
   }
-  .joy-tools button:hover { background: #fff0f7; }
-  .joy-editor {
+  .studio-tools button:hover { background: var(--line-soft); }
+  .studio-editor {
     width: 100%;
-    min-height: 320px;
-    border: 2px solid #ffd1e8;
-    border-radius: 14px;
-    padding: 18px 22px;
+    min-height: 460px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px 28px;
     font-size: 16px;
     line-height: 1.7;
-    background: white;
+    background: var(--surface);
     outline: none;
-    font-family: Georgia, "Times New Roman", serif;
-    color: var(--text);
+    font-family: "Iowan Old Style", "Charter", Georgia, "Times New Roman", serif;
+    color: var(--ink);
   }
-  .joy-editor:focus { border-color: #ff6b9d; box-shadow: 0 0 0 4px rgba(255, 107, 157, 0.2); }
-  .joy-editor p { margin: 0 0 0.8em; text-indent: 1.5em; }
-  .joy-editor p:first-child { text-indent: 0; }
-  .joy-hint {
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--text-soft);
-    font-weight: 500;
+  .studio-editor:focus { border-color: var(--cobalt); }
+  .studio-editor p { margin: 0 0 0.85em; text-indent: 1.5em; }
+  .studio-editor p:first-child { text-indent: 0; }
+  .studio-hint { margin-top: 10px; font-size: 12px; color: var(--muted); }
+
+  /* ── Responsive ──────────────────────────────────────────────── */
+  @media (max-width: 820px) {
+    #app { grid-template-columns: 1fr; }
+    aside.sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 260px; z-index: 50;
+      transform: translateX(-100%);
+      transition: transform 0.2s;
+    }
+    aside.sidebar.open { transform: translateX(0); box-shadow: var(--shadow-lg); }
+    .menu-toggle { display: inline-flex; }
+    .scrim {
+      position: fixed; inset: 0; background: rgba(20,16,8,0.4);
+      z-index: 40; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .scrim.show { opacity: 1; pointer-events: auto; }
+    main#main { padding: 22px 18px 60px; }
+    header.topbar { padding: 14px 18px; }
   }
 </style>
 </head>
 <body>
 
+<!-- ── Lock screen ─────────────────────────────────────────────── -->
 <div id="lock">
   <div class="lock-card">
-    <h1>VORTEX</h1>
-    <p>✨ Enter your password ✨</p>
+    <svg class="lock-mark" viewBox="0 0 44 44" fill="none">
+      <circle cx="22" cy="22" r="20" stroke="#15161d" stroke-width="2"/>
+      <circle cx="22" cy="22" r="12" stroke="#f04e45" stroke-width="2"/>
+      <circle cx="22" cy="22" r="4" fill="#1f3bff"/>
+    </svg>
+    <h1>Vortex</h1>
+    <p class="lock-sub">Enter your password to continue.</p>
     <form id="lock-form">
       <input id="lock-input" type="password" placeholder="Password" autocomplete="off" autofocus />
       <button type="submit">Unlock</button>
@@ -438,420 +567,697 @@
   </div>
 </div>
 
+<!-- ── App ─────────────────────────────────────────────────────── -->
 <div id="app" class="hidden">
-  <header>
-    <h1 id="logo">VORTEX</h1>
-    <div class="header-btns">
-      <button class="icon-btn" id="logout-btn">🔒 Lock</button>
+  <div class="scrim" id="scrim"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand" id="brand">
+      <svg class="brand-mark" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="13" stroke="#15161d" stroke-width="1.6"/>
+        <circle cx="14" cy="14" r="7"  stroke="#f04e45" stroke-width="1.6"/>
+        <circle cx="14" cy="14" r="2.2" fill="#1f3bff"/>
+      </svg>
+      <span class="brand-name">VORTEX</span>
     </div>
-  </header>
 
-  <main>
-    <!-- HOME VIEW -->
-    <div id="view-home">
-      <div class="greeting">Hey Arjun 👋</div>
-      <p class="subtitle">Pick a section to dive in.</p>
+    <nav id="nav"></nav>
 
-      <div class="grid">
-        <button class="section-card c-joy" data-section="joy">
-          <div><div class="emoji">📖</div><h3>Finding Joy Studio</h3></div>
-          <p>Write your novel. Chapters, italics, manuscript preview.</p>
-        </button>
-        <button class="section-card c-reminders" data-section="reminders">
-          <div><div class="emoji">⏰</div><h3>Reminders</h3></div>
-          <p>Add things to remember. Check them off when done.</p>
-        </button>
-        <button class="section-card c-author" data-section="author">
-          <div><div class="emoji">✍️</div><h3>Author World</h3></div>
-          <p>Author interviews, writing advice, book craft.</p>
-        </button>
-        <button class="section-card c-prestige" data-section="prestige">
-          <div><div class="emoji">🏆</div><h3>Prestige Mode</h3></div>
-          <p>Cool, low-commitment writing contests & prizes.</p>
-        </button>
-        <button class="section-card c-engineer" data-section="engineer">
-          <div><div class="emoji">🛠️</div><h3>Engineering Lab</h3></div>
-          <p>Cool kits, inventions, robotics, maker projects.</p>
-        </button>
-        <button class="section-card c-tennis" data-section="tennis">
-          <div><div class="emoji">🎾</div><h3>Tennis HQ</h3></div>
-          <p>ATP/WTA stories, breakthroughs, tactics, comebacks.</p>
-        </button>
-        <button class="section-card c-books" data-section="books">
-          <div><div class="emoji">📚</div><h3>Books</h3></div>
-          <p>Biographies, big thinkers, author news, releases.</p>
-        </button>
-        <button class="section-card c-radar" data-section="radar">
-          <div><div class="emoji">🚀</div><h3>New Releases Radar</h3></div>
-          <p>LEGO, tech, gadgets, cubing, creative tools.</p>
-        </button>
-        <button class="section-card c-rabbit" data-section="rabbit">
-          <div><div class="emoji">🐇</div><h3>Rabbit Holes</h3></div>
-          <p>Fascinating one-offs — science, history, design.</p>
-        </button>
+    <div class="sidebar-foot">
+      <button class="nav-btn" id="logout-btn">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="7" width="10" height="7" rx="1.5"/>
+          <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/>
+        </svg>
+        Lock
+      </button>
+    </div>
+  </aside>
+
+  <div class="main-wrap">
+    <header class="topbar">
+      <button class="menu-toggle" id="menu-toggle" aria-label="Menu">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M3 5h12M3 9h12M3 13h12"/>
+        </svg>
+      </button>
+      <div class="crumb">
+        <h2 id="crumb-title">Dashboard</h2>
+        <span class="crumb-sub" id="crumb-sub"></span>
       </div>
-    </div>
+      <div class="updated" id="updated"></div>
+    </header>
 
-    <!-- DETAIL VIEW (filled in by JS) -->
-    <div id="view-detail" class="hidden"></div>
-  </main>
+    <main id="main"></main>
+  </div>
 </div>
 
 <script>
-  const PASSWORD = "vortex123";
-  const SESSION_KEY = "vortex_unlocked";
-  const REMINDERS_KEY = "vortex_reminders";
-  const JOY_KEY = "vortex_joy_draft";
+"use strict";
 
-  const lock = document.getElementById("lock");
-  const app = document.getElementById("app");
-  const lockForm = document.getElementById("lock-form");
-  const lockInput = document.getElementById("lock-input");
-  const lockError = document.getElementById("lock-error");
-  const logoutBtn = document.getElementById("logout-btn");
-  const viewHome = document.getElementById("view-home");
-  const viewDetail = document.getElementById("view-detail");
-  const logo = document.getElementById("logo");
+const PASSWORD = "vortex123";
+const SESSION_KEY  = "vortex_unlocked";
+const REMINDERS_KEY = "vortex_reminders";
+const JOY_KEY      = "vortex_joy_draft";
+const VOTES_KEY    = "vortex_votes";
 
-  function unlock() {
-    lock.classList.add("hidden");
-    app.classList.remove("hidden");
+/* Section catalogue ------------------------------------------------ */
+
+const SECTIONS = [
+  { key: "tennis",   label: "Tennis",      desc: "ATP/WTA stories, tactics, comebacks.",            color: "coral",   art: "arc"     },
+  { key: "books",    label: "Books",       desc: "Biographies, big thinkers, new releases.",        color: "coral",   art: "spines"  },
+  { key: "rabbit",   label: "Curiosity",   desc: "Science, history, design, strange facts.",        color: "coral",   art: "spiral"  },
+  { key: "author",   label: "Author",      desc: "Writing craft, interviews, inspiration.",         color: "cobalt",  art: "lines"   },
+  { key: "engineer", label: "Engineering", desc: "Kits, projects, robotics, makers.",               color: "cobalt",  art: "gear"    },
+  { key: "radar",    label: "Releases",    desc: "LEGO, tech, gadgets, cubing, tools.",             color: "cobalt",  art: "bars"    },
+  { key: "prestige", label: "Prestige",    desc: "Writing contests, prizes, magazines.",            color: "saffron", art: "pyramid" },
+];
+
+const SECTION_BY_KEY = Object.fromEntries(SECTIONS.map(s => [s.key, s]));
+
+/* ── Abstract SVG illustrations (one per section) ─────────────── */
+
+function artSVG(kind, colorVar) {
+  const c = `var(--${colorVar})`;
+  switch (kind) {
+    case "arc": return `
+      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
+        <circle cx="80" cy="140" r="80" fill="none" stroke="${c}" stroke-width="2" opacity="0.85"/>
+        <circle cx="80" cy="140" r="55" fill="none" stroke="${c}" stroke-width="2" opacity="0.55"/>
+        <circle cx="80" cy="140" r="30" fill="none" stroke="${c}" stroke-width="2" opacity="0.35"/>
+        <circle cx="220" cy="38" r="6" fill="${c}"/>
+      </svg>`;
+    case "spines": return `
+      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
+        <rect x="40"  y="22" width="14" height="74" rx="2" fill="${c}" opacity="0.85"/>
+        <rect x="62"  y="34" width="14" height="62" rx="2" fill="${c}" opacity="0.55"/>
+        <rect x="84"  y="14" width="14" height="82" rx="2" fill="${c}" opacity="0.35"/>
+        <rect x="106" y="42" width="14" height="54" rx="2" fill="${c}" opacity="0.7"/>
+        <circle cx="220" cy="55" r="22" fill="none" stroke="${c}" stroke-width="2"/>
+      </svg>`;
+    case "spiral": return `
+      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
+        <path d="M140,55 m-30,0 a30,30 0 1,1 60,0 a22,22 0 1,1 -44,0 a14,14 0 1,1 28,0 a6,6 0 1,1 -12,0"
+              fill="none" stroke="${c}" stroke-width="2"/>
+        <circle cx="40" cy="20" r="4" fill="${c}"/>
+        <circle cx="240" cy="90" r="4" fill="${c}"/>
+      </svg>`;
+    case "lines": return `
+      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
+        <line x1="50"  y1="20" x2="50"  y2="90" stroke="${c}" stroke-width="2"/>
+        <line x1="70"  y1="30" x2="70"  y2="80" stroke="${c}" stroke-width="2" opacity="0.7"/>
+        <line x1="90"  y1="14" x2="90"  y2="96" stroke="${c}" stroke-width="2" opacity="0.85"/>
+        <line x1="110" y1="40" x2="110" y2="70" stroke="${c}" stroke-width="2" opacity="0.5"/>
+        <line x1="130" y1="22" x2="130" y2="88" stroke="${c}" stroke-width="2" opacity="0.7"/>
+        <circle cx="200" cy="55" r="22" fill="none" stroke="${c}" stroke-width="2"/>
+        <circle cx="200" cy="55" r="6" fill="${c}"/>
+      </svg>`;
+    case "gear": return `
+      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
+        <g transform="translate(80,55)">
+          <circle r="32" fill="none" stroke="${c}" stroke-width="2"/>
+          <circle r="14" fill="none" stroke="${c}" stroke-width="2"/>
+          ${Array.from({length:8}).map((_,i)=>{
+            const a=i*45*Math.PI/180; const x1=Math.cos(a)*32, y1=Math.sin(a)*32, x2=Math.cos(a)*40, y2=Math.sin(a)*40;
+            return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c}" stroke-width="2"/>`;
+          }).join('')}
+        </g>
+        <rect x="170" y="40" width="60" height="6" fill="${c}" opacity="0.7"/>
+        <rect x="170" y="56" width="40" height="6" fill="${c}" opacity="0.45"/>
+      </svg>`;
+    case "bars": return `
+      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
+        <rect x="40"  y="70" width="16" height="26" fill="${c}" opacity="0.45"/>
+        <rect x="64"  y="56" width="16" height="40" fill="${c}" opacity="0.65"/>
+        <rect x="88"  y="38" width="16" height="58" fill="${c}" opacity="0.85"/>
+        <rect x="112" y="20" width="16" height="76" fill="${c}"/>
+        <circle cx="210" cy="40" r="22" fill="none" stroke="${c}" stroke-width="2"/>
+        <line x1="200" y1="30" x2="220" y2="50" stroke="${c}" stroke-width="2"/>
+      </svg>`;
+    case "pyramid": return `
+      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
+        <polygon points="100,90 60,90 80,40" fill="none" stroke="${c}" stroke-width="2"/>
+        <polygon points="140,90 100,90 120,30" fill="none" stroke="${c}" stroke-width="2"/>
+        <polygon points="180,90 140,90 160,55" fill="none" stroke="${c}" stroke-width="2"/>
+        <circle cx="220" cy="55" r="14" fill="${c}"/>
+        <circle cx="240" cy="35" r="6" fill="${c}" opacity="0.6"/>
+      </svg>`;
+    case "dots": return `
+      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
+        ${Array.from({length:6}).map((_,r)=>Array.from({length:14}).map((_,c)=>{
+          const x=20+c*18, y=14+r*16;
+          const op = 0.18 + ((r+c)%5)*0.16;
+          return `<circle cx="${x}" cy="${y}" r="2.4" fill="${`var(--${colorVar})`}" opacity="${op.toFixed(2)}"/>`;
+        }).join('')).join('')}
+      </svg>`;
+    case "circles": return `
+      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid slice">
+        <circle cx="80"  cy="55" r="40" fill="none" stroke="${c}" stroke-width="2"/>
+        <circle cx="80"  cy="55" r="26" fill="none" stroke="${c}" stroke-width="2" opacity="0.65"/>
+        <circle cx="80"  cy="55" r="12" fill="${c}"/>
+        <line x1="140" y1="55" x2="240" y2="55" stroke="${c}" stroke-width="2" opacity="0.6"/>
+      </svg>`;
   }
-  function relock() {
-    sessionStorage.removeItem(SESSION_KEY);
-    app.classList.add("hidden");
-    lock.classList.remove("hidden");
+  return "";
+}
+
+/* ── DOM refs ─────────────────────────────────────────────────── */
+
+const lock      = document.getElementById("lock");
+const app       = document.getElementById("app");
+const lockForm  = document.getElementById("lock-form");
+const lockInput = document.getElementById("lock-input");
+const lockError = document.getElementById("lock-error");
+const logoutBtn = document.getElementById("logout-btn");
+const brand     = document.getElementById("brand");
+const navEl     = document.getElementById("nav");
+const main      = document.getElementById("main");
+const crumbT    = document.getElementById("crumb-title");
+const crumbS    = document.getElementById("crumb-sub");
+const updatedEl = document.getElementById("updated");
+const sidebar   = document.getElementById("sidebar");
+const scrim     = document.getElementById("scrim");
+const menuTog   = document.getElementById("menu-toggle");
+
+/* ── Lock ─────────────────────────────────────────────────────── */
+
+function unlock() {
+  lock.classList.add("hidden");
+  app.classList.remove("hidden");
+  navigate("home");
+  loadContent().then(() => {
+    if (currentView !== "home") navigate(currentView);
+    else updateLastUpdated();
+  });
+}
+function relock() {
+  sessionStorage.removeItem(SESSION_KEY);
+  app.classList.add("hidden");
+  lock.classList.remove("hidden");
+  lockInput.value = "";
+  lockInput.focus();
+}
+if (sessionStorage.getItem(SESSION_KEY) === "1") unlock();
+
+lockForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (lockInput.value === PASSWORD) {
+    sessionStorage.setItem(SESSION_KEY, "1");
+    lockError.textContent = "";
+    unlock();
+  } else {
+    lockError.textContent = "Wrong password.";
     lockInput.value = "";
     lockInput.focus();
-    showHome();
   }
+});
+logoutBtn.addEventListener("click", relock);
+brand.addEventListener("click", () => navigate("home"));
 
-  if (sessionStorage.getItem(SESSION_KEY) === "1") unlock();
+/* ── Sidebar nav ──────────────────────────────────────────────── */
 
-  lockForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    if (lockInput.value === PASSWORD) {
-      sessionStorage.setItem(SESSION_KEY, "1");
-      lockError.textContent = "";
-      unlock();
-    } else {
-      lockError.textContent = "Wrong password. Try again.";
-      lockInput.value = "";
-      lockInput.focus();
-    }
+function buildNav() {
+  navEl.innerHTML = "";
+  const home = navBtn("home", "Dashboard", null, "circles");
+  navEl.appendChild(home);
+  navEl.appendChild(navBtn("starred", "Starred", "saffron"));
+
+  const sep = document.createElement("hr"); sep.className = "nav-divider"; navEl.appendChild(sep);
+
+  navEl.appendChild(navBtn("studio", "Studio", "coral"));
+  navEl.appendChild(navBtn("reminders", "Reminders", "saffron"));
+
+  const lab = document.createElement("div"); lab.className = "nav-label"; lab.textContent = "Discover";
+  navEl.appendChild(lab);
+
+  for (const s of SECTIONS) {
+    navEl.appendChild(navBtn("section:" + s.key, s.label, s.color));
+  }
+}
+function navBtn(view, label, color) {
+  const b = document.createElement("button");
+  b.className = "nav-btn" + (color ? " " + color : "");
+  b.dataset.view = view;
+  b.innerHTML = (color ? '<span class="nav-dot"></span>' : '<span class="nav-dot" style="background:var(--ink);"></span>') + label;
+  b.addEventListener("click", () => navigate(view));
+  return b;
+}
+function setNavActive(view) {
+  document.querySelectorAll(".nav-btn[data-view]").forEach(b => {
+    b.classList.toggle("active", b.dataset.view === view);
   });
+}
 
-  logoutBtn.addEventListener("click", relock);
-  logo.addEventListener("click", showHome);
+menuTog.addEventListener("click", () => {
+  sidebar.classList.add("open");
+  scrim.classList.add("show");
+});
+scrim.addEventListener("click", () => {
+  sidebar.classList.remove("open");
+  scrim.classList.remove("show");
+});
 
-  // Navigation
-  function showHome() {
-    viewDetail.classList.add("hidden");
-    viewDetail.innerHTML = "";
-    viewHome.classList.remove("hidden");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+/* ── Content loading ──────────────────────────────────────────── */
+
+let CONTENT = null;
+let LAST_UPDATED = null;
+
+async function loadContent() {
+  try {
+    const res = await fetch("data/content.json?v=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    CONTENT = json;
+    LAST_UPDATED = json._lastUpdated || null;
+    updateLastUpdated();
+  } catch (err) {
+    console.error("Couldn't load content.json:", err);
+    CONTENT = {};
+    updateLastUpdated();
   }
+}
+function updateLastUpdated() {
+  if (!LAST_UPDATED) {
+    updatedEl.textContent = "Seed content";
+    return;
+  }
+  const d = new Date(LAST_UPDATED);
+  const now = new Date();
+  const diffH = (now - d) / 36e5;
+  let label;
+  if (diffH < 1) label = "Updated " + Math.max(1, Math.round(diffH * 60)) + "m ago";
+  else if (diffH < 24) label = "Updated " + Math.round(diffH) + "h ago";
+  else label = "Updated " + d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  updatedEl.textContent = label;
+}
 
-  document.querySelectorAll(".section-card").forEach(btn => {
-    btn.addEventListener("click", () => openSection(btn.dataset.section));
+/* ── Votes & ranking ──────────────────────────────────────────── */
+
+function loadVotes() {
+  try { return JSON.parse(localStorage.getItem(VOTES_KEY) || "{}"); }
+  catch { return {}; }
+}
+function saveVotes(v) { localStorage.setItem(VOTES_KEY, JSON.stringify(v)); }
+
+function tagAffinity(sectionKey) {
+  // Returns { tagName: score } for items in this section based on current votes
+  const votes = loadVotes();
+  const items = (CONTENT && CONTENT[sectionKey]) || [];
+  const aff = {};
+  for (const it of items) {
+    const v = votes[it.id];
+    if (!v) continue;
+    const w = v === "up" ? 1 : v === "down" ? -2 : v === "save" ? 3 : 0;
+    aff[it.tag] = (aff[it.tag] || 0) + w;
+  }
+  return aff;
+}
+
+function rankItems(sectionKey, items) {
+  const votes = loadVotes();
+  const aff = tagAffinity(sectionKey);
+  const decorated = items.map((it, idx) => {
+    const v = votes[it.id];
+    const tagScore = aff[it.tag] || 0;
+    const isSave = v === "save";
+    const ts = it.published ? Date.parse(it.published) : 0;
+    return { it, idx, isSave, tagScore, ts, isDown: v === "down" };
   });
+  decorated.sort((a, b) => {
+    if (a.isSave !== b.isSave) return a.isSave ? -1 : 1;
+    if (a.tagScore !== b.tagScore) return b.tagScore - a.tagScore;
+    if (a.ts !== b.ts) return b.ts - a.ts;
+    return a.idx - b.idx;
+  });
+  // Push hard-downvoted items to the very end
+  const positives = decorated.filter(x => !x.isDown);
+  const negatives = decorated.filter(x => x.isDown);
+  return [...positives, ...negatives].map(x => x.it);
+}
 
-  const CONTENT = {
-    tennis: [
-      { tag: "Tactics", title: "The art of the drop shot", body: "A great drop shot dies just over the net. Open-stance, soft hands, slice grip — and you sell it by setting up like you'll drive the ball. Used surgically, it's a rhythm-breaker against deep returners." },
-      { tag: "Legend", title: "Goran Ivanišević's 2001 Wimbledon", body: "Ranked 125th, in only on a wildcard, Ivanišević won Wimbledon. Three lost finals, a body breaking down, and on a People's Monday he beat Pat Rafter 9-7 in the fifth. Possibly the greatest comeback story in tennis." },
-      { tag: "Rising", title: "Coco Gauff's serve rebuild", body: "Gauff's forehand and serve were her weak links going into 2023. She rebuilt them, kept her elite movement, and won the US Open at 19. Proof that even the best identify their flaws and grind." },
-      { tag: "Big 3", title: "Why grass-court tennis is special", body: "The ball stays low, slides through the court, and rewards the slice and the serve-and-volley. Federer's grass game wasn't power — it was geometry: short angles, low contact, balletic footwork." },
-      { tag: "Tactics", title: "The kick serve, explained", body: "Brush up and across the ball. The topspin makes it dive into the box and then jump high. Murray and Nadal use it as a second serve that returners hate facing — eye-level on the backhand wing." },
-      { tag: "Mental", title: "Tennis is mostly a mind game", body: "Players hit the ball for maybe 20 minutes in a 3-hour match. The rest is between-points: breathing, routines, self-talk. The best aren't always the most talented — they're the most stable." },
-      { tag: "Rising", title: "Carlos Alcaraz's drop-shot habit", body: "Alcaraz uses drop shots more than almost anyone in the top 10 — sometimes on serve returns. It's risky, but it makes opponents play forward and disrupts their court positioning." },
-      { tag: "Legend", title: "The longest match ever played", body: "Isner vs Mahut, Wimbledon 2010 — 11 hours, 5 minutes across three days. Final set: 70-68. They had to suspend play twice for darkness. The scoreboard literally broke." },
-    ],
-    rabbit: [
-      { tag: "Biology", title: "Octopuses can taste with their suckers", body: "Each sucker has chemoreceptors. An octopus can 'taste' a crab hiding in a crevice without seeing it. Their arms also have a kind of distributed brain — most of their neurons live there, not in the head." },
-      { tag: "History", title: "The Antikythera mechanism", body: "Pulled from a Greek shipwreck in 1901. It's a hand-cranked bronze computer from ~100 BCE that predicts eclipses, planetary positions, and the dates of the Olympics. Nothing this complex appears again for 1,400 years." },
-      { tag: "Geography", title: "Challenger Deep is deeper than Everest is tall", body: "The deepest point in the Pacific's Mariana Trench is about 11 km down. Mount Everest is 8.8 km tall. You could sink Everest into Challenger Deep and still have 2 km of water on top." },
-      { tag: "Navigation", title: "Polynesian wayfinders sailed by stars", body: "Without compasses or maps, Polynesians crossed thousands of miles of open ocean using star paths, swell patterns, bird flight, and even the color of distant clouds. The knowledge was passed down by memorized chants." },
-      { tag: "Science", title: "The Post-it Note was a happy accident", body: "A 3M chemist tried to make a super-strong glue. He made a super-weak one instead — and shelved it. Years later, a colleague used it to keep bookmarks from falling out of a hymnal. Boom, $1B product." },
-      { tag: "Brain", title: "Why déjà vu happens", body: "One theory: your brain briefly mis-files a present moment as a memory before it catches up. Scientists who can trigger déjà vu in labs find it tied to the temporal lobe. It's most common in young people and tired people." },
-      { tag: "History", title: "The Library of Alexandria's real loss", body: "It probably didn't burn in one dramatic fire. It declined slowly — funding cuts, scrolls not recopied, multiple smaller fires. Most of what we lost was lost to neglect, not flames. Lesson: maintenance matters." },
-      { tag: "Engineering", title: "The Eiffel Tower was supposed to be temporary", body: "Built for the 1889 World's Fair, it was meant to come down after 20 years. It was saved because the army found it useful as a giant radio antenna. The tallest structure in the world for 41 years, until the Chrysler Building." },
-    ],
-    books: [
-      { tag: "Biography", title: "Open — Andre Agassi", body: "The most honest sports memoir ever written. Agassi opens with: 'I hate tennis.' Then takes you through pigtails, the mullet, drug tests, and his late-career renaissance. A book about identity dressed as a tennis book." },
-      { tag: "Biography", title: "The Wright Brothers — David McCullough", body: "Two bike mechanics from Ohio who solved heavier-than-air flight while trained engineers failed. Famous for the careful, scientific way they worked — wind tunnels, hand-built propellers, thousands of glides before any engine." },
-      { tag: "Young Readers", title: "I Am Malala (Young Readers Edition)", body: "Malala Yousafzai's account of growing up in Pakistan's Swat Valley, the Taliban's ban on girls' schools, and surviving being shot at 15. If you're researching Finding Joy, read this first — same region, same era." },
-      { tag: "Young Readers", title: "The Boy Who Harnessed the Wind", body: "William Kamkwamba, age 14, built a working windmill from scrap to bring electricity to his Malawian village during a famine. The young readers edition is hand-on-heart inspiring." },
-      { tag: "Big Thinker", title: "Range — David Epstein", body: "Argues that generalists — people who try lots of things — often outperform specialists in complex fields. Roger Federer is exhibit A: he played soccer, badminton, basketball, and skied before settling on tennis." },
-      { tag: "Biography", title: "Hidden Figures (Young Readers Edition)", body: "Black women mathematicians at NASA who calculated trajectories for the first American spaceflights. Katherine Johnson, Dorothy Vaughan, Mary Jackson — all worth a Google after." },
-      { tag: "Craft", title: "On Writing — Stephen King", body: "Half memoir, half writing manual. King's central rule: read a lot and write a lot. His advice on cutting adverbs ('she said softly' is almost always worse than 'she said') will stick with you for life." },
-      { tag: "Big Thinker", title: "The Boy, the Mole, the Fox and the Horse", body: "Charlie Mackesy's illustrated book of conversations between four friends. Short, kind, deep. 'What's the bravest thing you've ever said?' asked the boy. 'Help,' said the horse." },
-    ],
-    author: [
-      { tag: "Habit", title: "Roald Dahl wrote in a tiny shed", body: "Six feet square. He had a sleeping bag for his legs, a homemade lap-board, and yellow legal pads. He wrote four hours a day — two morning, two afternoon — and refused to be disturbed. Routine beats inspiration." },
-      { tag: "Inspiration", title: "Christopher Paolini wrote Eragon at 15", body: "Homeschooled, he started Eragon at fifteen and his family self-published it. Carl Hiaasen's stepson read a copy on vacation and passed it to his stepdad. Knopf bought it. The series sold 35+ million copies." },
-      { tag: "Tip", title: "Cut adverbs (the Stephen King rule)", body: "'She said softly,' 'he ran quickly' — strong verbs almost always beat weak verb + adverb. 'She whispered.' 'He sprinted.' Hunt for -ly words on a second pass and ask: is the adverb earning its place?" },
-      { tag: "Tip", title: "Read your work aloud", body: "Your eye glides over clunky sentences. Your tongue can't. Read each chapter aloud once before you call it done — you'll hear the rhythm, the awkward repetitions, the run-on you missed. Cheap, instant editor." },
-      { tag: "Inspiration", title: "Harry Potter was rejected 12 times", body: "JK Rowling sent the manuscript to publisher after publisher. Bloomsbury only said yes because the chairman's eight-year-old daughter read the first chapter and demanded the next. Believe in your manuscript longer than other people believe in it." },
-      { tag: "Tip", title: "Show, don't tell", body: "Don't write 'she was nervous.' Write 'her hand shook as she reached for the doorknob.' Trust the reader to draw the conclusion. The trick is selecting one specific physical detail — not three." },
-      { tag: "Tip", title: "The index card trick for plotting", body: "One card per scene. Title at the top, two-line summary below. Lay them out on a table. Move them around until the story shape feels right. You'll see plot holes a week before you'd see them in prose." },
-      { tag: "Habit", title: "Hemingway: stop while you still know what's next", body: "He never wrote himself into a corner. He'd quit each day mid-thought, knowing exactly the next sentence. That way starting tomorrow wasn't terrifying — you already had the first line." },
-    ],
-    prestige: [
-      { tag: "Contest", title: "Scholastic Art & Writing Awards", body: "The big one. Open to US students grades 7–12 (work from 6th graders is accepted in some categories). Categories include short story, poetry, flash fiction, journalism, and personal essay. Gold Key winners get published nationally. Entry fee but waivers available." },
-      { tag: "Magazine", title: "Stone Soup magazine", body: "A literary magazine written entirely by kids 13 and under, since 1973. Submit short stories, poetry, art, and book reviews year-round. Getting published in Stone Soup is a real, citable credit. Free to submit." },
-      { tag: "Contest", title: "Foyle Young Poets of the Year Award", body: "International poetry contest run by the UK's Poetry Society. Ages 11–17. Free to enter. Up to 100 winners get mentorship and publication. One of the most respected youth poetry prizes in the world." },
-      { tag: "Contest", title: "NYT Learning Network Student Contests", body: "The New York Times runs ~10 different student contests a year — review writing, personal narrative, op-ed, podcasting, photo essay, vocabulary video. Free to enter, ages 13–19. Past winners have been quoted in the actual NYT." },
-      { tag: "Contest", title: "Bow Seat Ocean Awareness Contest", body: "Annual contest for ages 11–18. Categories: creative writing, poetry, visual art, film, music, interactive media — all on ocean conservation themes. Cash prizes up to $1,500. Free to enter. Closes in June each year." },
-      { tag: "Magazine", title: "Cricket Magazine and Cicada", body: "Both publish work by young writers. Cricket runs monthly contests with themes (story, art, photo). Cicada is teen-focused literary fiction. A surprisingly easy first publishing credit if you watch the prompts." },
-      { tag: "Award", title: "Betty Award (PBS Kids)", body: "Local PBS stations and reading councils run kid writing/illustration contests under various names. Worth googling 'children's writing contest [your state]' — many are tiny, free, and underentered, which means a real shot at winning." },
-    ],
-    engineer: [
-      { tag: "Kit", title: "Arduino Starter Kit", body: "The classic intro to electronics + code. Comes with a board, breadboard, sensors, motors, and a project book. By the end you've built a light theremin, a digital lock, and a motorized model. ~$90 well-spent." },
-      { tag: "Kit", title: "Makey Makey", body: "A small board that turns anything conductive into a key. Hook up bananas as a piano. Make a Play-Doh game controller. Brilliant for thinking about input/output — and basically impossible not to laugh while using it." },
-      { tag: "Project", title: "Build a Rube Goldberg machine", body: "Pick one tiny end goal — pop a balloon, ring a bell — and chain together 8+ steps to get there. Marbles, dominoes, levers, fans. Failure is mandatory. Iterate. Film the run that finally works." },
-      { tag: "Kit", title: "Snap Circuits", body: "Plastic snap-together components — no soldering, no breadboard. You build real working circuits: alarms, radios, light sensors, motors. The 300-project version is the sweet spot. Great if you're new to electronics." },
-      { tag: "Kit", title: "LEGO Technic + Powered Up", body: "Technic is the engineering branch of LEGO — gears, pneumatics, motors. Add the Powered Up motors and Bluetooth hub and you can program models from an app. Build a working robotic arm or remote-control car." },
-      { tag: "Project", title: "Make a desk catapult", body: "Popsicle sticks, rubber bands, a plastic spoon. Tweak the angle, the band tension, the load — same physics as a trebuchet, just smaller. Bonus: make a little aluminum-foil target with rings and score points." },
-      { tag: "Project", title: "3D-print something useful (not just decorative)", body: "Skip the trinkets. Print a phone stand, a cable holder, a custom drawer divider. Tinkercad is free and teaches the core skill: thinking in 3D. Most public libraries now have 3D printers you can use for cheap." },
-      { tag: "Inspiration", title: "Read about Fix-It Felix engineering", body: "Real-world: study Tesla's Roadster teardowns, SpaceX Raptor engine evolutions, James Dyson's 5,127 vacuum prototypes. Engineering is iterating through bad versions until one works. Failure isn't a setback — it's the curriculum." },
-    ],
-    radar: [
-      { tag: "LEGO", title: "LEGO Botanical Collection", body: "The flower bouquet, succulents, bonsai tree, orchid. Build them once, display forever — they don't die, don't need water, don't shed petals. Genuinely meditative builds with mostly small pieces." },
-      { tag: "LEGO", title: "LEGO Ideas — fan-designed sets", body: "These are sets designed by fans and voted into production. Past hits: the typewriter, the Friends central perk, the polaroid camera. New ones drop a few times a year. Often more interesting builds than the licensed sets." },
-      { tag: "Cubing", title: "GAN cubes vs MoYu vs QiYi", body: "GAN: smooth, premium, expensive. MoYu RS3M and Weilong: best price-to-speed ratio. QiYi MS: budget pick that punches above its weight. Magnetic cubes are now standard — once you've cubed magnetic, no going back." },
-      { tag: "Cubing", title: "Beyond the 3x3", body: "If you've cracked the 3x3, try the 4x4 (parity is a brain-bender), the Square-1 (different shape every time), or the Megaminx (12 sides). Or go small — the 2x2 you can solve in under 5 seconds with practice." },
-      { tag: "Tech", title: "iPad creative apps worth installing", body: "Procreate (drawing — one-time $13, no subscription). Notability (handwritten notes). GarageBand (music, free). Concepts (vector sketching). Skip apps with monthly fees if a pay-once option exists." },
-      { tag: "Tech", title: "Drawing tablets — the cheap path", body: "If you're not ready for an iPad: an XP-Pen Deco or Wacom Intuos plugs into a laptop and lets you draw straight into Photoshop, Krita (free), or Procreate's web sister apps. ~$60 entry point." },
-      { tag: "Tools", title: "Mechanical keyboards for typing", body: "If you do a lot of writing, a mechanical keyboard is a real upgrade. Browns are quietest, blues are clickiest, reds are smoothest. The Keychron K2 is the consensus 'first mechanical' pick." },
-      { tag: "Tech", title: "AI tools you can actually use as a kid", body: "ChatGPT and Claude for brainstorming, not for writing your novel for you. NotebookLM turns your research notes into a podcast. Suno generates music from a prompt. Treat them as drafting partners — never let them replace your voice." },
-    ],
-  };
-
-  const SECTIONS = {
-    joy:       { emoji: "📖", title: "Finding Joy Studio", desc: "Write your novel here. Chapters, italics, paragraph indents.", body: joyBody },
-    reminders: { emoji: "⏰", title: "Reminders", desc: "Things to remember. Tap a date to make it deadline-aware.", body: remindersBody },
-    author:    { emoji: "✍️", title: "Author World", desc: "Author interviews, writing advice, book craft, publishing inspiration.", body: itemsBody("author") },
-    prestige:  { emoji: "🏆", title: "Prestige Mode", desc: "Cool, low-commitment writing contests and prizes for kids.", body: itemsBody("prestige") },
-    engineer:  { emoji: "🛠️", title: "Engineering Lab", desc: "Cool kits, invention ideas, robotics, maker projects.", body: itemsBody("engineer") },
-    tennis:    { emoji: "🎾", title: "Tennis HQ", desc: "ATP/WTA stories, tactics, comebacks, rising players.", body: itemsBody("tennis") },
-    books:     { emoji: "📚", title: "Books", desc: "Biographies, big thinkers, author news, new releases.", body: itemsBody("books") },
-    radar:     { emoji: "🚀", title: "New Releases Radar", desc: "LEGO, tech, gadgets, cubing, creative tools.", body: itemsBody("radar") },
-    rabbit:    { emoji: "🐇", title: "Rabbit Holes", desc: "One-off fascinating topics: science, history, design, strange facts.", body: itemsBody("rabbit") },
-  };
-
-  function openSection(key) {
-    const s = SECTIONS[key];
-    if (!s) return;
-    viewHome.classList.add("hidden");
-    viewDetail.classList.remove("hidden");
-    viewDetail.innerHTML = `
-      <button class="back-btn" id="back-btn">← Back</button>
-      <div class="detail">
-        <div class="detail-header">
-          <div class="detail-emoji">${s.emoji}</div>
-          <h2>${s.title}</h2>
-        </div>
-        <p class="detail-desc">${s.desc}</p>
-        <div id="detail-body"></div>
-      </div>
-    `;
-    document.getElementById("back-btn").addEventListener("click", showHome);
-    s.body(document.getElementById("detail-body"));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+function starredItemsBySection() {
+  const votes = loadVotes();
+  const out = {};
+  for (const s of SECTIONS) {
+    const items = ((CONTENT && CONTENT[s.key]) || []).filter(it => votes[it.id] === "save");
+    if (items.length) out[s.key] = items;
   }
+  return out;
+}
 
-  const VOTES_KEY = "vortex_votes";
-  function loadVotes() {
-    try { return JSON.parse(localStorage.getItem(VOTES_KEY) || "{}"); }
-    catch { return {}; }
-  }
-  function saveVotes(v) { localStorage.setItem(VOTES_KEY, JSON.stringify(v)); }
+/* ── Routing ──────────────────────────────────────────────────── */
 
-  function itemsBody(key) {
-    return (root) => {
-      const items = CONTENT[key] || [];
-      const votes = loadVotes();
-      const tagClass = "tag-" + key;
-      const grid = document.createElement("div");
-      grid.className = "items";
-      items.forEach((it, idx) => {
-        const id = `${key}-${idx}`;
-        const v = votes[id];
-        const card = document.createElement("article");
-        card.className = "item";
-        card.innerHTML = `
-          <span class="tag ${tagClass}">${it.tag}</span>
-          <h4>${it.title}</h4>
-          <p>${it.body}</p>
-          <div class="item-actions">
-            <button class="vote-btn ${v === 'up' ? 'active' : ''}" data-vote="up" title="More like this">👍</button>
-            <button class="vote-btn ${v === 'down' ? 'active' : ''}" data-vote="down" title="Less like this">👎</button>
-            <button class="vote-btn ${v === 'save' ? 'active' : ''}" data-vote="save" title="Save">⭐</button>
-          </div>
-        `;
-        card.querySelectorAll(".vote-btn").forEach(b => {
-          b.addEventListener("click", () => {
-            const all = loadVotes();
-            const action = b.dataset.vote;
-            all[id] = all[id] === action ? null : action;
-            saveVotes(all);
-            card.querySelectorAll(".vote-btn").forEach(x => x.classList.remove("active"));
-            if (all[id]) b.classList.add("active");
-          });
-        });
-        grid.appendChild(card);
-      });
-      root.appendChild(grid);
-    };
-  }
+let currentView = "home";
+let currentTab = "all"; // section view tab
 
+function navigate(view) {
+  currentView = view;
+  currentTab = "all";
+  setNavActive(view);
+  sidebar.classList.remove("open");
+  scrim.classList.remove("show");
+
+  if (view === "home") return renderHome();
+  if (view === "starred") return renderStarred();
+  if (view === "studio") return renderStudio();
+  if (view === "reminders") return renderReminders();
+  if (view.startsWith("section:")) return renderSection(view.slice(8));
+  renderHome();
+}
+
+/* ── Render: Dashboard ────────────────────────────────────────── */
+
+function renderHome() {
+  crumbT.textContent = "Dashboard";
+  crumbS.textContent = "Pick a section to dive in.";
+  const grid = document.createElement("div");
+  grid.className = "grid-cards";
+
+  // Studio
+  grid.appendChild(makeCard({ key: "studio", label: "Studio", desc: "Write your novel. Chapters, italics, autosave.", color: "coral", art: "circles", eyebrow: "Workspace" }, () => navigate("studio")));
   // Reminders
-  function loadReminders() {
-    try { return JSON.parse(localStorage.getItem(REMINDERS_KEY) || "[]"); }
-    catch { return []; }
-  }
-  function saveReminders(arr) { localStorage.setItem(REMINDERS_KEY, JSON.stringify(arr)); }
+  grid.appendChild(makeCard({ key: "reminders", label: "Reminders", desc: "Things to remember, with deadlines.", color: "saffron", art: "dots", eyebrow: "Workspace" }, () => navigate("reminders")));
+  // Starred
+  grid.appendChild(makeCard({ key: "starred", label: "Starred", desc: "Your saved items across every section.", color: "saffron", art: "pyramid", eyebrow: "Library" }, () => navigate("starred")));
 
-  function formatDate(iso) {
-    if (!iso) return "";
-    const d = new Date(iso + "T00:00:00");
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  for (const s of SECTIONS) {
+    grid.appendChild(makeCard({ ...s, eyebrow: "Discover" }, () => navigate("section:" + s.key)));
   }
+
+  main.replaceChildren(hero("Hey Arjun", "Pick a section to dive in."), grid);
+}
+
+function hero(t, sub) {
+  const wrap = document.createElement("div");
+  wrap.className = "hero";
+  wrap.innerHTML = `<h1>${escapeHtml(t)}</h1><p>${escapeHtml(sub)}</p>`;
+  return wrap;
+}
+
+function makeCard(s, onClick) {
+  const btn = document.createElement("button");
+  btn.className = "card";
+  btn.innerHTML = `
+    <div class="card-art">${artSVG(s.art, s.color)}</div>
+    <div class="card-meta">
+      <div class="card-eyebrow">${escapeHtml(s.eyebrow || "")}</div>
+      <h3>${escapeHtml(s.label)}</h3>
+      <p>${escapeHtml(s.desc)}</p>
+    </div>
+  `;
+  btn.addEventListener("click", onClick);
+  return btn;
+}
+
+/* ── Render: Section ──────────────────────────────────────────── */
+
+function renderSection(key) {
+  const s = SECTION_BY_KEY[key];
+  if (!s) return renderHome();
+  crumbT.textContent = s.label;
+  crumbS.textContent = s.desc;
+
+  const items = (CONTENT && CONTENT[key]) || [];
+  const votes = loadVotes();
+  const starredCount = items.filter(it => votes[it.id] === "save").length;
+
+  const tabs = document.createElement("div");
+  tabs.className = "section-tabs";
+  tabs.innerHTML = `
+    <button class="tab-btn ${currentTab === 'all' ? 'active' : ''}" data-tab="all">All <span class="tab-count">${items.length}</span></button>
+    <button class="tab-btn ${currentTab === 'starred' ? 'active' : ''}" data-tab="starred">Starred <span class="tab-count">${starredCount}</span></button>
+  `;
+  tabs.querySelectorAll(".tab-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      currentTab = b.dataset.tab;
+      renderSection(key);
+    });
+  });
+
+  const list = document.createElement("div");
+  let visible = items;
+  if (currentTab === "starred") visible = items.filter(it => votes[it.id] === "save");
+  else visible = rankItems(key, items);
+
+  if (visible.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.innerHTML = currentTab === "starred"
+      ? `<strong>No starred items yet</strong>Tap the star on any card in this section to save it here.`
+      : `<strong>Nothing here yet</strong>Content will appear once the daily refresh runs.`;
+    list.appendChild(empty);
+  } else {
+    const grid = document.createElement("div");
+    grid.className = "items";
+    for (const it of visible) grid.appendChild(makeItem(it, s));
+    list.appendChild(grid);
+  }
+
+  main.replaceChildren(tabs, list);
+}
+
+function makeItem(it, s) {
+  const votes = loadVotes();
+  const v = votes[it.id];
+  const card = document.createElement("article");
+  card.className = "item" + (v === "save" ? " starred" : "");
+
+  const dateStr = it.published ? formatPublishedDate(it.published) : "";
+  const linkHtml = it.link
+    ? `<a class="item-link" href="${escapeAttr(it.link)}" target="_blank" rel="noopener noreferrer">Read source</a>`
+    : `<span class="item-date">${escapeHtml(dateStr)}</span>`;
+  const dateInFoot = it.link && dateStr ? `<span class="item-date">${escapeHtml(dateStr)}</span>` : "";
+
+  card.innerHTML = `
+    <div class="item-stripe ${s.color}"></div>
+    <span class="item-tag">${escapeHtml(it.tag || "")}</span>
+    <h4>${escapeHtml(it.title)}</h4>
+    <p>${escapeHtml(it.body)}</p>
+    <div class="item-foot">
+      <div>${linkHtml}${dateInFoot ? ' &middot; ' + dateInFoot : ''}</div>
+      <div class="vote-row">
+        <button class="vote-btn up   ${v === 'up'   ? 'active' : ''}" data-vote="up"   title="More like this">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>
+        </button>
+        <button class="vote-btn down ${v === 'down' ? 'active' : ''}" data-vote="down" title="Less like this">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+        </button>
+        <button class="vote-btn save ${v === 'save' ? 'active' : ''}" data-vote="save" title="Save">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><polygon points="8,2 10,6.2 14.5,6.7 11.2,9.7 12.1,14.2 8,12 3.9,14.2 4.8,9.7 1.5,6.7 6,6.2"/></svg>
+        </button>
+      </div>
+    </div>
+  `;
+  card.querySelectorAll(".vote-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      const action = b.dataset.vote;
+      const all = loadVotes();
+      all[it.id] = all[it.id] === action ? null : action;
+      if (!all[it.id]) delete all[it.id];
+      saveVotes(all);
+      // Re-render the section so ranking + starred state update
+      if (currentView.startsWith("section:")) renderSection(currentView.slice(8));
+      else if (currentView === "starred") renderStarred();
+    });
+  });
+  return card;
+}
+
+function formatPublishedDate(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const now = new Date();
+  const diffH = (now - d) / 36e5;
+  if (diffH < 1) return Math.max(1, Math.round(diffH * 60)) + "m ago";
+  if (diffH < 24) return Math.round(diffH) + "h ago";
+  if (diffH < 24 * 7) return Math.round(diffH / 24) + "d ago";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/* ── Render: Starred (global) ─────────────────────────────────── */
+
+function renderStarred() {
+  crumbT.textContent = "Starred";
+  crumbS.textContent = "Your saved items, grouped by section.";
+  const groups = starredItemsBySection();
+  const wrap = document.createElement("div");
+
+  const totalCount = Object.values(groups).reduce((n, arr) => n + arr.length, 0);
+  if (totalCount === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.innerHTML = `<strong>Nothing saved yet</strong>Tap the star on any card to save it. Saved items show up here.`;
+    wrap.appendChild(empty);
+    main.replaceChildren(wrap);
+    return;
+  }
+
+  for (const s of SECTIONS) {
+    const items = groups[s.key];
+    if (!items || !items.length) continue;
+    const group = document.createElement("section");
+    group.className = "starred-group";
+    const h = document.createElement("h3");
+    h.innerHTML = `${escapeHtml(s.label)} <span class="pill">${items.length}</span>`;
+    group.appendChild(h);
+    const grid = document.createElement("div");
+    grid.className = "items";
+    for (const it of items) grid.appendChild(makeItem(it, s));
+    group.appendChild(grid);
+    wrap.appendChild(group);
+  }
+  main.replaceChildren(wrap);
+}
+
+/* ── Render: Reminders ────────────────────────────────────────── */
+
+function loadReminders() {
+  try { return JSON.parse(localStorage.getItem(REMINDERS_KEY) || "[]"); }
+  catch { return []; }
+}
+function saveReminders(arr) { localStorage.setItem(REMINDERS_KEY, JSON.stringify(arr)); }
+
+function renderReminders() {
+  crumbT.textContent = "Reminders";
+  crumbS.textContent = "Things to remember.";
+
+  const panel = document.createElement("div");
+  panel.className = "panel";
+  panel.innerHTML = `
+    <form class="reminder-form" id="reminder-form">
+      <input type="text" id="reminder-input" placeholder="Add a reminder…" required />
+      <input type="date" id="reminder-date-input" />
+      <button type="submit">Add</button>
+    </form>
+    <ul class="reminder-list" id="reminder-list"></ul>
+    <div class="empty hidden" id="reminder-empty"><strong>No reminders yet.</strong>Add one above.</div>
+  `;
+  main.replaceChildren(panel);
+
+  const form = document.getElementById("reminder-form");
+  const input = document.getElementById("reminder-input");
+  const dateIn = document.getElementById("reminder-date-input");
+  const list = document.getElementById("reminder-list");
+  const empty = document.getElementById("reminder-empty");
+
   function isOverdue(iso) {
     if (!iso) return false;
     const today = new Date(); today.setHours(0,0,0,0);
-    const d = new Date(iso + "T00:00:00");
-    return d < today;
+    return new Date(iso + "T00:00:00") < today;
+  }
+  function fmtDate(iso) {
+    if (!iso) return "";
+    return new Date(iso + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   }
 
-  function remindersBody(root) {
-    root.innerHTML = `
-      <form class="reminder-form" id="reminder-form">
-        <input type="text" id="reminder-input" placeholder="Add a reminder…" required />
-        <input type="date" id="reminder-date-input" />
-        <button type="submit">Add</button>
-      </form>
-      <ul class="reminder-list" id="reminder-list"></ul>
-      <div class="empty hidden" id="reminder-empty">No reminders yet. Add one above.</div>
-    `;
-    const reminderForm = document.getElementById("reminder-form");
-    const reminderInput = document.getElementById("reminder-input");
-    const reminderDateInput = document.getElementById("reminder-date-input");
-    const reminderList = document.getElementById("reminder-list");
-    const reminderEmpty = document.getElementById("reminder-empty");
-
-    function render() {
-      const reminders = loadReminders();
-      reminderList.innerHTML = "";
-      if (reminders.length === 0) {
-        reminderEmpty.classList.remove("hidden");
-        return;
-      }
-      reminderEmpty.classList.add("hidden");
-      reminders.sort((a, b) => {
-        if (a.done !== b.done) return a.done ? 1 : -1;
-        if (a.date && b.date) return a.date.localeCompare(b.date);
-        if (a.date) return -1;
-        if (b.date) return 1;
-        return b.created - a.created;
+  function render() {
+    const all = loadReminders();
+    list.innerHTML = "";
+    if (!all.length) { empty.classList.remove("hidden"); return; }
+    empty.classList.add("hidden");
+    all.sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      if (a.date && b.date) return a.date.localeCompare(b.date);
+      if (a.date) return -1;
+      if (b.date) return 1;
+      return b.created - a.created;
+    });
+    for (const r of all) {
+      const li = document.createElement("li");
+      li.className = "reminder-item" + (r.done ? " done" : "");
+      const cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = r.done;
+      cb.addEventListener("change", () => {
+        const cur = loadReminders();
+        const t = cur.find(x => x.id === r.id);
+        if (t) { t.done = cb.checked; saveReminders(cur); render(); }
       });
-      for (const r of reminders) {
-        const li = document.createElement("li");
-        li.className = "reminder-item" + (r.done ? " done" : "");
-        const cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.checked = r.done;
-        cb.addEventListener("change", () => {
-          const all = loadReminders();
-          const t = all.find(x => x.id === r.id);
-          if (t) { t.done = cb.checked; saveReminders(all); render(); }
-        });
-        const text = document.createElement("div");
-        text.className = "reminder-text";
-        text.textContent = r.text;
-        li.appendChild(cb);
-        li.appendChild(text);
-        if (r.date) {
-          const date = document.createElement("span");
-          date.className = "reminder-date" + (!r.done && isOverdue(r.date) ? " overdue" : "");
-          date.textContent = formatDate(r.date);
-          li.appendChild(date);
-        }
-        const del = document.createElement("button");
-        del.className = "reminder-delete";
-        del.title = "Delete";
-        del.textContent = "×";
-        del.addEventListener("click", () => {
-          const all = loadReminders().filter(x => x.id !== r.id);
-          saveReminders(all);
-          render();
-        });
-        li.appendChild(del);
-        reminderList.appendChild(li);
+      const text = document.createElement("div");
+      text.className = "reminder-text"; text.textContent = r.text;
+      li.appendChild(cb); li.appendChild(text);
+      if (r.date) {
+        const d = document.createElement("span");
+        d.className = "reminder-date" + (!r.done && isOverdue(r.date) ? " overdue" : "");
+        d.textContent = fmtDate(r.date);
+        li.appendChild(d);
       }
+      const del = document.createElement("button");
+      del.className = "reminder-delete"; del.textContent = "×"; del.title = "Delete";
+      del.addEventListener("click", () => {
+        saveReminders(loadReminders().filter(x => x.id !== r.id));
+        render();
+      });
+      li.appendChild(del);
+      list.appendChild(li);
     }
-
-    reminderForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const text = reminderInput.value.trim();
-      if (!text) return;
-      const all = loadReminders();
-      all.push({
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        text,
-        date: reminderDateInput.value || null,
-        done: false,
-        created: Date.now()
-      });
-      saveReminders(all);
-      reminderInput.value = "";
-      reminderDateInput.value = "";
-      render();
-      reminderInput.focus();
-    });
-
-    render();
   }
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const t = input.value.trim();
+    if (!t) return;
+    const all = loadReminders();
+    all.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), text: t, date: dateIn.value || null, done: false, created: Date.now() });
+    saveReminders(all);
+    input.value = ""; dateIn.value = "";
+    render(); input.focus();
+  });
+  render();
+}
 
-  // Finding Joy Studio (mini editor)
-  function joyBody(root) {
-    root.innerHTML = `
-      <div class="joy-tools">
-        <button type="button" data-cmd="bold"><b>B</b></button>
-        <button type="button" data-cmd="italic"><i>I</i></button>
-        <button type="button" data-cmd="newchapter">+ Chapter</button>
-        <button type="button" id="joy-clear">Clear</button>
-      </div>
-      <div class="joy-editor" id="joy-editor" contenteditable="true"></div>
-      <p class="joy-hint">💾 Auto-saves to your browser as you type.</p>
-    `;
-    const editor = document.getElementById("joy-editor");
-    const saved = localStorage.getItem(JOY_KEY);
-    editor.innerHTML = saved || "<p><em>Chapter 1</em></p><p>Start writing here…</p>";
-    editor.addEventListener("input", () => {
-      localStorage.setItem(JOY_KEY, editor.innerHTML);
-    });
-    root.querySelectorAll(".joy-tools button[data-cmd]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const cmd = btn.dataset.cmd;
-        if (cmd === "bold") document.execCommand("bold");
-        else if (cmd === "italic") document.execCommand("italic");
-        else if (cmd === "newchapter") {
-          const num = (editor.innerHTML.match(/Chapter \d+/g) || []).length + 1;
-          document.execCommand("insertHTML", false, `<p><em>Chapter ${num}</em></p><p>&nbsp;</p>`);
-        }
-        editor.focus();
-      });
-    });
-    document.getElementById("joy-clear").addEventListener("click", () => {
-      if (confirm("Clear the whole draft? This can't be undone.")) {
-        editor.innerHTML = "<p><em>Chapter 1</em></p><p>Start writing here…</p>";
-        localStorage.setItem(JOY_KEY, editor.innerHTML);
+/* ── Render: Studio ───────────────────────────────────────────── */
+
+function renderStudio() {
+  crumbT.textContent = "Studio";
+  crumbS.textContent = "Write. Auto-saves to this browser.";
+
+  const panel = document.createElement("div");
+  panel.className = "panel";
+  panel.innerHTML = `
+    <div class="studio-tools">
+      <button type="button" data-cmd="bold"><b>B</b></button>
+      <button type="button" data-cmd="italic"><i>I</i></button>
+      <button type="button" data-cmd="newchapter">+ Chapter</button>
+      <button type="button" id="studio-clear">Clear</button>
+    </div>
+    <div class="studio-editor" id="studio-editor" contenteditable="true"></div>
+    <p class="studio-hint">Auto-saves to your browser as you type.</p>
+  `;
+  main.replaceChildren(panel);
+
+  const editor = document.getElementById("studio-editor");
+  const saved = localStorage.getItem(JOY_KEY);
+  editor.innerHTML = saved || "<p><em>Chapter 1</em></p><p>Start writing here…</p>";
+  editor.addEventListener("input", () => localStorage.setItem(JOY_KEY, editor.innerHTML));
+  panel.querySelectorAll(".studio-tools button[data-cmd]").forEach(b => {
+    b.addEventListener("click", () => {
+      const cmd = b.dataset.cmd;
+      if (cmd === "bold") document.execCommand("bold");
+      else if (cmd === "italic") document.execCommand("italic");
+      else if (cmd === "newchapter") {
+        const n = (editor.innerHTML.match(/Chapter \d+/g) || []).length + 1;
+        document.execCommand("insertHTML", false, `<p><em>Chapter ${n}</em></p><p>&nbsp;</p>`);
       }
+      editor.focus();
     });
-  }
-</script>
+  });
+  document.getElementById("studio-clear").addEventListener("click", () => {
+    if (confirm("Clear the whole draft? This can't be undone.")) {
+      editor.innerHTML = "<p><em>Chapter 1</em></p><p>Start writing here…</p>";
+      localStorage.setItem(JOY_KEY, editor.innerHTML);
+    }
+  });
+}
 
+/* ── Helpers ──────────────────────────────────────────────────── */
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+buildNav();
+</script>
 </body>
 </html>
