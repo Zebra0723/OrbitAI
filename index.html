@@ -524,6 +524,64 @@
   }
   .swatch.selected { border-color: var(--ink); }
 
+  .cover-preview { position: relative; }
+  .cover-preview .cp-text {
+    position: relative; z-index: 1;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .cover-preview.has-image::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.55) 100%);
+    border-radius: inherit;
+  }
+  .book-cover-thumb { position: relative; }
+  .book-cover-thumb.has-image::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.55) 100%);
+    border-radius: inherit;
+  }
+  .book-cover-thumb .cv-title,
+  .book-cover-thumb .cv-author { position: relative; z-index: 1; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+  .image-row {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  }
+  .file-label {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); padding: 8px 12px; border-radius: 9px;
+    font-weight: 600; font-size: 13px; cursor: pointer;
+  }
+  .file-label:hover { background: var(--line-soft); }
+  .file-label svg { width: 14px; height: 14px; }
+  .file-label input { display: none; }
+  .link-danger {
+    background: transparent; border: none; color: var(--warn);
+    font-size: 12.5px; font-weight: 600; padding: 6px 8px; cursor: pointer; border-radius: 6px;
+  }
+  .link-danger:hover { background: #fde8e7; }
+
+  /* Always-visible stats bar */
+  .studio-foot {
+    flex: none;
+    display: flex; align-items: center; gap: 14px;
+    padding: 9px 18px;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    font-size: 12.5px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .studio-foot .stat strong { color: var(--ink); font-weight: 600; margin-right: 3px; }
+  .studio-foot .scope { color: var(--muted); margin-right: 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .studio-foot .sep-dot { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: 0.4; }
+  .studio-foot .spacer { flex: 1; }
+  .studio-foot .scope-toggle {
+    background: transparent; border: 1px solid var(--line);
+    color: var(--muted); font-weight: 600;
+    padding: 3px 9px; border-radius: 999px; font-size: 11.5px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .studio-foot .scope-toggle:hover { background: var(--line-soft); color: var(--ink); }
+
   @media (max-width: 720px) {
     .studio-body { grid-template-columns: 1fr; }
     .outline { position: fixed; top: 60px; bottom: 0; left: 0; width: 280px;
@@ -669,22 +727,38 @@ function loadStudio() {
   try { s = JSON.parse(localStorage.getItem(STUDIO_KEY) || "null"); } catch { s = null; }
   if (!s || !s.books) {
     s = { books: {}, activeBookId: null };
-    // Migrate legacy single draft if present
     const legacy = localStorage.getItem(LEGACY_JOY_KEY);
+    const book = newBook("Finding Joy", "Arjun");
     if (legacy && legacy.trim()) {
-      const book = newBook("Finding Joy", "Arjun");
-      // Pull legacy HTML into Chapter 1
       const ch = book.sections.find(x => x.type === "chapter");
       if (ch) ch.content = legacy;
-      s.books[book.id] = book;
-      s.activeBookId = book.id;
-    } else {
-      const book = newBook("Finding Joy", "Arjun");
-      s.books[book.id] = book;
-      s.activeBookId = book.id;
     }
+    s.books[book.id] = book;
+    s.activeBookId = book.id;
     localStorage.setItem(STUDIO_KEY, JSON.stringify(s));
+    return s;
   }
+  // Migrations on existing data
+  let dirty = false;
+  for (const b of Object.values(s.books)) {
+    if (!b.cover) { b.cover = { color: "cobalt", image: null }; dirty = true; }
+    if (b.cover && !("image" in b.cover)) { b.cover.image = null; dirty = true; }
+    // Drop empty auto title-pages; keep ones with content
+    const before = b.sections.length;
+    b.sections = b.sections.filter(sec => {
+      if (sec.type !== "title-page") return true;
+      const txt = (sec.content || "").replace(/<[^>]+>/g, "").trim();
+      return txt.length > 0;
+    });
+    if (b.sections.length !== before) dirty = true;
+    // Make sure activeSectionId still points to a real section
+    if (!b.sections.find(x => x.id === b.activeSectionId)) {
+      const firstNonCover = b.sections.find(x => x.type !== "cover") || b.sections[0];
+      b.activeSectionId = firstNonCover ? firstNonCover.id : null;
+      dirty = true;
+    }
+  }
+  if (dirty) localStorage.setItem(STUDIO_KEY, JSON.stringify(s));
   return s;
 }
 function saveStudio(s) { localStorage.setItem(STUDIO_KEY, JSON.stringify(s)); }
@@ -693,17 +767,40 @@ function newBook(title, author) {
   const id = uid();
   const now = Date.now();
   const sections = [
-    { id: uid(), type: "cover",      title: "Cover",      content: "" },
-    { id: uid(), type: "title-page", title: "Title Page", content: "" },
-    { id: uid(), type: "chapter",    title: "Chapter 1",  content: "" },
+    { id: uid(), type: "cover",   title: "Cover",     content: "" },
+    { id: uid(), type: "chapter", title: "Chapter 1", content: "" },
   ];
   return {
     id, title, author,
-    cover: { color: "cobalt" },
+    cover: { color: "cobalt", image: null },
     sections,
-    activeSectionId: sections[2].id,
+    activeSectionId: sections[1].id,
     createdAt: now, updatedAt: now,
   };
+}
+
+const WORDS_PER_PAGE = 275;  // standard novel page
+
+function stripText(html) {
+  if (!html) return "";
+  return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
+}
+function statsFor(html) {
+  const t = stripText(html);
+  const words = t ? t.split(/\s+/).length : 0;
+  const chars = t.length;
+  const pages = words === 0 ? 0 : Math.max(1, Math.ceil(words / WORDS_PER_PAGE));
+  return { words, chars, pages };
+}
+function bookStats(book) {
+  let w = 0, c = 0;
+  for (const s of book.sections) {
+    if (s.type === "cover") continue;
+    const x = statsFor(s.content);
+    w += x.words; c += x.chars;
+  }
+  const pages = w === 0 ? 0 : Math.max(1, Math.ceil(w / WORDS_PER_PAGE));
+  return { words: w, chars: c, pages };
 }
 function bookWordCount(book) {
   return book.sections.reduce((n, s) => n + sectionWordCount(s), 0);
@@ -1153,10 +1250,14 @@ function renderStudioLibrary() {
   main.appendChild(grid);
 }
 function bookCard(book) {
-  const wc = bookWordCount(book);
+  const stats = bookStats(book);
+  const hasImg = !!book.cover.image;
+  const bgStyle = hasImg
+    ? `background-image:url('${book.cover.image}');background-size:cover;background-position:center;`
+    : `background:${coverGradient(book.cover.color)};`;
   const wrap = document.createElement("button"); wrap.className = "book-card";
   wrap.innerHTML = `
-    <div class="book-cover-thumb" style="background:${coverGradient(book.cover.color)}">
+    <div class="book-cover-thumb ${hasImg ? 'has-image' : ''}" style="${bgStyle}">
       <div></div>
       <div>
         <div class="cv-title">${escapeHtml(book.title)}</div>
@@ -1165,7 +1266,7 @@ function bookCard(book) {
     </div>
     <div class="book-meta">
       <p class="bm-title">${escapeHtml(book.title)}</p>
-      <p class="bm-sub">${wc.toLocaleString()} words · edited ${relTime(book.updatedAt)}</p>
+      <p class="bm-sub">${stats.words.toLocaleString()} words · edited ${relTime(book.updatedAt)}</p>
     </div>
   `;
   wrap.addEventListener("click", () => openStudio(book.id));
@@ -1204,6 +1305,8 @@ function closeStudio() {
   activeSectionId = null;
 }
 
+let statsScope = "book"; // "book" or "section"
+
 function renderStudioEditor() {
   const studio = loadStudio();
   const book = studio.books[activeBookId]; if (!book) return;
@@ -1212,7 +1315,6 @@ function renderStudioEditor() {
 
   const view = document.createElement("div"); view.className = "studio-view";
 
-  // Bar
   const bar = document.createElement("div"); bar.className = "studio-bar";
   bar.innerHTML = `
     <button class="icon-btn" id="st-back" title="Back to Library">
@@ -1224,31 +1326,41 @@ function renderStudioEditor() {
     <span class="sb-title" id="st-title-disp">${escapeHtml(book.title)}</span>
     <span class="sb-spacer"></span>
     <span class="sb-meta" id="st-status">Saved</span>
-    <span class="sb-meta" id="st-words"></span>
   `;
 
-  // Body
   const body = document.createElement("div"); body.className = "studio-body" + (outlineCollapsed ? " outline-collapsed" : "");
   const outline = document.createElement("div"); outline.className = "outline"; outline.id = "st-outline-pane";
   const editor  = document.createElement("div"); editor.className  = "editor-pane";
   body.appendChild(outline); body.appendChild(editor);
 
-  view.appendChild(bar); view.appendChild(body);
+  const foot = document.createElement("div"); foot.className = "studio-foot";
+  foot.innerHTML = `
+    <button class="scope-toggle" id="st-scope" title="Toggle stats scope">Book</button>
+    <span class="stat" id="st-words-stat"><strong>0</strong>words</span>
+    <span class="sep-dot"></span>
+    <span class="stat" id="st-chars-stat"><strong>0</strong>characters</span>
+    <span class="sep-dot"></span>
+    <span class="stat" id="st-pages-stat"><strong>0</strong>pages</span>
+    <span class="spacer"></span>
+    <span class="stat" style="font-size:11.5px;">~${WORDS_PER_PAGE} words/page</span>
+  `;
+
+  view.appendChild(bar); view.appendChild(body); view.appendChild(foot);
   studioMount.replaceChildren(view);
 
-  // Wire up bar
-  document.getElementById("st-back").addEventListener("click", () => {
-    closeStudio();
-    navigate("studio");
-  });
+  document.getElementById("st-back").addEventListener("click", () => { closeStudio(); navigate("studio"); });
   document.getElementById("st-outline").addEventListener("click", () => {
     outlineCollapsed = !outlineCollapsed;
     body.classList.toggle("outline-collapsed", outlineCollapsed);
   });
+  document.getElementById("st-scope").addEventListener("click", () => {
+    statsScope = statsScope === "book" ? "section" : "book";
+    updateStats();
+  });
 
   renderOutline(book);
   renderSectionEditor(book, sec);
-  updateWordCount();
+  updateStats();
 }
 
 function renderOutline(book) {
@@ -1304,7 +1416,7 @@ function outlineRow(book, sec) {
     saveStudio(studio);
     renderOutline(book);
     renderSectionEditor(book, sec);
-    updateWordCount();
+    updateStats();
   });
   row.querySelectorAll(".or-actions button").forEach(b => {
     b.addEventListener("click", (e) => {
@@ -1363,8 +1475,8 @@ function moveSection(book, sec, dir) {
   renderOutline(studio.books[book.id]);
 }
 function deleteSection(book, sec) {
-  if (sec.type === "cover" || sec.type === "title-page") {
-    alert("Can't delete cover or title page."); return;
+  if (sec.type === "cover") {
+    alert("Can't delete the cover."); return;
   }
   if (!confirm(`Delete "${sec.title}"? This can't be undone.`)) return;
   const studio = loadStudio();
@@ -1378,7 +1490,7 @@ function deleteSection(book, sec) {
   renderOutline(studio.books[book.id]);
   const newActive = arr.find(x => x.id === activeSectionId);
   renderSectionEditor(studio.books[book.id], newActive);
-  updateWordCount();
+  updateStats();
 }
 function openAddMenu(anchor, group, book) {
   // simple prompt-based add (minimal UI)
@@ -1417,7 +1529,7 @@ function insertSectionAtEndOfGroup(book, sec, groupId) {
   activeSectionId = sec.id;
   renderOutline(studio.books[book.id]);
   renderSectionEditor(studio.books[book.id], sec);
-  updateWordCount();
+  updateStats();
 }
 
 function renderSectionEditor(book, sec) {
@@ -1427,7 +1539,6 @@ function renderSectionEditor(book, sec) {
 
   const meta = SECTION_TYPES[sec.type] || { label: "Section" };
   const shell = document.createElement("div"); shell.className = "editor-shell";
-  const isTitlePage = sec.type === "title-page";
   shell.innerHTML = `
     <div class="editor-eyebrow">${escapeHtml(meta.label)}</div>
     <input type="text" class="editor-heading" value="${escapeAttr(sec.title)}" />
@@ -1480,23 +1591,18 @@ function renderSectionEditor(book, sec) {
     sec.title = heading.value || meta.label;
     scheduleSave(/*titleOnly*/ true);
   });
-  if (isTitlePage && (!sec.content || !sec.content.trim())) {
-    // helpful default for the title page
-    content.innerHTML = `<p style="text-align:center;font-size:1.3em;font-weight:600;">${escapeHtml(book.title)}</p><p style="text-align:center;">${escapeHtml(book.author || "")}</p>`;
-    persistContent(content);
-  }
 }
 
 function renderCoverEditor(book, pane) {
   const shell = document.createElement("div"); shell.className = "editor-shell";
   shell.innerHTML = `
     <div class="editor-eyebrow">Cover</div>
-    <h1 class="editor-heading" style="margin-bottom:6px;">Cover &amp; Metadata</h1>
-    <p style="color:var(--muted);font-size:13.5px;margin:0 0 22px;">Pick a color and edit the title and author. Used in the library and on the title page.</p>
+    <h1 class="editor-heading" style="margin-bottom:6px;">Cover</h1>
+    <p style="color:var(--muted);font-size:13.5px;margin:0 0 22px;">Upload your own image, or pick a color. Title and author appear on the cover.</p>
     <div class="cover-editor">
-      <div class="cover-preview" id="cv-prev" style="background:${coverGradient(book.cover.color)}">
+      <div class="cover-preview" id="cv-prev">
         <div></div>
-        <div>
+        <div class="cp-text">
           <div class="cp-title" id="cv-prev-title"></div>
           <div class="cp-author" id="cv-prev-author"></div>
         </div>
@@ -1511,7 +1617,18 @@ function renderCoverEditor(book, pane) {
           <input id="cv-author" type="text" value="${escapeAttr(book.author || '')}" />
         </div>
         <div class="field">
-          <label>Color</label>
+          <label>Image</label>
+          <div class="image-row">
+            <label class="file-label">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="10" height="8" rx="1.2"/><circle cx="5" cy="6.5" r="1"/><path d="M2 9.5l3-3 3 3 4-4"/></svg>
+              <span>${book.cover.image ? "Replace image" : "Upload image"}</span>
+              <input id="cv-file" type="file" accept="image/*" />
+            </label>
+            ${book.cover.image ? `<button type="button" class="link-danger" id="cv-remove-img">Remove image</button>` : ""}
+          </div>
+        </div>
+        <div class="field" id="cv-color-field" ${book.cover.image ? 'style="opacity:0.55;"' : ""}>
+          <label>Or pick a color</label>
           <div class="swatches" id="cv-swatches"></div>
         </div>
       </div>
@@ -1519,40 +1636,106 @@ function renderCoverEditor(book, pane) {
   `;
   pane.replaceChildren(shell);
 
-  const titleEl = document.getElementById("cv-title");
+  const titleEl  = document.getElementById("cv-title");
   const authorEl = document.getElementById("cv-author");
-  const prevTitle = document.getElementById("cv-prev-title");
+  const prevTitle  = document.getElementById("cv-prev-title");
   const prevAuthor = document.getElementById("cv-prev-author");
   const prev = document.getElementById("cv-prev");
   const swatches = document.getElementById("cv-swatches");
+  const fileInput = document.getElementById("cv-file");
+  const removeBtn = document.getElementById("cv-remove-img");
 
-  prevTitle.textContent = book.title;
+  prevTitle.textContent  = book.title;
   prevAuthor.textContent = book.author || "";
+  applyCoverPreview(prev, book);
 
   for (const p of COVER_PALETTE) {
     const s = document.createElement("button");
-    s.className = "swatch" + (book.cover.color === p.id ? " selected" : "");
+    s.className = "swatch" + (book.cover.color === p.id && !book.cover.image ? " selected" : "");
     s.style.background = p.bg;
     s.title = p.id;
     s.addEventListener("click", () => {
       book.cover.color = p.id;
-      prev.style.background = p.bg;
+      // Picking a color clears the image
+      book.cover.image = null;
+      applyCoverPreview(prev, book);
       swatches.querySelectorAll(".swatch").forEach(x => x.classList.remove("selected"));
       s.classList.add("selected");
+      document.getElementById("cv-color-field").style.opacity = "1";
       persistBookMeta(book);
+      renderCoverEditor(book, pane);  // refresh image-row UI
     });
     swatches.appendChild(s);
   }
+
   titleEl.addEventListener("input", () => {
     book.title = titleEl.value || "Untitled";
     prevTitle.textContent = book.title;
-    document.getElementById("st-title-disp").textContent = book.title;
+    const disp = document.getElementById("st-title-disp"); if (disp) disp.textContent = book.title;
     persistBookMeta(book);
   });
   authorEl.addEventListener("input", () => {
     book.author = authorEl.value;
     prevAuthor.textContent = book.author || "";
     persistBookMeta(book);
+  });
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    try {
+      const dataUrl = await fileToDataUrl(file, 900, 0.85);
+      book.cover.image = dataUrl;
+      applyCoverPreview(prev, book);
+      persistBookMeta(book);
+      renderCoverEditor(book, pane);  // refresh to show "Remove image"
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't read that image. Try a different file.");
+    }
+  });
+
+  if (removeBtn) {
+    removeBtn.addEventListener("click", () => {
+      book.cover.image = null;
+      applyCoverPreview(prev, book);
+      persistBookMeta(book);
+      renderCoverEditor(book, pane);
+    });
+  }
+}
+
+function applyCoverPreview(el, book) {
+  if (book.cover.image) {
+    el.style.background = `url('${book.cover.image}') center / cover no-repeat`;
+    el.classList.add("has-image");
+  } else {
+    el.style.background = coverGradient(book.cover.color);
+    el.classList.remove("has-image");
+  }
+}
+
+function fileToDataUrl(file, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("bad image"));
+      img.onload = () => {
+        const w0 = img.naturalWidth, h0 = img.naturalHeight;
+        const ratio = Math.min(1, maxWidth / w0);
+        const w = Math.round(w0 * ratio), h = Math.round(h0 * ratio);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        try { resolve(canvas.toDataURL("image/jpeg", quality)); }
+        catch (e) { reject(e); }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
   });
 }
 
@@ -1573,7 +1756,7 @@ function persistContent(content) {
   b.updatedAt = Date.now();
   saveStudio(studio);
   setStatus("Saved");
-  updateWordCount();
+  updateStats();
   // refresh the row's word count quietly
   renderOutline(b);
 }
@@ -1612,12 +1795,24 @@ function setStatus(text) {
   const el = document.getElementById("st-status");
   if (el) el.textContent = text;
 }
-function updateWordCount() {
+function updateStats() {
   const studio = loadStudio();
   const b = studio.books[activeBookId]; if (!b) return;
-  const w = bookWordCount(b);
-  const el = document.getElementById("st-words");
-  if (el) el.textContent = w.toLocaleString() + " words";
+  const sec = b.sections.find(s => s.id === activeSectionId);
+  const isCover = sec && sec.type === "cover";
+  // Cover has no body content; force scope to book for stats.
+  const effectiveScope = isCover ? "book" : statsScope;
+  const stats = effectiveScope === "book"
+    ? bookStats(b)
+    : (sec ? statsFor(sec.content) : { words: 0, chars: 0, pages: 0 });
+  const w = document.getElementById("st-words-stat");
+  const c = document.getElementById("st-chars-stat");
+  const p = document.getElementById("st-pages-stat");
+  const t = document.getElementById("st-scope");
+  if (w) w.innerHTML = `<strong>${stats.words.toLocaleString()}</strong> ${stats.words === 1 ? "word" : "words"}`;
+  if (c) c.innerHTML = `<strong>${stats.chars.toLocaleString()}</strong> ${stats.chars === 1 ? "character" : "characters"}`;
+  if (p) p.innerHTML = `<strong>${stats.pages.toLocaleString()}</strong> ${stats.pages === 1 ? "page" : "pages"}`;
+  if (t) t.textContent = effectiveScope === "book" ? "Book" : "Section";
 }
 function placeCaretAtEnd(el) {
   el.focus();
