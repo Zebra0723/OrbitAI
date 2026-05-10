@@ -192,6 +192,27 @@
     gap: 2px;
     margin-bottom: 22px;
   }
+  .refresh-row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+  .refresh-row .section-tabs { margin-bottom: 0; }
+  .refresh-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 7px 13px; border-radius: 999px;
+    font-size: 13px; font-weight: 600;
+  }
+  .refresh-btn:hover { background: var(--line-soft); }
+  .refresh-btn:disabled { opacity: 0.6; cursor: progress; }
+  .refresh-btn svg { width: 13px; height: 13px; }
+  .refresh-btn.spinning svg { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .refresh-status {
+    font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .refresh-status.error { color: var(--warn); }
   .tab-btn {
     background: transparent; border: none;
     padding: 7px 14px; border-radius: 999px;
@@ -673,6 +694,42 @@ const REMINDERS_KEY  = "vortex_reminders";
 const VOTES_KEY      = "vortex_votes";
 const STUDIO_KEY     = "vortex_studio";
 const LEGACY_JOY_KEY = "vortex_joy_draft";
+const OVERLAY_KEY    = "vortex_overlay";
+
+// Live RSS feeds for on-command refresh (mirrors scripts/refresh-content.mjs).
+const LIVE_FEEDS = {
+  tennis: [
+    "https://www.reddit.com/r/tennis/.rss",
+    "https://www.tennis.com/rss/all",
+  ],
+  rabbit: [
+    "https://aeon.co/feed.rss",
+    "https://www.atlasobscura.com/feeds/latest",
+    "https://www.quantamagazine.org/feed/",
+  ],
+  books: [
+    "https://lithub.com/feed/",
+    "https://www.themarginalian.org/feed/",
+    "https://feeds.npr.org/1032/rss.xml",
+  ],
+  author: [
+    "https://janefriedman.com/feed/",
+    "https://lithub.com/feed/",
+  ],
+  engineer: [
+    "https://hackaday.com/feed/",
+    "https://makezine.com/feed/",
+    "https://blog.adafruit.com/feed/",
+  ],
+  radar: [
+    "https://www.theverge.com/rss/index.xml",
+    "https://www.wired.com/feed/rss",
+  ],
+  // prestige: no live feeds — the daily script keeps the seed
+};
+// Public CORS proxy used only for on-command refresh. The daily cron
+// pulls feeds directly server-side, so this proxy is not on the hot path.
+const CORS_PROXY = "https://api.allorigins.win/raw?url=";
 
 /* ── Section catalogue ────────────────────────────────────────── */
 
@@ -935,9 +992,168 @@ function updateLastUpdated() {
 function loadVotes() { try { return JSON.parse(localStorage.getItem(VOTES_KEY) || "{}"); } catch { return {}; } }
 function saveVotes(v) { localStorage.setItem(VOTES_KEY, JSON.stringify(v)); }
 
+/* ── On-command refresh (live RSS via CORS proxy) ────────────── */
+
+function loadOverlay() { try { return JSON.parse(localStorage.getItem(OVERLAY_KEY) || "{}"); } catch { return {}; } }
+function saveOverlay(o) { localStorage.setItem(OVERLAY_KEY, JSON.stringify(o)); }
+
+function stripText(html) {
+  if (!html) return "";
+  return String(html)
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function trimBody(s, max) {
+  const t = stripText(s);
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const sp = cut.lastIndexOf(" ");
+  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).trim() + "…";
+}
+
+function parseRss(xml, sectionKey, sourceUrl) {
+  let doc;
+  try { doc = new DOMParser().parseFromString(xml, "text/xml"); }
+  catch { return []; }
+  if (doc.querySelector("parsererror")) return [];
+  let items = Array.from(doc.querySelectorAll("item"));
+  let isAtom = false;
+  if (items.length === 0) { items = Array.from(doc.querySelectorAll("entry")); isAtom = true; }
+  const feedTitleEl = doc.querySelector("channel > title") || doc.querySelector("feed > title");
+  let sourceTitle = feedTitleEl ? feedTitleEl.textContent.trim() : "";
+  if (!sourceTitle) {
+    try { sourceTitle = new URL(sourceUrl).hostname.replace(/^www\./, ""); } catch { sourceTitle = "Feed"; }
+  }
+  const tag = sourceTitle.length > 22 ? sourceTitle.slice(0, 22) + "…" : sourceTitle;
+  const out = [];
+  for (const it of items.slice(0, 6)) {
+    const titleRaw = it.querySelector("title")?.textContent || "";
+    const title = stripText(titleRaw);
+    if (!title) continue;
+    let link = null;
+    if (isAtom) {
+      const linkEls = Array.from(it.querySelectorAll("link"));
+      const alt = linkEls.find(l => !l.getAttribute("rel") || l.getAttribute("rel") === "alternate") || linkEls[0];
+      link = alt?.getAttribute("href") || null;
+    } else {
+      const le = it.querySelector("link");
+      link = (le?.textContent || "").trim() || null;
+    }
+    const cnt = it.querySelector("description") || it.querySelector("summary") || it.querySelector("content");
+    const body = trimBody(cnt?.textContent || "", 320);
+    const pub = (it.querySelector("pubDate")?.textContent || it.querySelector("updated")?.textContent || it.querySelector("published")?.textContent || "").trim() || null;
+    const idSeed = (link || title).replace(/[^a-z0-9]/gi, "").slice(-60);
+    out.push({ id: "live-" + sectionKey + "-" + idSeed, tag, title, body: body || title, link, published: pub });
+  }
+  return out;
+}
+
+async function fetchFeed(url) {
+  const target = CORS_PROXY + encodeURIComponent(url);
+  const resp = await fetch(target, { cache: "no-store" });
+  if (!resp.ok) throw new Error("HTTP " + resp.status);
+  return await resp.text();
+}
+
+async function refreshSection(key, btn, statusEl) {
+  const urls = LIVE_FEEDS[key];
+  if (!urls || !urls.length) {
+    if (statusEl) statusEl.textContent = "No live feeds for this section.";
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.classList.add("spinning"); }
+  if (statusEl) { statusEl.textContent = "Fetching latest…"; statusEl.classList.remove("error"); }
+  const fetched = [];
+  let failures = 0;
+  await Promise.all(urls.map(async (u) => {
+    try {
+      const xml = await fetchFeed(u);
+      fetched.push(...parseRss(xml, key, u));
+    } catch (err) {
+      failures++;
+      console.error("refresh failed for", u, err);
+    }
+  }));
+
+  if (!fetched.length) {
+    if (btn) { btn.disabled = false; btn.classList.remove("spinning"); }
+    if (statusEl) {
+      statusEl.classList.add("error");
+      statusEl.textContent = failures === urls.length
+        ? "Couldn't reach feeds (network or proxy)."
+        : "Nothing new found.";
+    }
+    return;
+  }
+
+  // Merge into overlay, dedupe against itself AND the daily content.
+  const overlay = loadOverlay();
+  const seenKeys = new Set();
+  const baseline = (CONTENT && CONTENT[key]) || [];
+  for (const it of baseline) {
+    const k = (it.link || it.title || "").trim().toLowerCase();
+    if (k) seenKeys.add(k);
+  }
+  const merged = [...fetched, ...(overlay[key] || [])];
+  const dedupd = [];
+  for (const it of merged) {
+    const k = (it.link || it.title || "").trim().toLowerCase();
+    if (!k) continue;
+    if (seenKeys.has(k)) continue;
+    seenKeys.add(k);
+    dedupd.push(it);
+  }
+  dedupd.sort((a, b) => {
+    const ta = a.published ? Date.parse(a.published) : 0;
+    const tb = b.published ? Date.parse(b.published) : 0;
+    return tb - ta;
+  });
+  overlay[key] = dedupd.slice(0, 30);
+  if (!overlay._sectionUpdated) overlay._sectionUpdated = {};
+  overlay._sectionUpdated[key] = Date.now();
+  saveOverlay(overlay);
+
+  if (btn) { btn.disabled = false; btn.classList.remove("spinning"); }
+  const fresh = overlay[key].length - (loadOverlay()[key]?.length ? 0 : 0); // overlay length now
+  if (statusEl) statusEl.textContent = `Updated · ${overlay[key].length} fresh items`;
+  if (currentView === "section:" + key) renderSection(key);
+}
+
+function getSectionItems(key) {
+  const baseline = (CONTENT && CONTENT[key]) || [];
+  const overlay = loadOverlay()[key] || [];
+  if (!overlay.length) return baseline;
+  // Overlay items first (they're "fresh"), then baseline; dedupe on link or title.
+  const combined = [...overlay, ...baseline];
+  const seen = new Set();
+  const out = [];
+  for (const it of combined) {
+    const k = (it.link || it.title || "").trim().toLowerCase();
+    if (!k) { out.push(it); continue; }
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(it);
+  }
+  return out;
+}
+
+function manualRefreshTimeFor(key) {
+  const m = (loadOverlay()._sectionUpdated || {})[key];
+  return m || null;
+}
+
 function tagAffinity(sectionKey) {
   const votes = loadVotes();
-  const items = (CONTENT && CONTENT[sectionKey]) || [];
+  const items = getSectionItems(sectionKey);
   const aff = {};
   for (const it of items) {
     const v = votes[it.id]; if (!v) continue;
@@ -973,7 +1189,7 @@ function starredBySection() {
   const votes = loadVotes();
   const out = {};
   for (const s of SECTIONS) {
-    const items = ((CONTENT && CONTENT[s.key]) || []).filter(it => votes[it.id] === "save");
+    const items = getSectionItems(s.key).filter(it => votes[it.id] === "save");
     if (items.length) out[s.key] = items;
   }
   return out;
@@ -1035,11 +1251,14 @@ function pageHead(title, sub) {
 
 function renderSection(key) {
   const s = SECTION_BY_KEY[key]; if (!s) return renderHome();
-  const items = (CONTENT && CONTENT[key]) || [];
+  const items = getSectionItems(key);
   const votes = loadVotes();
   const starredCount = items.filter(it => votes[it.id] === "save").length;
+  const hasLive = !!LIVE_FEEDS[key];
 
   const head = pageHead(s.label, s.desc);
+
+  const row = document.createElement("div"); row.className = "refresh-row";
 
   const tabs = document.createElement("div"); tabs.className = "section-tabs";
   tabs.innerHTML = `
@@ -1049,6 +1268,27 @@ function renderSection(key) {
   tabs.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => {
     currentTab = b.dataset.tab; renderSection(key);
   }));
+  row.appendChild(tabs);
+
+  if (hasLive) {
+    const btn = document.createElement("button");
+    btn.className = "refresh-btn";
+    btn.title = "Pull fresh items now (the daily refresh keeps running on its own schedule).";
+    btn.innerHTML = `
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 7a5 5 0 1 1-1.5-3.5"/>
+        <path d="M12 2v3h-3"/>
+      </svg>
+      Refresh now
+    `;
+    const status = document.createElement("span");
+    status.className = "refresh-status";
+    const last = manualRefreshTimeFor(key);
+    if (last) status.textContent = "Last refresh " + relTime(last);
+    btn.addEventListener("click", () => refreshSection(key, btn, status));
+    row.appendChild(btn);
+    row.appendChild(status);
+  }
 
   const list = document.createElement("div");
   let visible = currentTab === "starred"
@@ -1066,7 +1306,7 @@ function renderSection(key) {
     for (const it of visible) grid.appendChild(makeItem(it));
     list.appendChild(grid);
   }
-  main.replaceChildren(head, tabs, list);
+  main.replaceChildren(head, row, list);
 }
 
 function makeItem(it) {
