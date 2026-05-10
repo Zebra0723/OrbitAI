@@ -771,10 +771,13 @@ const LEGACY_JOY_KEY = "vortex_joy_draft";
 const OVERLAY_KEY    = "vortex_overlay";
 
 // Live RSS feeds for on-command refresh (mirrors scripts/refresh-content.mjs).
+// Note: Reddit/Twitter/etc. are intentionally excluded — they 403 most CORS
+// proxies. These are all plain RSS/Atom feeds that public proxies can fetch.
 const LIVE_FEEDS = {
   tennis: [
-    "https://www.reddit.com/r/tennis/.rss",
+    "https://www.atptour.com/en/media/rss-feed/xml-feed",
     "https://www.tennis.com/rss/all",
+    "https://www.si.com/.rss/full/tennis",
   ],
   rabbit: [
     "https://aeon.co/feed.rss",
@@ -784,11 +787,12 @@ const LIVE_FEEDS = {
   books: [
     "https://lithub.com/feed/",
     "https://www.themarginalian.org/feed/",
-    "https://feeds.npr.org/1032/rss.xml",
+    "https://www.publishersweekly.com/rss/childrens.xml",
   ],
   author: [
     "https://janefriedman.com/feed/",
     "https://lithub.com/feed/",
+    "https://writerunboxed.com/feed/",
   ],
   engineer: [
     "https://hackaday.com/feed/",
@@ -798,12 +802,18 @@ const LIVE_FEEDS = {
   radar: [
     "https://www.theverge.com/rss/index.xml",
     "https://www.wired.com/feed/rss",
+    "https://arstechnica.com/feed/",
   ],
   // prestige: no live feeds — the daily script keeps the seed
 };
-// Public CORS proxy used only for on-command refresh. The daily cron
-// pulls feeds directly server-side, so this proxy is not on the hot path.
-const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+// Public CORS proxies tried in order. The daily cron fetches feeds
+// server-side without a proxy; this chain only matters for the
+// in-browser "Refresh now" button.
+const CORS_PROXIES = [
+  (url) => "https://corsproxy.io/?url=" + encodeURIComponent(url),
+  (url) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
+  (url) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url),
+];
 
 /* ── Section catalogue ────────────────────────────────────────── */
 
@@ -1093,6 +1103,10 @@ function trimBody(s, max) {
   const sp = cut.lastIndexOf(" ");
   return (sp > max * 0.6 ? cut.slice(0, sp) : cut).trim() + "…";
 }
+function shortHost(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ""); }
+  catch { return url; }
+}
 
 function parseRss(xml, sectionKey, sourceUrl) {
   let doc;
@@ -1132,10 +1146,25 @@ function parseRss(xml, sectionKey, sourceUrl) {
 }
 
 async function fetchFeed(url) {
-  const target = CORS_PROXY + encodeURIComponent(url);
-  const resp = await fetch(target, { cache: "no-store" });
-  if (!resp.ok) throw new Error("HTTP " + resp.status);
-  return await resp.text();
+  let lastErr = null;
+  for (const buildProxy of CORS_PROXIES) {
+    const target = buildProxy(url);
+    try {
+      const resp = await fetch(target, { cache: "no-store", redirect: "follow" });
+      if (!resp.ok) { lastErr = new Error("HTTP " + resp.status); continue; }
+      const txt = await resp.text();
+      // Sanity check: must look like XML, not an HTML error page.
+      const head = txt.slice(0, 400).toLowerCase();
+      if (!head.includes("<rss") && !head.includes("<feed") && !head.includes("<?xml") && !head.includes("<channel")) {
+        lastErr = new Error("Proxy returned non-XML");
+        continue;
+      }
+      return txt;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error("All proxies failed");
 }
 
 async function refreshSection(key, btn, statusEl) {
@@ -1145,16 +1174,20 @@ async function refreshSection(key, btn, statusEl) {
     return;
   }
   if (btn) { btn.disabled = true; btn.classList.add("spinning"); }
-  if (statusEl) { statusEl.textContent = "Fetching latest…"; statusEl.classList.remove("error"); }
+  if (statusEl) { statusEl.textContent = `Fetching ${urls.length} feeds…`; statusEl.classList.remove("error"); }
   const fetched = [];
   let failures = 0;
+  const errors = [];
   await Promise.all(urls.map(async (u) => {
     try {
       const xml = await fetchFeed(u);
-      fetched.push(...parseRss(xml, key, u));
+      const items = parseRss(xml, key, u);
+      if (!items.length) errors.push(`empty: ${shortHost(u)}`);
+      fetched.push(...items);
     } catch (err) {
       failures++;
-      console.error("refresh failed for", u, err);
+      errors.push(`${shortHost(u)} (${err.message})`);
+      console.error("[refresh] failed:", u, err);
     }
   }));
 
@@ -1163,42 +1196,49 @@ async function refreshSection(key, btn, statusEl) {
     if (statusEl) {
       statusEl.classList.add("error");
       statusEl.textContent = failures === urls.length
-        ? "Couldn't reach feeds (network or proxy)."
-        : "Nothing new found.";
+        ? `All ${urls.length} feeds blocked. Check console.`
+        : "No new items returned.";
+      statusEl.title = errors.join(" · ");
     }
     return;
   }
 
-  // Merge into overlay, dedupe against itself AND the daily content.
+  // Merge into overlay, dedupe against baseline AND existing overlay.
   const overlay = loadOverlay();
-  const seenKeys = new Set();
   const baseline = (CONTENT && CONTENT[key]) || [];
-  for (const it of baseline) {
-    const k = (it.link || it.title || "").trim().toLowerCase();
-    if (k) seenKeys.add(k);
+  const existingOverlay = overlay[key] || [];
+  const knownKeys = new Set();
+  const keyOf = (it) => (it.link || it.title || "").trim().toLowerCase();
+  for (const it of baseline) { const k = keyOf(it); if (k) knownKeys.add(k); }
+  for (const it of existingOverlay) { const k = keyOf(it); if (k) knownKeys.add(k); }
+
+  let newCount = 0;
+  const seen = new Set();
+  const combined = [];
+  for (const it of [...fetched, ...existingOverlay]) {
+    const k = keyOf(it); if (!k || seen.has(k)) continue;
+    seen.add(k);
+    if (!knownKeys.has(k)) newCount++;
+    combined.push(it);
+    knownKeys.add(k);
   }
-  const merged = [...fetched, ...(overlay[key] || [])];
-  const dedupd = [];
-  for (const it of merged) {
-    const k = (it.link || it.title || "").trim().toLowerCase();
-    if (!k) continue;
-    if (seenKeys.has(k)) continue;
-    seenKeys.add(k);
-    dedupd.push(it);
-  }
-  dedupd.sort((a, b) => {
+  combined.sort((a, b) => {
     const ta = a.published ? Date.parse(a.published) : 0;
     const tb = b.published ? Date.parse(b.published) : 0;
     return tb - ta;
   });
-  overlay[key] = dedupd.slice(0, 30);
+  overlay[key] = combined.slice(0, 30);
   if (!overlay._sectionUpdated) overlay._sectionUpdated = {};
   overlay._sectionUpdated[key] = Date.now();
   saveOverlay(overlay);
 
   if (btn) { btn.disabled = false; btn.classList.remove("spinning"); }
-  const fresh = overlay[key].length - (loadOverlay()[key]?.length ? 0 : 0); // overlay length now
-  if (statusEl) statusEl.textContent = `Updated · ${overlay[key].length} fresh items`;
+  if (statusEl) {
+    statusEl.classList.remove("error");
+    if (newCount === 0) statusEl.textContent = "Up to date — no new items.";
+    else statusEl.textContent = `+${newCount} new ${newCount === 1 ? "item" : "items"}`;
+    if (failures) statusEl.textContent += ` (${failures} feed${failures === 1 ? "" : "s"} failed)`;
+  }
   if (currentView === "section:" + key) renderSection(key);
 }
 
