@@ -213,6 +213,80 @@
     font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums;
   }
   .refresh-status.error { color: var(--warn); }
+
+  /* Custom modal (replaces native prompt/confirm) */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15, 18, 26, 0.42);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200;
+    animation: modalFade 0.14s ease-out;
+  }
+  @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 24px 60px -12px rgba(15, 18, 26, 0.35);
+    width: min(420px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    overflow: auto;
+    padding: 22px;
+    animation: modalRise 0.18s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes modalRise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .modal h3 {
+    margin: 0 0 4px; font-size: 17px; font-weight: 600; color: var(--ink);
+  }
+  .modal .modal-sub {
+    margin: 0 0 16px; font-size: 13px; color: var(--muted);
+  }
+  .modal-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .modal-option {
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .modal-option:hover, .modal-option:focus-visible {
+    background: var(--line-soft);
+    border-color: var(--ink);
+    outline: none;
+  }
+  .modal-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .modal-field label {
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .modal-field input {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 14px; color: var(--ink);
+    font-family: inherit;
+  }
+  .modal-field input:focus {
+    outline: none; border-color: var(--ink);
+  }
+  .modal-actions {
+    display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;
+  }
+  .modal-actions button {
+    padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    border: 1px solid var(--line);
+  }
+  .modal-actions .btn-cancel { background: transparent; color: var(--muted); }
+  .modal-actions .btn-cancel:hover { background: var(--line-soft); color: var(--ink); }
+  .modal-actions .btn-ok { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .modal-actions .btn-ok:hover { opacity: 0.88; }
   .tab-btn {
     background: transparent; border: none;
     padding: 7px 14px; border-radius: 999px;
@@ -1151,6 +1225,113 @@ function manualRefreshTimeFor(key) {
   return m || null;
 }
 
+/* ── Custom modal (replaces native prompt) ────────────────────── */
+
+function openModal(buildBody) {
+  return new Promise((resolve) => {
+    const back = document.createElement("div"); back.className = "modal-backdrop";
+    const modal = document.createElement("div"); modal.className = "modal";
+    back.appendChild(modal);
+    let settled = false;
+    const close = (val) => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener("keydown", onKey);
+      back.remove();
+      resolve(val);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); close(null); }
+    };
+    back.addEventListener("mousedown", (e) => { if (e.target === back) close(null); });
+    document.addEventListener("keydown", onKey);
+    buildBody(modal, close);
+    document.body.appendChild(back);
+    const focusable = modal.querySelector("input, button");
+    if (focusable) focusable.focus();
+  });
+}
+
+function confirmModal({ title, subtitle, okLabel = "OK", danger = false }) {
+  return openModal((modal, close) => {
+    const h = document.createElement("h3"); h.textContent = title; modal.appendChild(h);
+    if (subtitle) { const p = document.createElement("p"); p.className = "modal-sub"; p.textContent = subtitle; modal.appendChild(p); }
+    const actions = document.createElement("div"); actions.className = "modal-actions";
+    const cancel = document.createElement("button"); cancel.className = "btn-cancel"; cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => close(false));
+    const ok = document.createElement("button"); ok.className = "btn-ok"; ok.textContent = okLabel;
+    if (danger) ok.style.background = "var(--warn, #b9362a)";
+    ok.addEventListener("click", () => close(true));
+    actions.appendChild(cancel); actions.appendChild(ok);
+    modal.appendChild(actions);
+  });
+}
+function infoModal({ title, subtitle }) {
+  return openModal((modal, close) => {
+    const h = document.createElement("h3"); h.textContent = title; modal.appendChild(h);
+    if (subtitle) { const p = document.createElement("p"); p.className = "modal-sub"; p.textContent = subtitle; modal.appendChild(p); }
+    const actions = document.createElement("div"); actions.className = "modal-actions";
+    const ok = document.createElement("button"); ok.className = "btn-ok"; ok.textContent = "OK";
+    ok.addEventListener("click", () => close(true));
+    actions.appendChild(ok);
+    modal.appendChild(actions);
+  });
+}
+
+function pickModal({ title, subtitle, options }) {
+  return openModal((modal, close) => {
+    const h = document.createElement("h3"); h.textContent = title; modal.appendChild(h);
+    if (subtitle) { const p = document.createElement("p"); p.className = "modal-sub"; p.textContent = subtitle; modal.appendChild(p); }
+    const list = document.createElement("div"); list.className = "modal-options";
+    for (const opt of options) {
+      const b = document.createElement("button"); b.className = "modal-option";
+      b.textContent = opt.label;
+      b.addEventListener("click", () => close(opt.value));
+      list.appendChild(b);
+    }
+    modal.appendChild(list);
+    const actions = document.createElement("div"); actions.className = "modal-actions";
+    const cancel = document.createElement("button"); cancel.className = "btn-cancel"; cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => close(null));
+    actions.appendChild(cancel);
+    modal.appendChild(actions);
+  });
+}
+
+function formModal({ title, subtitle, fields, okLabel = "Create" }) {
+  return openModal((modal, close) => {
+    const h = document.createElement("h3"); h.textContent = title; modal.appendChild(h);
+    if (subtitle) { const p = document.createElement("p"); p.className = "modal-sub"; p.textContent = subtitle; modal.appendChild(p); }
+    const form = document.createElement("form");
+    const inputs = {};
+    for (const f of fields) {
+      const wrap = document.createElement("div"); wrap.className = "modal-field";
+      const lab = document.createElement("label"); lab.textContent = f.label; lab.htmlFor = "mf_" + f.name;
+      const inp = document.createElement("input");
+      inp.id = "mf_" + f.name;
+      inp.type = "text";
+      inp.value = f.value || "";
+      if (f.placeholder) inp.placeholder = f.placeholder;
+      wrap.appendChild(lab); wrap.appendChild(inp);
+      form.appendChild(wrap);
+      inputs[f.name] = inp;
+    }
+    const actions = document.createElement("div"); actions.className = "modal-actions";
+    const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn-cancel"; cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => close(null));
+    const ok = document.createElement("button"); ok.type = "submit"; ok.className = "btn-ok"; ok.textContent = okLabel;
+    actions.appendChild(cancel); actions.appendChild(ok);
+    form.appendChild(actions);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const out = {};
+      for (const k in inputs) out[k] = inputs[k].value.trim();
+      close(out);
+    });
+    modal.appendChild(form);
+  });
+}
+
 function tagAffinity(sectionKey) {
   const votes = loadVotes();
   const items = getSectionItems(sectionKey);
@@ -1466,10 +1647,18 @@ function renderStudioLibrary() {
   const left = document.createElement("div");
   const newBtn = document.createElement("button"); newBtn.className = "btn-primary";
   newBtn.innerHTML = `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 2v10M2 7h10"/></svg> New Book`;
-  newBtn.addEventListener("click", () => {
-    const title = prompt("Book title?", "Untitled"); if (title === null) return;
-    const author = prompt("Author?", "Arjun") || "";
-    const b = newBook(title.trim() || "Untitled", author.trim());
+  newBtn.addEventListener("click", async () => {
+    const result = await formModal({
+      title: "New book",
+      subtitle: "You can change these later from the editor.",
+      fields: [
+        { name: "title", label: "Title", value: "Untitled" },
+        { name: "author", label: "Author", value: "Arjun" },
+      ],
+      okLabel: "Create book",
+    });
+    if (!result) return;
+    const b = newBook(result.title || "Untitled", result.author || "");
     studio.books[b.id] = b; studio.activeBookId = b.id;
     saveStudio(studio); openStudio(b.id);
   });
@@ -1714,11 +1903,18 @@ function moveSection(book, sec, dir) {
   saveStudio(studio);
   renderOutline(studio.books[book.id]);
 }
-function deleteSection(book, sec) {
+async function deleteSection(book, sec) {
   if (sec.type === "cover") {
-    alert("Can't delete the cover."); return;
+    await infoModal({ title: "Can't delete the cover", subtitle: "Every book keeps its cover section." });
+    return;
   }
-  if (!confirm(`Delete "${sec.title}"? This can't be undone.`)) return;
+  const ok = await confirmModal({
+    title: `Delete "${sec.title}"?`,
+    subtitle: "This can't be undone.",
+    okLabel: "Delete",
+    danger: true,
+  });
+  if (!ok) return;
   const studio = loadStudio();
   const arr = studio.books[book.id].sections;
   const i = arr.findIndex(x => x.id === sec.id);
@@ -1732,24 +1928,30 @@ function deleteSection(book, sec) {
   renderSectionEditor(studio.books[book.id], newActive);
   updateStats();
 }
-function openAddMenu(anchor, group, book) {
-  // simple prompt-based add (minimal UI)
+async function openAddMenu(anchor, group, book) {
   if (group.canAddChapter) {
     const ch = book.sections.filter(s => s.type === "chapter").length;
     const sec = { id: uid(), type: "chapter", title: `Chapter ${ch + 1}`, content: "" };
     insertSectionAtEndOfGroup(book, sec, "body");
     return;
   }
-  // optional front/back items
   const types = group.optionalTypes;
   const present = new Set(book.sections.map(s => s.type));
   const opts = types.filter(t => !present.has(t) || t === "custom");
-  if (!opts.length) { alert("All " + group.label.toLowerCase() + " sections already added."); return; }
-  const labels = opts.map(t => SECTION_TYPES[t].label).join("\n  ");
-  const pick = prompt("Add which section?\n  " + labels, SECTION_TYPES[opts[0]].label);
-  if (!pick) return;
-  const t = opts.find(x => SECTION_TYPES[x].label.toLowerCase() === pick.trim().toLowerCase());
-  if (!t) { alert("Couldn't match that. Try one of: " + labels); return; }
+  if (!opts.length) {
+    await pickModal({
+      title: "Nothing to add",
+      subtitle: "All " + group.label.toLowerCase() + " sections are already in your book.",
+      options: [{ label: "Got it", value: "ok" }],
+    });
+    return;
+  }
+  const t = await pickModal({
+    title: "Add a " + group.label.toLowerCase() + " section",
+    subtitle: "Pick one to insert at the end of " + group.label.toLowerCase() + ".",
+    options: opts.map(o => ({ label: SECTION_TYPES[o].label, value: o })),
+  });
+  if (!t) return;
   const sec = { id: uid(), type: t, title: SECTION_TYPES[t].label, content: "" };
   insertSectionAtEndOfGroup(book, sec, group.id);
 }
@@ -1931,7 +2133,7 @@ function renderCoverEditor(book, pane) {
       renderCoverEditor(book, pane);  // refresh to show "Remove image"
     } catch (err) {
       console.error(err);
-      alert("Couldn't read that image. Try a different file.");
+      infoModal({ title: "Couldn't read that image", subtitle: "Try a different file (PNG or JPG, under ~5 MB)." });
     }
   });
 
