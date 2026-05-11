@@ -1,0 +1,1359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vortex Studio — Typesetter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,700;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,700;1,400;1,700&family=Crimson+Pro:ital,wght@0,400;0,700;1,400;1,700&family=Cormorant+Garamond:wght@500;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #faf8f4;
+  --surface: #ffffff;
+  --line: #e6e1d6;
+  --line-soft: #f1ede4;
+  --ink: #1c1c1c;
+  --muted: #6e6a5f;
+  --accent: #2a4a3a;
+  --warn: #b9362a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: Inter, -apple-system, system-ui, sans-serif;
+  font-size: 14px; line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+button { font-family: inherit; cursor: pointer; }
+
+/* ── Topbar ─────────────────────────────────────────────────── */
+.topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.ic-btn {
+  width: 32px; height: 32px;
+  background: transparent; border: 1px solid transparent;
+  border-radius: 8px; font-size: 16px; color: var(--ink);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.ic-btn:hover { background: var(--line-soft); }
+.brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 700; font-size: 19px; letter-spacing: 0.02em;
+  color: var(--ink); text-decoration: none;
+}
+.proj-title-input {
+  flex: 1; min-width: 0;
+  border: 1px solid transparent; background: transparent;
+  font-size: 14px; font-weight: 500; color: var(--ink);
+  padding: 6px 10px; border-radius: 6px;
+  font-family: inherit;
+}
+.proj-title-input:hover { border-color: var(--line); }
+.proj-title-input:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+.save-state {
+  font-size: 12px; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.save-state.saving { color: var(--accent); }
+.btn {
+  padding: 7px 14px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink);
+  border-radius: 999px; font-size: 13px; font-weight: 600;
+  font-family: inherit;
+}
+.btn:hover { background: var(--line-soft); }
+.btn-primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn-primary:hover { opacity: 0.88; background: var(--ink); color: var(--bg); }
+.btn-ghost { background: transparent; border: 1px solid transparent; }
+.btn-ghost:hover { background: var(--line-soft); }
+.btn-ghost.danger { color: var(--warn); }
+.btn-mini {
+  width: 24px; height: 24px; padding: 0;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); font-size: 14px; font-weight: 600;
+}
+
+/* ── App layout ─────────────────────────────────────────────── */
+.app {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) minmax(0, 1.1fr);
+  min-height: 0;
+}
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  padding-bottom: 30px;
+}
+.editor-pane {
+  display: flex; flex-direction: column;
+  min-width: 0; min-height: 0;
+  background: var(--bg);
+  border-right: 1px solid var(--line);
+}
+.preview-pane {
+  display: flex; flex-direction: column;
+  min-width: 0; min-height: 0;
+  background: #ece8df;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────── */
+.lib-bar {
+  display: flex; gap: 6px; align-items: center;
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.lib-bar select {
+  flex: 1; min-width: 0;
+  padding: 5px 8px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--surface);
+  font-size: 13px; font-family: inherit; color: var(--ink);
+}
+.chap-group { padding: 14px 0 4px; }
+.chap-group h2 {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted);
+  padding: 0 14px 6px;
+}
+.chap-list { list-style: none; }
+.chap-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px; color: var(--ink);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  user-select: none;
+}
+.chap-item:hover { background: var(--line-soft); }
+.chap-item.active {
+  background: var(--line-soft);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+.chap-item .chap-num {
+  color: var(--muted); font-size: 11px; min-width: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.chap-item .chap-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chap-item .chap-words { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.add-link {
+  display: block; width: calc(100% - 24px);
+  margin: 4px 12px 0;
+  padding: 7px 10px;
+  background: transparent; border: 1px dashed var(--line);
+  border-radius: 6px;
+  font-size: 12px; color: var(--muted); text-align: left;
+  font-family: inherit;
+}
+.add-link:hover { color: var(--ink); border-color: var(--ink); background: var(--surface); }
+
+/* ── Editor pane ────────────────────────────────────────────── */
+.ed-toolbar {
+  display: flex; gap: 8px; align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.ed-kind {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted);
+  padding: 4px 8px; background: var(--line-soft); border-radius: 999px;
+}
+.ed-title {
+  flex: 1; min-width: 0;
+  border: 1px solid transparent; background: transparent;
+  padding: 6px 10px; border-radius: 6px;
+  font-size: 15px; font-weight: 600; color: var(--ink);
+  font-family: inherit;
+}
+.ed-title:hover { border-color: var(--line); }
+.ed-title:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+.ed-body {
+  flex: 1; min-height: 0;
+  padding: 22px 32px;
+  border: none; resize: none;
+  background: transparent; color: var(--ink);
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 17px; line-height: 1.6;
+  outline: none;
+}
+.ed-stats {
+  display: flex; gap: 16px;
+  padding: 8px 14px;
+  font-size: 11px; color: var(--muted);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+.ed-empty {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 14px; padding: 40px;
+  text-align: center;
+}
+
+/* ── Preview pane ───────────────────────────────────────────── */
+.prev-toolbar {
+  display: flex; gap: 14px; align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.prev-toolbar .stat { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.prev-toolbar .stat strong { color: var(--ink); font-weight: 600; }
+.prev-toolbar .trim-stat { margin-left: auto; font-weight: 600; color: var(--ink); }
+.prev-frame {
+  flex: 1; overflow: auto;
+  padding: 22px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px;
+}
+.prev-empty {
+  margin-top: 60px; color: var(--muted); font-size: 13px; text-align: center;
+}
+.prev-frame .pagedjs_pages {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+}
+.prev-frame .pagedjs_page {
+  background: white;
+  box-shadow: 0 4px 14px -4px rgba(0,0,0,0.18);
+}
+
+/* ── Settings drawer ────────────────────────────────────────── */
+.settings-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 340px; max-width: 100vw;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  transform: translateX(100%); transition: transform 0.2s ease;
+  overflow-y: auto;
+  padding: 0 0 80px;
+  z-index: 30;
+  box-shadow: -8px 0 24px -10px rgba(0,0,0,0.1);
+}
+.settings-drawer.open { transform: none; }
+.settings-head {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.settings-head h3 { font-size: 15px; font-weight: 600; }
+.set-group { padding: 14px 18px; border-bottom: 1px solid var(--line-soft); }
+.set-group h4 {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted); margin-bottom: 8px;
+}
+.seg {
+  display: flex; gap: 4px;
+  background: var(--line-soft); padding: 3px; border-radius: 8px;
+}
+.seg button {
+  flex: 1; padding: 6px 8px;
+  background: transparent; border: 1px solid transparent;
+  border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--ink);
+  font-family: inherit;
+}
+.seg button.active {
+  background: var(--surface);
+  border-color: var(--line);
+  font-weight: 600;
+}
+.field { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; }
+.field label {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.field input, .field select {
+  width: 100%; padding: 7px 9px;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); font-size: 13px; color: var(--ink);
+  font-family: inherit;
+}
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+.field-row { display: flex; gap: 10px; padding: 6px 0; }
+.field-row .field { flex: 1; padding: 0; }
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0;
+}
+.toggle-row label { font-size: 13px; color: var(--ink); }
+.toggle-row input[type=checkbox] { width: 38px; height: 22px; appearance: none; -webkit-appearance: none; background: var(--line); border-radius: 999px; position: relative; transition: background 0.15s; cursor: pointer; }
+.toggle-row input[type=checkbox]:checked { background: var(--accent); }
+.toggle-row input[type=checkbox]::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: transform 0.15s; }
+.toggle-row input[type=checkbox]:checked::after { transform: translateX(16px); }
+.helper {
+  font-size: 11px; color: var(--muted); margin-top: 4px;
+  font-style: italic;
+}
+.helper strong { color: var(--ink); font-style: normal; font-variant-numeric: tabular-nums; }
+.set-actions { padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.set-actions .btn { width: 100%; text-align: center; }
+.set-actions .danger { color: var(--warn); }
+
+.drawer-scrim {
+  position: fixed; inset: 0;
+  background: rgba(15,18,26,0.35);
+  z-index: 20; display: none;
+}
+.drawer-scrim.open { display: block; }
+
+/* ── Modal (paste / pick) ───────────────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(15,18,26,0.42); backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  animation: mfade 0.14s ease-out;
+}
+@keyframes mfade { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 14px; padding: 22px;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px); overflow: auto;
+  box-shadow: 0 24px 60px -12px rgba(15,18,26,0.35);
+}
+.modal h3 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+.modal .sub { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.modal .mfield { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.modal .mfield label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.modal .mfield input, .modal .mfield textarea, .modal .mfield select {
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); padding: 9px 11px;
+  font-size: 14px; color: var(--ink); font-family: inherit;
+}
+.modal .mfield textarea { min-height: 200px; resize: vertical; font-family: 'EB Garamond', serif; font-size: 15px; line-height: 1.5; }
+.modal .options { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 14px; }
+.modal .opt {
+  text-align: left;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px 13px;
+  font-size: 14px; font-weight: 500; color: var(--ink);
+  font-family: inherit;
+}
+.modal .opt:hover { background: var(--line-soft); border-color: var(--ink); }
+.modal .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.modal .actions button { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; border: 1px solid var(--line); font-family: inherit; }
+.modal .actions .btn-cancel { background: transparent; color: var(--muted); }
+.modal .actions .btn-cancel:hover { background: var(--line-soft); color: var(--ink); }
+.modal .actions .btn-ok { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* ── Paged.js base ──────────────────────────────────────────── */
+#pagedSource { display: none; }
+.pagedjs_pages { background: transparent; }
+
+/* ── Print: hide UI, show only pages ────────────────────────── */
+@media print {
+  body > *:not(.preview-pane) { display: none !important; }
+  body, .preview-pane, .prev-frame { display: block !important; background: white !important; }
+  .prev-toolbar { display: none !important; }
+  .prev-frame { padding: 0 !important; overflow: visible !important; }
+  .pagedjs_page { box-shadow: none !important; page-break-after: always; break-after: page; }
+}
+
+/* ── Responsive (iPad portrait, mobile) ─────────────────────── */
+@media (max-width: 1000px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar, .editor-pane, .preview-pane { display: none; }
+  .app[data-tab="sidebar"] .sidebar { display: block; }
+  .app[data-tab="editor"] .editor-pane { display: flex; }
+  .app[data-tab="preview"] .preview-pane { display: flex; }
+  .mobile-tabs { display: flex; }
+}
+.mobile-tabs {
+  display: none;
+  background: var(--surface); border-top: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.mobile-tabs button {
+  flex: 1; padding: 10px; background: transparent; border: none;
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  font-family: inherit;
+}
+.mobile-tabs button.active { color: var(--ink); border-bottom: 2px solid var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="index.html" class="ic-btn" title="Back to Vortex">←</a>
+  <span class="brand">Studio</span>
+  <input class="proj-title-input" id="projTitle" placeholder="Untitled book">
+  <span class="save-state" id="saveState">Saved</span>
+  <button class="btn" id="openSettings">Settings</button>
+  <button class="btn btn-primary" id="exportPdf">Export PDF</button>
+</header>
+
+<main class="app" id="app" data-tab="editor">
+  <aside class="sidebar">
+    <div class="lib-bar">
+      <select id="projectPicker"></select>
+      <button class="btn-mini" id="newProjectBtn" title="New book">+</button>
+    </div>
+    <div class="chap-group">
+      <h2>Front matter</h2>
+      <ul class="chap-list" id="frontList"></ul>
+      <button class="add-link" id="addFrontBtn">+ Add front matter</button>
+    </div>
+    <div class="chap-group">
+      <h2>Body</h2>
+      <ul class="chap-list" id="bodyList"></ul>
+      <button class="add-link" id="addChapterBtn">+ Add chapter</button>
+      <button class="add-link" id="pasteManuscriptBtn">Paste manuscript…</button>
+    </div>
+    <div class="chap-group">
+      <h2>Back matter</h2>
+      <ul class="chap-list" id="backList"></ul>
+      <button class="add-link" id="addBackBtn">+ Add back matter</button>
+    </div>
+  </aside>
+
+  <section class="editor-pane">
+    <div class="ed-toolbar">
+      <span class="ed-kind" id="edKind">—</span>
+      <input class="ed-title" id="edTitle" placeholder="Title">
+      <button class="btn-ghost danger" id="deleteChapterBtn" title="Delete this section">Delete</button>
+    </div>
+    <textarea class="ed-body" id="edBody" placeholder="Paste or type the text here. Markdown italics (*like this*), bold (**like this**), and blank lines as paragraph breaks all work."></textarea>
+    <div class="ed-stats" id="edStats"><span>—</span></div>
+  </section>
+
+  <section class="preview-pane">
+    <div class="prev-toolbar">
+      <span class="stat"><strong id="pageCount">—</strong> pages</span>
+      <span class="stat"><strong id="wordCount">—</strong> words</span>
+      <span class="stat"><strong id="wppCount">—</strong> wpp</span>
+      <span class="stat trim-stat" id="trimStat">6″×9″</span>
+    </div>
+    <div class="prev-frame" id="prevFrame">
+      <div class="prev-empty">Add a chapter and the typeset preview will appear here.</div>
+    </div>
+  </section>
+</main>
+
+<nav class="mobile-tabs" id="mobileTabs">
+  <button data-tab="sidebar">Outline</button>
+  <button data-tab="editor" class="active">Write</button>
+  <button data-tab="preview">Preview</button>
+</nav>
+
+<div class="drawer-scrim" id="drawerScrim"></div>
+<aside class="settings-drawer" id="settingsDrawer">
+  <div class="settings-head">
+    <h3>Typesetting</h3>
+    <button class="ic-btn" id="closeSettingsBtn">×</button>
+  </div>
+
+  <div class="set-group">
+    <h4>Book metadata</h4>
+    <div class="field"><label>Author</label><input id="setAuthor" type="text" placeholder="Author name"></div>
+  </div>
+
+  <div class="set-group">
+    <h4>Trim size</h4>
+    <div class="seg" id="trimSeg">
+      <button data-trim="5x8">5″×8″</button>
+      <button data-trim="5.5x8.5">5.5″×8.5″</button>
+      <button data-trim="6x9" class="active">6″×9″</button>
+    </div>
+  </div>
+
+  <div class="set-group">
+    <h4>Typography</h4>
+    <div class="field">
+      <label>Body font</label>
+      <select id="setBodyFont">
+        <option value="Lora">Lora</option>
+        <option value="EB Garamond">EB Garamond</option>
+        <option value="Crimson Pro">Crimson Pro</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Size (pt)</label>
+        <input id="setFontSize" type="number" min="8" max="16" step="0.5" value="11">
+      </div>
+      <div class="field">
+        <label>Line height</label>
+        <input id="setLineHeight" type="number" min="1" max="2.2" step="0.05" value="1.4">
+      </div>
+    </div>
+    <div class="field">
+      <label>Margin (inches)</label>
+      <input id="setMargin" type="number" min="0.4" max="1.6" step="0.05" value="0.75">
+    </div>
+    <p class="helper" id="wppHint">Current density: <strong id="wppHintNum">—</strong> words / page. Want more? Lower font size or margin.</p>
+  </div>
+
+  <div class="set-group">
+    <h4>Chapter style</h4>
+    <div class="toggle-row">
+      <label for="setDropCap">Drop cap on first paragraph</label>
+      <input type="checkbox" id="setDropCap" checked>
+    </div>
+    <div class="toggle-row">
+      <label for="setPageNumbers">Page numbers</label>
+      <input type="checkbox" id="setPageNumbers" checked>
+    </div>
+  </div>
+
+  <div class="set-actions">
+    <button class="btn" id="exportJsonBtn">Backup project (.json)</button>
+    <button class="btn" id="importJsonBtn">Restore from backup…</button>
+    <button class="btn danger" id="deleteProjectBtn">Delete this project</button>
+  </div>
+</aside>
+
+<div id="modalHost"></div>
+<div id="pagedSource"></div>
+
+<script>window.PagedConfig = { auto: false };</script>
+<script src="https://cdn.jsdelivr.net/npm/pagedjs/dist/paged.polyfill.js"></script>
+<script>
+"use strict";
+
+/* ──────────────────────────────────────────────────────────────
+   Data model + persistence
+   ────────────────────────────────────────────────────────────── */
+
+const STORE_KEY = "vortex_typeset_v1";
+const FRONT_KINDS = [
+  { kind: "halftitle",    label: "Half-title page" },
+  { kind: "title",        label: "Title page" },
+  { kind: "copyright",    label: "Copyright page" },
+  { kind: "dedication",   label: "Dedication" },
+  { kind: "epigraph",     label: "Epigraph" },
+  { kind: "foreword",     label: "Foreword" },
+  { kind: "preface",      label: "Preface" },
+  { kind: "intro",        label: "Introduction" },
+  { kind: "toc",          label: "Table of contents" },
+];
+const BACK_KINDS = [
+  { kind: "epilogue",        label: "Epilogue" },
+  { kind: "acknowledgments", label: "Acknowledgments" },
+  { kind: "aboutauthor",     label: "About the author" },
+  { kind: "afterword",       label: "Afterword" },
+];
+const DEFAULT_SETTINGS = {
+  trim: "6x9",
+  bodyFont: "Lora",
+  fontSize: 11,
+  lineHeight: 1.4,
+  margin: 0.75,
+  dropCap: true,
+  pageNumbers: true,
+};
+const TRIM_SIZES = {
+  "5x8":     { w: 5,    h: 8,    label: "5″×8″" },
+  "5.5x8.5": { w: 5.5,  h: 8.5,  label: "5.5″×8.5″" },
+  "6x9":     { w: 6,    h: 9,    label: "6″×9″" },
+};
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+function emptyProject(title, author) {
+  return {
+    id: uid(),
+    title: title || "Untitled book",
+    author: author || "",
+    chapters: [],
+    settings: { ...DEFAULT_SETTINGS },
+    updatedAt: Date.now(),
+  };
+}
+function loadStore() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) || "null") || freshStore(); }
+  catch { return freshStore(); }
+}
+function freshStore() {
+  const p = emptyProject("Finding Joy", "Arjun");
+  return { activeId: p.id, projects: { [p.id]: p } };
+}
+function saveStore(s) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+
+let store = loadStore();
+function activeProject() { return store.projects[store.activeId]; }
+let activeChapterId = null;
+let saveTimer = null;
+
+function markDirty() {
+  setSaveState("Saving…", true);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    activeProject().updatedAt = Date.now();
+    saveStore(store);
+    setSaveState("Saved", false);
+  }, 400);
+}
+function setSaveState(text, busy) {
+  const el = document.getElementById("saveState");
+  el.textContent = text;
+  el.classList.toggle("saving", !!busy);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Modal helpers
+   ────────────────────────────────────────────────────────────── */
+
+function openModal(build) {
+  return new Promise((resolve) => {
+    const back = document.createElement("div"); back.className = "modal-backdrop";
+    const modal = document.createElement("div"); modal.className = "modal";
+    back.appendChild(modal);
+    let settled = false;
+    const close = (v) => { if (settled) return; settled = true; document.removeEventListener("keydown", onKey); back.remove(); resolve(v); };
+    const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); close(null); } };
+    back.addEventListener("mousedown", (e) => { if (e.target === back) close(null); });
+    document.addEventListener("keydown", onKey);
+    build(modal, close);
+    document.getElementById("modalHost").appendChild(back);
+    const first = modal.querySelector("input, textarea, button");
+    if (first) first.focus();
+  });
+}
+function pickModal({ title, subtitle, options }) {
+  return openModal((modal, close) => {
+    const h = document.createElement("h3"); h.textContent = title; modal.appendChild(h);
+    if (subtitle) { const p = document.createElement("p"); p.className = "sub"; p.textContent = subtitle; modal.appendChild(p); }
+    const list = document.createElement("div"); list.className = "options";
+    for (const o of options) {
+      const b = document.createElement("button"); b.className = "opt"; b.textContent = o.label;
+      b.addEventListener("click", () => close(o.value));
+      list.appendChild(b);
+    }
+    modal.appendChild(list);
+    const actions = document.createElement("div"); actions.className = "actions";
+    const c = document.createElement("button"); c.className = "btn-cancel"; c.textContent = "Cancel";
+    c.addEventListener("click", () => close(null));
+    actions.appendChild(c); modal.appendChild(actions);
+  });
+}
+function formModal({ title, subtitle, fields, okLabel = "OK" }) {
+  return openModal((modal, close) => {
+    const h = document.createElement("h3"); h.textContent = title; modal.appendChild(h);
+    if (subtitle) { const p = document.createElement("p"); p.className = "sub"; p.textContent = subtitle; modal.appendChild(p); }
+    const form = document.createElement("form");
+    const inputs = {};
+    for (const f of fields) {
+      const wrap = document.createElement("div"); wrap.className = "mfield";
+      const lab = document.createElement("label"); lab.textContent = f.label; wrap.appendChild(lab);
+      let inp;
+      if (f.type === "textarea") { inp = document.createElement("textarea"); }
+      else { inp = document.createElement("input"); inp.type = f.type || "text"; }
+      inp.value = f.value || "";
+      if (f.placeholder) inp.placeholder = f.placeholder;
+      wrap.appendChild(inp);
+      form.appendChild(wrap); inputs[f.name] = inp;
+    }
+    const actions = document.createElement("div"); actions.className = "actions";
+    const c = document.createElement("button"); c.type = "button"; c.className = "btn-cancel"; c.textContent = "Cancel";
+    c.addEventListener("click", () => close(null));
+    const ok = document.createElement("button"); ok.type = "submit"; ok.className = "btn-ok"; ok.textContent = okLabel;
+    actions.appendChild(c); actions.appendChild(ok);
+    form.appendChild(actions);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const out = {}; for (const k in inputs) out[k] = inputs[k].value;
+      close(out);
+    });
+    modal.appendChild(form);
+  });
+}
+function confirmModal({ title, subtitle, okLabel = "OK", danger = false }) {
+  return openModal((modal, close) => {
+    const h = document.createElement("h3"); h.textContent = title; modal.appendChild(h);
+    if (subtitle) { const p = document.createElement("p"); p.className = "sub"; p.textContent = subtitle; modal.appendChild(p); }
+    const actions = document.createElement("div"); actions.className = "actions";
+    const c = document.createElement("button"); c.className = "btn-cancel"; c.textContent = "Cancel";
+    c.addEventListener("click", () => close(false));
+    const ok = document.createElement("button"); ok.className = "btn-ok"; ok.textContent = okLabel;
+    if (danger) ok.style.background = "var(--warn)";
+    ok.addEventListener("click", () => close(true));
+    actions.appendChild(c); actions.appendChild(ok);
+    modal.appendChild(actions);
+  });
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Chapter ops
+   ────────────────────────────────────────────────────────────── */
+
+function findChapter(id) { return activeProject().chapters.find(c => c.id === id); }
+function indexOfChapter(id) { return activeProject().chapters.findIndex(c => c.id === id); }
+
+function addChapter(role, kind, label, body) {
+  const p = activeProject();
+  const c = {
+    id: uid(), role, kind: kind || (role === "body" ? "chapter" : "custom"),
+    title: label || (role === "body" ? `Chapter ${p.chapters.filter(x => x.role === "body").length + 1}` : "Untitled"),
+    body: body || "",
+  };
+  // Insert at the end of its role-group.
+  let insertAt = p.chapters.length;
+  if (role === "front") {
+    // before first body or back
+    const idx = p.chapters.findIndex(x => x.role === "body" || x.role === "back");
+    if (idx >= 0) insertAt = idx;
+  } else if (role === "body") {
+    const idx = p.chapters.findIndex(x => x.role === "back");
+    if (idx >= 0) insertAt = idx;
+  }
+  p.chapters.splice(insertAt, 0, c);
+  activeChapterId = c.id;
+  markDirty(); renderAll();
+  return c;
+}
+function deleteChapter(id) {
+  const p = activeProject();
+  const i = indexOfChapter(id);
+  if (i < 0) return;
+  p.chapters.splice(i, 1);
+  if (activeChapterId === id) {
+    activeChapterId = p.chapters[Math.max(0, i - 1)]?.id || null;
+  }
+  markDirty(); renderAll();
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Manuscript paste/parse
+   ────────────────────────────────────────────────────────────── */
+
+function parseManuscript(raw) {
+  // Normalize line endings and strip HTML tags (paste from Reedsy sometimes brings tags).
+  const text = String(raw)
+    .replace(/\r\n?/g, "\n")
+    .replace(/<\/?(p|div|br|span|font|em|i|strong|b|h\d)[^>]*>/gi, (m) => {
+      // Preserve emphasis as markdown
+      const tag = m.match(/<\/?(\w+)/i)[1].toLowerCase();
+      const closing = m.startsWith("</");
+      if (tag === "br") return "\n";
+      if (tag === "p" || tag === "div") return closing ? "\n\n" : "";
+      if (tag === "em" || tag === "i") return "*";
+      if (tag === "strong" || tag === "b") return "**";
+      return "";
+    })
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/[ \t]+\n/g, "\n");
+
+  const lines = text.split("\n");
+  const chapters = [];
+  let cur = null;
+  const isChapHeader = (line) => {
+    const t = line.trim();
+    if (!t) return null;
+    let m = t.match(/^#{1,3}\s+(.+)$/);
+    if (m) return m[1].trim();
+    m = t.match(/^(Chapter\s+[\dIVXLCDM]+|Chapter\s+[A-Z][a-zA-Z]+)(?:[:.\-—]\s*(.+))?$/i);
+    if (m) return m[0];
+    m = t.match(/^(CHAPTER\s+\d+)(?:[:.\-—]\s*(.+))?$/);
+    if (m) return m[0];
+    return null;
+  };
+
+  for (const line of lines) {
+    const hdr = isChapHeader(line);
+    if (hdr) {
+      if (cur) chapters.push(cur);
+      cur = { title: hdr, body: "" };
+    } else {
+      if (!cur) cur = { title: "Chapter 1", body: "" };
+      cur.body += line + "\n";
+    }
+  }
+  if (cur) chapters.push(cur);
+
+  // Trim each chapter body, collapse 3+ blank lines.
+  for (const ch of chapters) {
+    ch.body = ch.body.replace(/\n{3,}/g, "\n\n").trim();
+  }
+  return chapters;
+}
+
+async function openPasteModal() {
+  const result = await formModal({
+    title: "Paste manuscript",
+    subtitle: "Paste plain text or Reedsy-copy. Chapter headings like “Chapter 1” or “# Title” are auto-detected.",
+    fields: [
+      { name: "text", label: "Manuscript text", type: "textarea", placeholder: "Paste here…" },
+    ],
+    okLabel: "Import",
+  });
+  if (!result || !result.text.trim()) return;
+  const chapters = parseManuscript(result.text);
+  if (!chapters.length) return;
+  const mode = await pickModal({
+    title: `Found ${chapters.length} chapter${chapters.length === 1 ? "" : "s"}`,
+    subtitle: "Add these as new body chapters, or replace existing body chapters?",
+    options: [
+      { label: `Add ${chapters.length} new chapters`, value: "append" },
+      { label: "Replace all body chapters", value: "replace" },
+    ],
+  });
+  if (!mode) return;
+  const p = activeProject();
+  if (mode === "replace") {
+    p.chapters = p.chapters.filter(c => c.role !== "body");
+  }
+  for (const ch of chapters) {
+    addChapterSilent("body", "chapter", ch.title, ch.body);
+  }
+  activeChapterId = p.chapters.find(c => c.role === "body")?.id || activeChapterId;
+  markDirty(); renderAll();
+}
+function addChapterSilent(role, kind, title, body) {
+  const p = activeProject();
+  const c = { id: uid(), role, kind, title, body };
+  let insertAt = p.chapters.length;
+  if (role === "front") {
+    const idx = p.chapters.findIndex(x => x.role === "body" || x.role === "back");
+    if (idx >= 0) insertAt = idx;
+  } else if (role === "body") {
+    const idx = p.chapters.findIndex(x => x.role === "back");
+    if (idx >= 0) insertAt = idx;
+  }
+  p.chapters.splice(insertAt, 0, c);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Render: sidebar + editor + topbar
+   ────────────────────────────────────────────────────────────── */
+
+function countWords(s) {
+  return (s || "").trim().split(/\s+/).filter(Boolean).length;
+}
+function totalWords() {
+  return activeProject().chapters.reduce((n, c) => n + countWords(c.body), 0);
+}
+
+function renderSidebar() {
+  const p = activeProject();
+  const groups = { front: [], body: [], back: [] };
+  for (const c of p.chapters) groups[c.role].push(c);
+  for (const role of ["front", "body", "back"]) {
+    const ul = document.getElementById(role + "List");
+    ul.innerHTML = "";
+    let n = 0;
+    for (const c of groups[role]) {
+      n++;
+      const li = document.createElement("li");
+      li.className = "chap-item" + (c.id === activeChapterId ? " active" : "");
+      const num = document.createElement("span"); num.className = "chap-num";
+      num.textContent = role === "body" ? n : (role === "front" ? toRoman(n).toLowerCase() : "·");
+      const title = document.createElement("span"); title.className = "chap-title";
+      title.textContent = c.title || "Untitled";
+      const wc = document.createElement("span"); wc.className = "chap-words";
+      wc.textContent = countWords(c.body) || "";
+      li.appendChild(num); li.appendChild(title); li.appendChild(wc);
+      li.addEventListener("click", () => { activeChapterId = c.id; renderAll(); });
+      ul.appendChild(li);
+    }
+  }
+
+  // project picker
+  const picker = document.getElementById("projectPicker");
+  picker.innerHTML = "";
+  for (const id in store.projects) {
+    const o = document.createElement("option");
+    o.value = id; o.textContent = store.projects[id].title || "Untitled";
+    if (id === store.activeId) o.selected = true;
+    picker.appendChild(o);
+  }
+}
+
+function renderEditor() {
+  const c = activeChapterId ? findChapter(activeChapterId) : null;
+  const kindEl = document.getElementById("edKind");
+  const titleEl = document.getElementById("edTitle");
+  const bodyEl = document.getElementById("edBody");
+  const stats = document.getElementById("edStats");
+  if (!c) {
+    kindEl.textContent = "—";
+    titleEl.value = "";
+    bodyEl.value = "";
+    bodyEl.placeholder = "Pick or add a chapter on the left.";
+    stats.innerHTML = "<span>—</span>";
+    return;
+  }
+  kindEl.textContent = kindLabel(c);
+  titleEl.value = c.title || "";
+  bodyEl.value = c.body || "";
+  bodyEl.placeholder = "Paste or type the text here. Markdown italics (*like this*), bold (**like this**), and blank lines as paragraph breaks all work.";
+  const wc = countWords(c.body);
+  stats.innerHTML = `<span><strong>${wc}</strong> words</span><span>${Math.round(wc / 250 * 10) / 10} pages @ 250 wpp</span>`;
+}
+
+function renderTop() {
+  document.getElementById("projTitle").value = activeProject().title;
+  document.getElementById("setAuthor").value = activeProject().author || "";
+}
+
+function renderSettings() {
+  const s = activeProject().settings;
+  document.querySelectorAll("#trimSeg button").forEach(b => b.classList.toggle("active", b.dataset.trim === s.trim));
+  document.getElementById("setBodyFont").value = s.bodyFont;
+  document.getElementById("setFontSize").value = s.fontSize;
+  document.getElementById("setLineHeight").value = s.lineHeight;
+  document.getElementById("setMargin").value = s.margin;
+  document.getElementById("setDropCap").checked = !!s.dropCap;
+  document.getElementById("setPageNumbers").checked = !!s.pageNumbers;
+  document.getElementById("trimStat").textContent = TRIM_SIZES[s.trim].label;
+}
+
+function renderAll() {
+  renderTop();
+  renderSidebar();
+  renderEditor();
+  renderSettings();
+  schedulePreview();
+}
+
+function kindLabel(c) {
+  if (c.role === "body") return "Chapter";
+  const tbl = [...FRONT_KINDS, ...BACK_KINDS];
+  const m = tbl.find(t => t.kind === c.kind);
+  return m ? m.label : (c.role === "front" ? "Front matter" : "Back matter");
+}
+
+function toRoman(n) {
+  if (n <= 0) return "";
+  const map = [["M",1000],["CM",900],["D",500],["CD",400],["C",100],["XC",90],["L",50],["XL",40],["X",10],["IX",9],["V",5],["IV",4],["I",1]];
+  let s = ""; for (const [r,v] of map) while (n >= v) { s += r; n -= v; }
+  return s;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Build typeset HTML + CSS for Paged.js
+   ────────────────────────────────────────────────────────────── */
+
+function escHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+
+function inlineMd(s) {
+  // bold first (so it isn't eaten by italic)
+  let out = escHtml(s);
+  out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  out = out.replace(/(^|\W)\*(?=\S)([^*\n]+?)\*(?=\W|$)/g, "$1<em>$2</em>");
+  out = out.replace(/(^|\W)_(?=\S)([^_\n]+?)_(?=\W|$)/g, "$1<em>$2</em>");
+  return out;
+}
+function paragraphsHtml(body) {
+  const blocks = String(body || "").trim().split(/\n\s*\n+/);
+  return blocks.map((b, i) => {
+    const cls = i === 0 ? "para first-para" : "para";
+    return `<p class="${cls}">${inlineMd(b.replace(/\n/g, " "))}</p>`;
+  }).join("\n");
+}
+
+function buildPagedSource() {
+  const p = activeProject();
+  const parts = [];
+
+  // Front matter: each gets its own section
+  const front = p.chapters.filter(c => c.role === "front");
+  const body = p.chapters.filter(c => c.role === "body");
+  const back = p.chapters.filter(c => c.role === "back");
+
+  const renderSection = (c, opts = {}) => {
+    const roleClass =
+      c.role === "front" ? "section-front" :
+      c.role === "back"  ? "section-back"  : "section-body";
+    const kindClass = "kind-" + (c.kind || c.role);
+    const firstBody = opts.firstBody ? " first-body" : "";
+    const header = c.role === "body"
+      ? `<h1 class="ch-title">${escHtml(c.title || "")}</h1>`
+      : `<h1 class="ch-title front-title">${escHtml(c.title || "")}</h1>`;
+    return `
+      <section class="ch ${roleClass} ${kindClass}${firstBody}">
+        ${header}
+        ${paragraphsHtml(c.body)}
+      </section>
+    `;
+  };
+
+  for (const c of front) parts.push(renderSection(c));
+  body.forEach((c, i) => parts.push(renderSection(c, { firstBody: i === 0 })));
+  for (const c of back) parts.push(renderSection(c));
+
+  // Title page if no front matter at all — generate one
+  if (front.length === 0) {
+    parts.unshift(`
+      <section class="ch section-front kind-title">
+        <h1 class="ch-title front-title">${escHtml(p.title || "")}</h1>
+        ${p.author ? `<p class="byline">${escHtml(p.author)}</p>` : ""}
+      </section>
+    `);
+  }
+
+  return `<div class="book">${parts.join("\n")}</div>`;
+}
+
+function buildPagedCSS() {
+  const s = activeProject().settings;
+  const trim = TRIM_SIZES[s.trim];
+  const fs = +s.fontSize, lh = +s.lineHeight, mg = +s.margin;
+  const showNums = s.pageNumbers !== false;
+  const dropCap = !!s.dropCap;
+  const font = s.bodyFont;
+  return `
+@page {
+  size: ${trim.w}in ${trim.h}in;
+  margin: ${mg}in;
+}
+@page :left  { margin-left:  ${mg}in; margin-right: ${mg}in; }
+@page :right { margin-left:  ${mg}in; margin-right: ${mg}in; }
+@page roman {
+  size: ${trim.w}in ${trim.h}in;
+  margin: ${mg}in;
+  ${showNums ? "@bottom-center { content: counter(page, lower-roman); font-family: '" + font + "', serif; font-size: 9pt; color: #333; }" : ""}
+}
+@page arabic {
+  size: ${trim.w}in ${trim.h}in;
+  margin: ${mg}in;
+  ${showNums ? "@bottom-center { content: counter(page); font-family: '" + font + "', serif; font-size: 9pt; color: #333; }" : ""}
+}
+
+html { font-family: '${font}', Georgia, serif; }
+body { margin: 0; }
+.book { font-family: '${font}', Georgia, serif; font-size: ${fs}pt; line-height: ${lh}; color: #111; }
+
+section.ch { break-before: page; page-break-before: always; }
+section.ch:first-of-type { break-before: avoid; }
+section.section-front { page: roman; }
+section.section-body  { page: arabic; }
+section.section-back  { page: arabic; }
+section.first-body    { counter-reset: page 0; }
+
+h1.ch-title {
+  font-family: 'Cormorant Garamond', '${font}', serif;
+  font-weight: 600;
+  font-size: ${fs * 2.0}pt;
+  text-align: center;
+  margin: ${fs * 2}pt 0 ${fs * 2.5}pt;
+  letter-spacing: 0.02em;
+}
+h1.front-title {
+  font-size: ${fs * 2.4}pt;
+  margin-top: ${fs * 6}pt;
+}
+.byline {
+  text-align: center;
+  font-style: italic;
+  font-size: ${fs * 1.1}pt;
+  margin-top: ${fs * 1.5}pt;
+}
+
+p.para {
+  text-indent: 1.4em;
+  margin: 0;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  orphans: 2; widows: 2;
+}
+p.first-para { text-indent: 0; }
+${dropCap ? `
+section.section-body p.first-para::first-letter {
+  font-family: 'Cormorant Garamond', '${font}', serif;
+  font-weight: 700;
+  float: left;
+  font-size: ${fs * 3.4}pt;
+  line-height: ${fs * 3.0}pt;
+  padding-right: 0.08em;
+  padding-top: 0.04em;
+  margin-bottom: -0.1em;
+}
+` : ""}
+
+/* Centered front-matter content (dedication, epigraph) */
+section.kind-dedication, section.kind-epigraph, section.kind-copyright, section.kind-halftitle, section.kind-title {
+  text-align: center;
+}
+section.kind-dedication p, section.kind-epigraph p {
+  font-style: italic; text-indent: 0; text-align: center;
+  margin-top: ${fs * 1.2}pt;
+}
+section.kind-copyright p {
+  text-indent: 0; text-align: center; font-size: ${fs * 0.85}pt;
+  margin-top: ${fs * 0.8}pt;
+}
+section.kind-halftitle h1, section.kind-title h1 {
+  margin-top: ${fs * 8}pt;
+}
+`;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Paged.js preview wiring
+   ────────────────────────────────────────────────────────────── */
+
+let previewTimer = null;
+let previewBusy = false;
+let previewQueued = false;
+
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(runPreview, 350);
+}
+function cssToBlobUrl(css) {
+  return URL.createObjectURL(new Blob([css], { type: "text/css" }));
+}
+async function runPreview() {
+  if (previewBusy) { previewQueued = true; return; }
+  previewBusy = true;
+  const frame = document.getElementById("prevFrame");
+  try {
+    if (typeof Paged === "undefined" || !Paged.Previewer) {
+      frame.innerHTML = `<div class="prev-empty">Loading typesetter…</div>`;
+      previewQueued = true;
+      setTimeout(() => { previewBusy = false; if (previewQueued) { previewQueued = false; runPreview(); } }, 300);
+      return;
+    }
+    const html = buildPagedSource();
+    const css = buildPagedCSS();
+    const blobUrl = cssToBlobUrl(css);
+    frame.innerHTML = "";
+    const previewer = new Paged.Previewer();
+    const flow = await previewer.preview(html, [blobUrl], frame);
+    URL.revokeObjectURL(blobUrl);
+    const pages = frame.querySelectorAll(".pagedjs_page").length || flow?.total || 0;
+    const tw = totalWords();
+    const wpp = pages ? Math.round(tw / pages) : 0;
+    document.getElementById("pageCount").textContent = pages;
+    document.getElementById("wordCount").textContent = tw;
+    document.getElementById("wppCount").textContent = wpp || "—";
+    document.getElementById("wppHintNum").textContent = wpp || "—";
+  } catch (err) {
+    console.error("[paged.js]", err);
+    frame.innerHTML = `<div class="prev-empty">Preview error — check the console.<br>${escHtml(err.message || "")}</div>`;
+  } finally {
+    previewBusy = false;
+    if (previewQueued) { previewQueued = false; runPreview(); }
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Event wiring
+   ────────────────────────────────────────────────────────────── */
+
+function wireEvents() {
+  // Project title
+  document.getElementById("projTitle").addEventListener("input", (e) => {
+    activeProject().title = e.target.value;
+    markDirty(); renderSidebar();
+  });
+  // Author (settings)
+  document.getElementById("setAuthor").addEventListener("input", (e) => {
+    activeProject().author = e.target.value;
+    markDirty(); schedulePreview();
+  });
+
+  // Editor
+  document.getElementById("edTitle").addEventListener("input", (e) => {
+    const c = findChapter(activeChapterId); if (!c) return;
+    c.title = e.target.value; renderSidebar(); markDirty(); schedulePreview();
+  });
+  document.getElementById("edBody").addEventListener("input", (e) => {
+    const c = findChapter(activeChapterId); if (!c) return;
+    c.body = e.target.value;
+    const wc = countWords(c.body);
+    document.getElementById("edStats").innerHTML = `<span><strong>${wc}</strong> words</span><span>${Math.round(wc / 250 * 10) / 10} pages @ 250 wpp</span>`;
+    renderSidebar(); markDirty(); schedulePreview();
+  });
+
+  // Sidebar actions
+  document.getElementById("addChapterBtn").addEventListener("click", () => addChapter("body"));
+  document.getElementById("addFrontBtn").addEventListener("click", async () => {
+    const present = new Set(activeProject().chapters.filter(c => c.role === "front").map(c => c.kind));
+    const opts = FRONT_KINDS.filter(k => !present.has(k.kind) || k.kind === "custom").map(k => ({ label: k.label, value: k.kind }));
+    opts.push({ label: "Custom section…", value: "custom" });
+    const kind = await pickModal({ title: "Add front matter", subtitle: "Pick a section.", options: opts });
+    if (!kind) return;
+    const def = FRONT_KINDS.find(k => k.kind === kind);
+    addChapter("front", kind, def ? def.label : "Section", "");
+  });
+  document.getElementById("addBackBtn").addEventListener("click", async () => {
+    const present = new Set(activeProject().chapters.filter(c => c.role === "back").map(c => c.kind));
+    const opts = BACK_KINDS.filter(k => !present.has(k.kind)).map(k => ({ label: k.label, value: k.kind }));
+    opts.push({ label: "Custom section…", value: "custom" });
+    const kind = await pickModal({ title: "Add back matter", subtitle: "Pick a section.", options: opts });
+    if (!kind) return;
+    const def = BACK_KINDS.find(k => k.kind === kind);
+    addChapter("back", kind, def ? def.label : "Section", "");
+  });
+  document.getElementById("pasteManuscriptBtn").addEventListener("click", openPasteModal);
+
+  document.getElementById("deleteChapterBtn").addEventListener("click", async () => {
+    const c = findChapter(activeChapterId); if (!c) return;
+    const ok = await confirmModal({ title: `Delete “${c.title || "Untitled"}”?`, subtitle: "This can't be undone.", okLabel: "Delete", danger: true });
+    if (ok) deleteChapter(c.id);
+  });
+
+  // Project picker
+  document.getElementById("projectPicker").addEventListener("change", (e) => {
+    store.activeId = e.target.value;
+    activeChapterId = activeProject().chapters[0]?.id || null;
+    saveStore(store); renderAll();
+  });
+  document.getElementById("newProjectBtn").addEventListener("click", async () => {
+    const r = await formModal({
+      title: "New book",
+      fields: [
+        { name: "title", label: "Title", value: "Untitled" },
+        { name: "author", label: "Author", value: activeProject().author || "" },
+      ],
+      okLabel: "Create",
+    });
+    if (!r) return;
+    const p = emptyProject(r.title, r.author);
+    store.projects[p.id] = p; store.activeId = p.id;
+    activeChapterId = null;
+    saveStore(store); renderAll();
+  });
+
+  // Settings drawer
+  const drawer = document.getElementById("settingsDrawer");
+  const scrim = document.getElementById("drawerScrim");
+  function openDrawer() { drawer.classList.add("open"); scrim.classList.add("open"); }
+  function closeDrawer() { drawer.classList.remove("open"); scrim.classList.remove("open"); }
+  document.getElementById("openSettings").addEventListener("click", openDrawer);
+  document.getElementById("closeSettingsBtn").addEventListener("click", closeDrawer);
+  scrim.addEventListener("click", closeDrawer);
+
+  // Settings inputs
+  document.querySelectorAll("#trimSeg button").forEach(b => {
+    b.addEventListener("click", () => {
+      activeProject().settings.trim = b.dataset.trim;
+      markDirty(); renderSettings(); schedulePreview();
+    });
+  });
+  const setNum = (id, key) => {
+    document.getElementById(id).addEventListener("input", (e) => {
+      const v = parseFloat(e.target.value);
+      if (!isFinite(v)) return;
+      activeProject().settings[key] = v;
+      markDirty(); schedulePreview();
+    });
+  };
+  setNum("setFontSize", "fontSize");
+  setNum("setLineHeight", "lineHeight");
+  setNum("setMargin", "margin");
+  document.getElementById("setBodyFont").addEventListener("change", (e) => {
+    activeProject().settings.bodyFont = e.target.value;
+    markDirty(); schedulePreview();
+  });
+  document.getElementById("setDropCap").addEventListener("change", (e) => {
+    activeProject().settings.dropCap = e.target.checked;
+    markDirty(); schedulePreview();
+  });
+  document.getElementById("setPageNumbers").addEventListener("change", (e) => {
+    activeProject().settings.pageNumbers = e.target.checked;
+    markDirty(); schedulePreview();
+  });
+
+  // Backup / restore / delete
+  document.getElementById("exportJsonBtn").addEventListener("click", () => {
+    const data = JSON.stringify(activeProject(), null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = (activeProject().title || "book").replace(/[^a-z0-9]+/gi, "-").toLowerCase() + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  document.getElementById("importJsonBtn").addEventListener("click", () => {
+    const input = document.createElement("input");
+    input.type = "file"; input.accept = "application/json,.json";
+    input.addEventListener("change", async () => {
+      const f = input.files?.[0]; if (!f) return;
+      try {
+        const txt = await f.text();
+        const data = JSON.parse(txt);
+        if (!data.id || !Array.isArray(data.chapters)) throw new Error("Not a Studio backup file.");
+        data.id = uid();  // avoid id clash
+        store.projects[data.id] = data;
+        store.activeId = data.id;
+        activeChapterId = data.chapters[0]?.id || null;
+        saveStore(store); renderAll();
+      } catch (err) {
+        await confirmModal({ title: "Couldn't restore", subtitle: err.message, okLabel: "OK" });
+      }
+    });
+    input.click();
+  });
+  document.getElementById("deleteProjectBtn").addEventListener("click", async () => {
+    const ok = await confirmModal({ title: `Delete “${activeProject().title}”?`, subtitle: "All chapters in this project will be lost. This can't be undone.", okLabel: "Delete project", danger: true });
+    if (!ok) return;
+    const id = store.activeId;
+    delete store.projects[id];
+    const remaining = Object.keys(store.projects);
+    if (!remaining.length) {
+      const fresh = emptyProject("Untitled book", "");
+      store.projects[fresh.id] = fresh; store.activeId = fresh.id;
+    } else {
+      store.activeId = remaining[0];
+    }
+    activeChapterId = activeProject().chapters[0]?.id || null;
+    saveStore(store); renderAll();
+  });
+
+  // PDF export
+  document.getElementById("exportPdf").addEventListener("click", async () => {
+    if (previewBusy) await new Promise(r => setTimeout(r, 400));
+    window.print();
+  });
+
+  // Mobile tabs
+  document.querySelectorAll("#mobileTabs button").forEach(b => {
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#mobileTabs button").forEach(x => x.classList.toggle("active", x === b));
+      document.getElementById("app").dataset.tab = b.dataset.tab;
+    });
+  });
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Bootstrap
+   ────────────────────────────────────────────────────────────── */
+
+function bootstrap() {
+  // Pick something to view
+  const p = activeProject();
+  if (!p.chapters.length) {
+    // Seed a single empty chapter for first-run.
+    addChapterSilent("body", "chapter", "Chapter 1", "");
+  }
+  activeChapterId = p.chapters[0]?.id || null;
+  wireEvents();
+  renderAll();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootstrap);
+} else {
+  bootstrap();
+}
+</script>
+</body>
+</html>

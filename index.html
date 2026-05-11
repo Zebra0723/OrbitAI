@@ -1023,7 +1023,11 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawe
 function buildDrawerNav() {
   drawerNav.innerHTML = "";
   drawerNav.appendChild(navBtn("home", "Dashboard"));
-  drawerNav.appendChild(navBtn("studio", "Studio"));
+  const studioLink = document.createElement("a");
+  studioLink.href = "studio.html";
+  studioLink.className = "nav-btn";
+  studioLink.innerHTML = `<span class="nav-dot"></span>Studio`;
+  drawerNav.appendChild(studioLink);
   drawerNav.appendChild(navBtn("reminders", "Reminders"));
   drawerNav.appendChild(navBtn("starred", "Starred"));
   const sep = document.createElement("hr"); sep.className = "nav-divider"; drawerNav.appendChild(sep);
