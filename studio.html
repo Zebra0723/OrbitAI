@@ -6,7 +6,7 @@
 <title>Vortex Studio — Typesetter</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,700;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,700;1,400;1,700&family=Crimson+Pro:ital,wght@0,400;0,700;1,400;1,700&family=Cormorant+Garamond:wght@500;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,700;1,400;1,700&family=Crimson+Pro:ital,wght@0,400;0,500;0,700;1,400;1,700&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,700;1,400;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Lato:ital,wght@0,400;0,700;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Playfair+Display:ital,wght@0,500;0,700;1,500;1,700&family=Cinzel:wght@400;600;700&family=Libre+Bodoni:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #faf8f4;
@@ -307,6 +307,18 @@ button { font-family: inherit; cursor: pointer; }
 .set-actions .btn { width: 100%; text-align: center; }
 .set-actions .danger { color: var(--warn); }
 
+.cover-preview {
+  width: 100%; min-height: 90px;
+  background: var(--line-soft); border: 1px dashed var(--line);
+  border-radius: 8px; padding: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 8px; position: relative;
+}
+.cover-preview.has-cover { background: var(--surface); }
+.cover-preview img { max-width: 100%; max-height: 180px; border-radius: 4px; box-shadow: 0 4px 12px -4px rgba(0,0,0,0.25); }
+.cover-preview .cover-empty { font-size: 12px; color: var(--muted); text-align: center; font-style: italic; }
+.cover-preview .btn-mini { position: absolute; top: 6px; right: 6px; background: rgba(255,255,255,0.9); }
+
 .drawer-scrim {
   position: fixed; inset: 0;
   background: rgba(15,18,26,0.35);
@@ -469,53 +481,83 @@ button { font-family: inherit; cursor: pointer; }
 
   <div class="set-group">
     <h4>Trim size</h4>
-    <div class="seg" id="trimSeg">
-      <button data-trim="5x8">5″×8″</button>
-      <button data-trim="5.5x8.5">5.5″×8.5″</button>
-      <button data-trim="6x9" class="active">6″×9″</button>
+    <div class="field">
+      <select id="setTrim"></select>
+    </div>
+    <div class="field-row" id="trimCustomRow" hidden>
+      <div class="field"><label>Width (in)</label><input id="setTrimW" type="number" min="3" max="12" step="0.05"></div>
+      <div class="field"><label>Height (in)</label><input id="setTrimH" type="number" min="3" max="14" step="0.05"></div>
     </div>
   </div>
 
   <div class="set-group">
-    <h4>Typography</h4>
-    <div class="field">
-      <label>Body font</label>
-      <select id="setBodyFont">
-        <option value="Lora">Lora</option>
-        <option value="EB Garamond">EB Garamond</option>
-        <option value="Crimson Pro">Crimson Pro</option>
-      </select>
+    <h4>Margins (inches)</h4>
+    <div class="field-row">
+      <div class="field"><label>Top</label><input id="setMarginTop" type="number" min="0.3" max="2" step="0.05"></div>
+      <div class="field"><label>Bottom</label><input id="setMarginBottom" type="number" min="0.3" max="2" step="0.05"></div>
     </div>
     <div class="field-row">
-      <div class="field">
-        <label>Size (pt)</label>
-        <input id="setFontSize" type="number" min="8" max="16" step="0.5" value="11">
-      </div>
-      <div class="field">
-        <label>Line height</label>
-        <input id="setLineHeight" type="number" min="1" max="2.2" step="0.05" value="1.4">
-      </div>
+      <div class="field"><label>Inside (gutter)</label><input id="setMarginInside" type="number" min="0.3" max="2" step="0.05"></div>
+      <div class="field"><label>Outside</label><input id="setMarginOutside" type="number" min="0.3" max="2" step="0.05"></div>
     </div>
-    <div class="field">
-      <label>Margin (inches)</label>
-      <input id="setMargin" type="number" min="0.4" max="1.6" step="0.05" value="0.75">
+    <div class="toggle-row">
+      <label for="setMirror">Mirror margins (recto/verso)</label>
+      <input type="checkbox" id="setMirror" checked>
     </div>
-    <p class="helper" id="wppHint">Current density: <strong id="wppHintNum">—</strong> words / page. Want more? Lower font size or margin.</p>
   </div>
 
   <div class="set-group">
-    <h4>Chapter style</h4>
-    <div class="toggle-row">
-      <label for="setDropCap">Drop cap on first paragraph</label>
-      <input type="checkbox" id="setDropCap" checked>
+    <h4>Body type</h4>
+    <div class="field"><label>Font</label><select id="setBodyFont"></select></div>
+    <div class="field-row">
+      <div class="field"><label>Size (pt)</label><input id="setBodyFontSize" type="number" min="8" max="16" step="0.5"></div>
+      <div class="field"><label>Line height</label><input id="setBodyLineHeight" type="number" min="1" max="2.2" step="0.05"></div>
     </div>
+    <p class="helper">Current density: <strong id="wppHintNum">—</strong> words per page.</p>
+  </div>
+
+  <div class="set-group">
+    <h4>Chapter titles</h4>
+    <div class="field"><label>Font</label><select id="setTitleFont"></select></div>
+    <div class="field"><label>Size (pt)</label><input id="setTitleFontSize" type="number" min="14" max="48" step="1"></div>
+  </div>
+
+  <div class="set-group">
+    <h4>Page numbers + headers</h4>
     <div class="toggle-row">
-      <label for="setPageNumbers">Page numbers</label>
+      <label for="setPageNumbers">Page numbers (bottom)</label>
       <input type="checkbox" id="setPageNumbers" checked>
     </div>
+    <div class="toggle-row">
+      <label for="setRunningHeaders">Running headers (top)</label>
+      <input type="checkbox" id="setRunningHeaders" checked>
+    </div>
+    <p class="helper">Headers: book title on left pages, chapter title on right. Suppressed on chapter-opening pages.</p>
+    <div class="field"><label>Header / number font</label><select id="setNumberFont"></select></div>
+    <div class="field"><label>Header / number size (pt)</label><input id="setNumberFontSize" type="number" min="6" max="14" step="0.5"></div>
+  </div>
+
+  <div class="set-group">
+    <h4>Drop cap</h4>
+    <div class="toggle-row">
+      <label for="setDropCap">Drop cap on chapter starts</label>
+      <input type="checkbox" id="setDropCap">
+    </div>
+    <div class="field"><label>Font</label><select id="setDropCapFont"></select></div>
+    <div class="field-row">
+      <div class="field"><label>Lines tall</label><input id="setDropCapLines" type="number" min="2" max="5" step="1"></div>
+      <div class="field"><label>Color</label><input id="setDropCapColor" type="color"></div>
+    </div>
+  </div>
+
+  <div class="set-group">
+    <h4>Cover (EPUB)</h4>
+    <div id="coverPreview" class="cover-preview"></div>
+    <div class="field"><label>Upload cover image</label><input id="coverUpload" type="file" accept="image/jpeg,image/png,image/webp"></div>
   </div>
 
   <div class="set-actions">
+    <button class="btn btn-primary" id="exportEpubBtn">Export EPUB</button>
     <button class="btn" id="exportJsonBtn">Backup project (.json)</button>
     <button class="btn" id="importJsonBtn">Restore from backup…</button>
     <button class="btn danger" id="deleteProjectBtn">Delete this project</button>
@@ -527,6 +569,7 @@ button { font-family: inherit; cursor: pointer; }
 
 <script>window.PagedConfig = { auto: false };</script>
 <script src="https://cdn.jsdelivr.net/npm/pagedjs/dist/paged.polyfill.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 "use strict";
 
@@ -552,20 +595,68 @@ const BACK_KINDS = [
   { kind: "aboutauthor",     label: "About the author" },
   { kind: "afterword",       label: "Afterword" },
 ];
-const DEFAULT_SETTINGS = {
-  trim: "6x9",
-  bodyFont: "Lora",
-  fontSize: 11,
-  lineHeight: 1.4,
-  margin: 0.75,
-  dropCap: true,
-  pageNumbers: true,
-};
-const TRIM_SIZES = {
+const SERIF_FONTS = [
+  "EB Garamond", "Crimson Pro", "Source Serif 4",
+  "Libre Caslon Text", "Lora", "PT Serif", "Merriweather",
+];
+const SANS_FONTS = ["Source Sans 3", "Inter", "Lato"];
+const DISPLAY_FONTS = [
+  "Cormorant Garamond", "Playfair Display", "Cinzel", "Libre Bodoni",
+];
+const ALL_FONTS = [...SERIF_FONTS, ...SANS_FONTS, ...DISPLAY_FONTS];
+const TRIM_PRESETS = {
   "5x8":     { w: 5,    h: 8,    label: "5″×8″" },
+  "5.25x8":  { w: 5.25, h: 8,    label: "5.25″×8″" },
   "5.5x8.5": { w: 5.5,  h: 8.5,  label: "5.5″×8.5″" },
   "6x9":     { w: 6,    h: 9,    label: "6″×9″" },
+  "7x10":    { w: 7,    h: 10,   label: "7″×10″" },
+  "a4":      { w: 8.27, h: 11.69, label: "A4" },
+  "a5":      { w: 5.83, h: 8.27,  label: "A5" },
+  "letter":  { w: 8.5,  h: 11,    label: "US Letter" },
+  "custom":  { w: 6,    h: 9,     label: "Custom…" },
 };
+const DEFAULT_SETTINGS = {
+  trim: { preset: "6x9", w: 6, h: 9 },
+  margins: { top: 0.75, bottom: 0.75, inside: 0.85, outside: 0.65, mirror: true },
+  bodyFont: "Lora",
+  bodyFontSize: 11,
+  bodyLineHeight: 1.4,
+  titleFont: "Cormorant Garamond",
+  titleFontSize: 24,
+  numberFont: "Lora",
+  numberFontSize: 9,
+  dropCap: true,
+  dropCapLines: 3,
+  dropCapFont: "Cormorant Garamond",
+  dropCapColor: "#1a1a1a",
+  pageNumbers: true,
+  runningHeaders: true,
+};
+function migrateSettings(s) {
+  s = s || {};
+  if (typeof s.trim === "string") {
+    const p = TRIM_PRESETS[s.trim] || TRIM_PRESETS["6x9"];
+    s.trim = { preset: s.trim in TRIM_PRESETS ? s.trim : "6x9", w: p.w, h: p.h };
+  }
+  if (typeof s.margin === "number" && !s.margins) {
+    s.margins = { top: s.margin, bottom: s.margin, inside: s.margin, outside: s.margin, mirror: true };
+    delete s.margin;
+  }
+  if (typeof s.fontSize === "number" && !s.bodyFontSize) { s.bodyFontSize = s.fontSize; delete s.fontSize; }
+  if (typeof s.lineHeight === "number" && !s.bodyLineHeight) { s.bodyLineHeight = s.lineHeight; delete s.lineHeight; }
+  for (const k of Object.keys(DEFAULT_SETTINGS)) {
+    if (typeof s[k] === "undefined") s[k] = JSON.parse(JSON.stringify(DEFAULT_SETTINGS[k]));
+  }
+  // ensure nested margins keys exist
+  if (s.margins) for (const k of ["top","bottom","inside","outside"]) if (typeof s.margins[k] !== "number") s.margins[k] = 0.75;
+  return s;
+}
+function migrateProject(p) {
+  p.settings = migrateSettings(p.settings || {});
+  if (!p.cover) p.cover = null;
+  for (const c of (p.chapters || [])) if (!c.id) c.id = uid();
+  return p;
+}
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function emptyProject(title, author) {
@@ -579,8 +670,11 @@ function emptyProject(title, author) {
   };
 }
 function loadStore() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY) || "null") || freshStore(); }
-  catch { return freshStore(); }
+  let s;
+  try { s = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); } catch { s = null; }
+  if (!s) s = freshStore();
+  for (const id in s.projects) migrateProject(s.projects[id]);
+  return s;
 }
 function freshStore() {
   const p = emptyProject("Finding Joy", "Arjun");
@@ -864,7 +958,11 @@ function renderSidebar() {
       const wc = document.createElement("span"); wc.className = "chap-words";
       wc.textContent = countWords(c.body) || "";
       li.appendChild(num); li.appendChild(title); li.appendChild(wc);
-      li.addEventListener("click", () => { activeChapterId = c.id; renderAll(); });
+      li.addEventListener("click", () => {
+        activeChapterId = c.id;
+        renderAll();
+        scrollPreviewToActive();
+      });
       ul.appendChild(li);
     }
   }
@@ -907,16 +1005,53 @@ function renderTop() {
   document.getElementById("setAuthor").value = activeProject().author || "";
 }
 
+function populateFontSelects() {
+  const opts = (() => {
+    const groups = [
+      { label: "Serif", fonts: SERIF_FONTS },
+      { label: "Sans-serif", fonts: SANS_FONTS },
+      { label: "Display", fonts: DISPLAY_FONTS },
+    ];
+    return groups.map(g => `<optgroup label="${g.label}">${g.fonts.map(f => `<option value="${f}">${f}</option>`).join("")}</optgroup>`).join("");
+  })();
+  for (const id of ["setBodyFont", "setTitleFont", "setNumberFont", "setDropCapFont"]) {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.populated) { el.innerHTML = opts; el.dataset.populated = "1"; }
+  }
+  const trimSel = document.getElementById("setTrim");
+  if (trimSel && !trimSel.dataset.populated) {
+    trimSel.innerHTML = Object.entries(TRIM_PRESETS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
+    trimSel.dataset.populated = "1";
+  }
+}
+
 function renderSettings() {
+  populateFontSelects();
   const s = activeProject().settings;
-  document.querySelectorAll("#trimSeg button").forEach(b => b.classList.toggle("active", b.dataset.trim === s.trim));
-  document.getElementById("setBodyFont").value = s.bodyFont;
-  document.getElementById("setFontSize").value = s.fontSize;
-  document.getElementById("setLineHeight").value = s.lineHeight;
-  document.getElementById("setMargin").value = s.margin;
-  document.getElementById("setDropCap").checked = !!s.dropCap;
-  document.getElementById("setPageNumbers").checked = !!s.pageNumbers;
-  document.getElementById("trimStat").textContent = TRIM_SIZES[s.trim].label;
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  setVal("setTrim", s.trim.preset);
+  document.getElementById("trimCustomRow").hidden = s.trim.preset !== "custom";
+  setVal("setTrimW", s.trim.w); setVal("setTrimH", s.trim.h);
+  setVal("setMarginTop", s.margins.top);
+  setVal("setMarginBottom", s.margins.bottom);
+  setVal("setMarginInside", s.margins.inside);
+  setVal("setMarginOutside", s.margins.outside);
+  setChk("setMirror", s.margins.mirror);
+  setVal("setBodyFont", s.bodyFont);
+  setVal("setBodyFontSize", s.bodyFontSize);
+  setVal("setBodyLineHeight", s.bodyLineHeight);
+  setVal("setTitleFont", s.titleFont);
+  setVal("setTitleFontSize", s.titleFontSize);
+  setVal("setNumberFont", s.numberFont);
+  setVal("setNumberFontSize", s.numberFontSize);
+  setChk("setDropCap", s.dropCap);
+  setVal("setDropCapFont", s.dropCapFont);
+  setVal("setDropCapLines", s.dropCapLines);
+  setVal("setDropCapColor", s.dropCapColor);
+  setChk("setPageNumbers", s.pageNumbers);
+  setChk("setRunningHeaders", s.runningHeaders);
+  document.getElementById("trimStat").textContent = TRIM_PRESETS[s.trim.preset]?.label || `${s.trim.w}″×${s.trim.h}″`;
 }
 
 function renderAll() {
@@ -924,6 +1059,7 @@ function renderAll() {
   renderSidebar();
   renderEditor();
   renderSettings();
+  renderCoverPreview();
   schedulePreview();
 }
 
@@ -980,87 +1116,126 @@ function buildPagedSource() {
       c.role === "back"  ? "section-back"  : "section-body";
     const kindClass = "kind-" + (c.kind || c.role);
     const firstBody = opts.firstBody ? " first-body" : "";
-    const header = c.role === "body"
-      ? `<h1 class="ch-title">${escHtml(c.title || "")}</h1>`
-      : `<h1 class="ch-title front-title">${escHtml(c.title || "")}</h1>`;
-    return `
-      <section class="ch ${roleClass} ${kindClass}${firstBody}">
-        ${header}
-        ${paragraphsHtml(c.body)}
-      </section>
-    `;
+    let inner;
+    if (c.role === "front" && c.kind === "title") {
+      inner = `<h1 class="ch-title">${escHtml(c.title || p.title || "")}</h1>` +
+              (p.author ? `<p class="byline">${escHtml(p.author)}</p>` : "") +
+              paragraphsHtml(c.body);
+    } else if (c.role === "front" && (c.kind === "dedication" || c.kind === "epigraph" || c.kind === "halftitle" || c.kind === "copyright")) {
+      inner = `<h1 class="ch-title">${escHtml(c.title || "")}</h1>${paragraphsHtml(c.body)}`;
+    } else {
+      inner = `<h1 class="ch-title">${escHtml(c.title || "")}</h1>${paragraphsHtml(c.body)}`;
+    }
+    return `<section class="ch ${roleClass} ${kindClass}${firstBody}" data-chid="${escHtml(c.id)}">${inner}</section>`;
   };
 
   for (const c of front) parts.push(renderSection(c));
   body.forEach((c, i) => parts.push(renderSection(c, { firstBody: i === 0 })));
   for (const c of back) parts.push(renderSection(c));
 
-  // Title page if no front matter at all — generate one
+  // Auto title page if no front matter exists.
   if (front.length === 0) {
-    parts.unshift(`
-      <section class="ch section-front kind-title">
-        <h1 class="ch-title front-title">${escHtml(p.title || "")}</h1>
-        ${p.author ? `<p class="byline">${escHtml(p.author)}</p>` : ""}
-      </section>
-    `);
+    parts.unshift(`<section class="ch section-front kind-title" data-chid="auto-title"><h1 class="ch-title">${escHtml(p.title || "")}</h1>${p.author ? `<p class="byline">${escHtml(p.author)}</p>` : ""}</section>`);
   }
 
   return `<div class="book">${parts.join("\n")}</div>`;
 }
 
 function buildPagedCSS() {
-  const s = activeProject().settings;
-  const trim = TRIM_SIZES[s.trim];
-  const fs = +s.fontSize, lh = +s.lineHeight, mg = +s.margin;
+  const p = activeProject();
+  const s = p.settings;
+  const tw = +s.trim.w, th = +s.trim.h;
+  const m = s.margins, mirror = !!m.mirror;
+  const fs = +s.bodyFontSize, lh = +s.bodyLineHeight;
+  const tfs = +s.titleFontSize, nfs = +s.numberFontSize;
+  const bodyFont = s.bodyFont, titleFont = s.titleFont, numFont = s.numberFont;
   const showNums = s.pageNumbers !== false;
-  const dropCap = !!s.dropCap;
-  const font = s.bodyFont;
+  const showHeads = !!s.runningHeaders;
+  const contentH = (th - m.top - m.bottom).toFixed(3);
+  const bookTitleEsc = JSON.stringify(p.title || "");
+  const authorEsc = JSON.stringify(p.author || "");
+  // Margins: outside/inside swap on left vs right pages when mirroring.
+  const ml = mirror ? m.outside : m.inside;   // left page = verso
+  const mr = mirror ? m.inside  : m.outside;
+  const numBlock = showNums
+    ? `@bottom-center { content: counter(page); font-family: '${numFont}', serif; font-size: ${nfs}pt; color: #333; }`
+    : "";
+  const numBlockRoman = showNums
+    ? `@bottom-center { content: counter(page, lower-roman); font-family: '${numFont}', serif; font-size: ${nfs}pt; color: #333; }`
+    : "";
+  const headLeft = showHeads
+    ? `@top-left  { content: string(book-title);  font-family: '${numFont}', serif; font-size: ${nfs}pt; color: #555; font-style: italic; }`
+    : "";
+  const headRight = showHeads
+    ? `@top-right { content: string(chapter-title); font-family: '${numFont}', serif; font-size: ${nfs}pt; color: #555; font-style: italic; }`
+    : "";
   return `
 @page {
-  size: ${trim.w}in ${trim.h}in;
-  margin: ${mg}in;
+  size: ${tw}in ${th}in;
+  margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
 }
-@page :left  { margin-left:  ${mg}in; margin-right: ${mg}in; }
-@page :right { margin-left:  ${mg}in; margin-right: ${mg}in; }
+@page :left  { margin-left: ${mirror ? m.outside : m.inside}in;  margin-right: ${mirror ? m.inside : m.outside}in; ${showHeads ? "@top-left { content: string(book-title); font-family: '" + numFont + "', serif; font-size: " + nfs + "pt; color:#555; font-style:italic; } @top-right { content: none; }" : ""} }
+@page :right { margin-left: ${mirror ? m.inside : m.outside}in;  margin-right: ${mirror ? m.outside : m.inside}in; ${showHeads ? "@top-right { content: string(chapter-title); font-family: '" + numFont + "', serif; font-size: " + nfs + "pt; color:#555; font-style:italic; } @top-left { content: none; }" : ""} }
+
 @page roman {
-  size: ${trim.w}in ${trim.h}in;
-  margin: ${mg}in;
-  ${showNums ? "@bottom-center { content: counter(page, lower-roman); font-family: '" + font + "', serif; font-size: 9pt; color: #333; }" : ""}
+  size: ${tw}in ${th}in;
+  margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
+  ${numBlockRoman}
+  @top-left { content: none; } @top-right { content: none; }
 }
+@page chapter-open {
+  size: ${tw}in ${th}in;
+  margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
+  ${numBlock}
+  @top-left { content: none; } @top-right { content: none; }
+}
+@page chapter-open:left  { @top-left { content: none; } @top-right { content: none; } }
+@page chapter-open:right { @top-left { content: none; } @top-right { content: none; } }
+
 @page arabic {
-  size: ${trim.w}in ${trim.h}in;
-  margin: ${mg}in;
-  ${showNums ? "@bottom-center { content: counter(page); font-family: '" + font + "', serif; font-size: 9pt; color: #333; }" : ""}
+  size: ${tw}in ${th}in;
+  margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
+  ${numBlock}
+}
+@page arabic:left  { ${headLeft}  @top-right { content: none; } }
+@page arabic:right { ${headRight} @top-left  { content: none; } }
+@page arabic:first { @top-left { content: none; } @top-right { content: none; } }
+
+@page centered {
+  size: ${tw}in ${th}in;
+  margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
+  ${numBlockRoman}
+  @top-left { content: none; } @top-right { content: none; }
 }
 
-html { font-family: '${font}', Georgia, serif; }
+html { font-family: '${bodyFont}', Georgia, serif; }
 body { margin: 0; }
-.book { font-family: '${font}', Georgia, serif; font-size: ${fs}pt; line-height: ${lh}; color: #111; }
+.book {
+  font-family: '${bodyFont}', Georgia, serif;
+  font-size: ${fs}pt; line-height: ${lh}; color: #111;
+  string-set: book-title ${bookTitleEsc};
+}
 
 section.ch { break-before: page; page-break-before: always; }
 section.ch:first-of-type { break-before: avoid; }
-section.section-front { page: roman; }
+section.section-front { page: centered; }
 section.section-body  { page: arabic; }
 section.section-back  { page: arabic; }
 section.first-body    { counter-reset: page 0; }
 
+/* The h1 of each body/back chapter sets the running chapter title
+   so subsequent pages know which chapter they're in. */
+section.section-body > h1.ch-title { string-set: chapter-title content(text); }
+section.section-back  > h1.ch-title { string-set: chapter-title content(text); }
+
 h1.ch-title {
-  font-family: 'Cormorant Garamond', '${font}', serif;
+  font-family: '${titleFont}', '${bodyFont}', serif;
   font-weight: 600;
-  font-size: ${fs * 2.0}pt;
+  font-size: ${tfs}pt;
   text-align: center;
   margin: ${fs * 2}pt 0 ${fs * 2.5}pt;
   letter-spacing: 0.02em;
-}
-h1.front-title {
-  font-size: ${fs * 2.4}pt;
-  margin-top: ${fs * 6}pt;
-}
-.byline {
-  text-align: center;
-  font-style: italic;
-  font-size: ${fs * 1.1}pt;
-  margin-top: ${fs * 1.5}pt;
+  break-after: avoid;
 }
 
 p.para {
@@ -1072,34 +1247,52 @@ p.para {
   orphans: 2; widows: 2;
 }
 p.first-para { text-indent: 0; }
-${dropCap ? `
-section.section-body p.first-para::first-letter {
-  font-family: 'Cormorant Garamond', '${font}', serif;
+${s.dropCap ? `
+section.section-body > p.first-para::first-letter,
+section.section-back  > p.first-para::first-letter {
+  font-family: '${s.dropCapFont}', '${titleFont}', serif;
   font-weight: 700;
+  color: ${s.dropCapColor};
   float: left;
-  font-size: ${fs * 3.4}pt;
-  line-height: ${fs * 3.0}pt;
+  font-size: ${fs * (s.dropCapLines * 1.1)}pt;
+  line-height: ${fs * s.dropCapLines}pt;
   padding-right: 0.08em;
   padding-top: 0.04em;
   margin-bottom: -0.1em;
 }
 ` : ""}
 
-/* Centered front-matter content (dedication, epigraph) */
-section.kind-dedication, section.kind-epigraph, section.kind-copyright, section.kind-halftitle, section.kind-title {
+/* Front-matter pages: centered both horizontally and vertically. */
+section.kind-halftitle, section.kind-title, section.kind-dedication, section.kind-epigraph {
   text-align: center;
+  min-height: ${contentH}in;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+}
+section.kind-halftitle h1.ch-title, section.kind-title h1.ch-title {
+  font-family: '${titleFont}', serif;
+  font-size: ${tfs * 1.3}pt;
+  margin: 0 0 ${fs * 2}pt 0;
+}
+section.kind-title .byline {
+  font-style: italic;
+  font-size: ${fs * 1.2}pt;
+  margin: 0;
 }
 section.kind-dedication p, section.kind-epigraph p {
   font-style: italic; text-indent: 0; text-align: center;
-  margin-top: ${fs * 1.2}pt;
+  margin: ${fs * 0.6}pt 0;
+  max-width: 80%;
 }
+section.kind-dedication h1.ch-title, section.kind-epigraph h1.ch-title { display: none; }
+section.kind-copyright { text-align: center; }
+section.kind-copyright h1.ch-title { display: none; }
 section.kind-copyright p {
   text-indent: 0; text-align: center; font-size: ${fs * 0.85}pt;
   margin-top: ${fs * 0.8}pt;
 }
-section.kind-halftitle h1, section.kind-title h1 {
-  margin-top: ${fs * 8}pt;
-}
+section.kind-toc h1.ch-title { margin-bottom: ${fs * 2}pt; }
+section.kind-toc p { text-indent: 0; text-align: left; margin: ${fs * 0.4}pt 0; }
 `;
 }
 
@@ -1143,12 +1336,262 @@ async function runPreview() {
     document.getElementById("wordCount").textContent = tw;
     document.getElementById("wppCount").textContent = wpp || "—";
     document.getElementById("wppHintNum").textContent = wpp || "—";
+    requestAnimationFrame(scrollPreviewToActive);
   } catch (err) {
     console.error("[paged.js]", err);
     frame.innerHTML = `<div class="prev-empty">Preview error — check the console.<br>${escHtml(err.message || "")}</div>`;
   } finally {
     previewBusy = false;
     if (previewQueued) { previewQueued = false; runPreview(); }
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Auto-scroll preview to the active chapter
+   ────────────────────────────────────────────────────────────── */
+
+function scrollPreviewToActive() {
+  if (!activeChapterId) return;
+  const frame = document.getElementById("prevFrame");
+  const el = frame.querySelector(`[data-chid="${cssEsc(activeChapterId)}"]`);
+  if (!el) return;
+  const page = el.closest(".pagedjs_page") || el;
+  page.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function cssEsc(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, ""); }
+
+/* ──────────────────────────────────────────────────────────────
+   PDF export — open a clean book-only window and auto-print
+   ────────────────────────────────────────────────────────────── */
+
+const FONT_LINK_HREF = "https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,700;1,400;1,700&family=Crimson+Pro:ital,wght@0,400;0,500;0,700;1,400;1,700&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,700;1,400;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Lato:ital,wght@0,400;0,700;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Playfair+Display:ital,wght@0,500;0,700;1,500;1,700&family=Cinzel:wght@400;600;700&family=Libre+Bodoni:ital,wght@0,400;0,700;1,400&display=swap";
+
+function buildStandaloneBookHtml() {
+  const p = activeProject();
+  const css = buildPagedCSS();
+  const body = buildPagedSource();
+  const printCss = `
+    @media print {
+      @page { margin: 0; }
+      body { margin: 0; background: white; }
+      .pagedjs_page { box-shadow: none !important; margin: 0 !important; break-after: page; }
+    }
+    body { background: #ece8df; margin: 0; }
+    .pagedjs_page { background: white; box-shadow: 0 4px 14px -4px rgba(0,0,0,0.18); margin: 12px auto; }
+  `;
+  return `<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>${escHtml(p.title || "Book")} — ${escHtml(p.author || "")}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="${FONT_LINK_HREF}" rel="stylesheet">
+<style>${css}\n${printCss}</style>
+<script>
+window.PagedConfig = {
+  auto: true,
+  after: function () {
+    document.title = ${JSON.stringify((p.title || "Book") + " — PDF")};
+    setTimeout(function () {
+      try { window.print(); } catch (e) {}
+    }, 600);
+  }
+};
+<\/script>
+<script src="https://cdn.jsdelivr.net/npm/pagedjs/dist/paged.polyfill.js"><\/script>
+</head><body>${body}</body></html>`;
+}
+
+async function exportPdf() {
+  const win = window.open("", "_blank");
+  if (!win) {
+    await confirmModal({
+      title: "Pop-up blocked",
+      subtitle: "Allow pop-ups for this site so Studio can open the print-ready book in a new tab.",
+      okLabel: "OK",
+    });
+    return;
+  }
+  const html = buildStandaloneBookHtml();
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
+
+/* ──────────────────────────────────────────────────────────────
+   EPUB export (EPUB 3, zipped via JSZip)
+   ────────────────────────────────────────────────────────────── */
+
+function epubXmlEscape(s) {
+  return String(s || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+function dataUrlToBinary(dataUrl) {
+  const [head, b64] = String(dataUrl).split(",");
+  const mime = (head.match(/data:([^;]+)/) || [])[1] || "application/octet-stream";
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { bytes, mime };
+}
+function chapterFile(p, c, i) {
+  const title = epubXmlEscape(c.title || "");
+  const paras = String(c.body || "").trim().split(/\n\s*\n+/).map(b => `<p>${inlineMd(b.replace(/\n/g, " "))}</p>`).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en">
+<head><meta charset="UTF-8"/><title>${title}</title><link rel="stylesheet" type="text/css" href="styles.css"/></head>
+<body><section epub:type="${c.role === "front" ? "frontmatter" : c.role === "back" ? "backmatter" : "chapter"}">
+<h1>${title}</h1>
+${paras}
+</section></body></html>`;
+}
+function buildNavXhtml(p, items) {
+  const lis = items.map(it => `<li><a href="${it.href}">${epubXmlEscape(it.title)}</a></li>`).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en">
+<head><meta charset="UTF-8"/><title>Table of Contents</title><link rel="stylesheet" type="text/css" href="styles.css"/></head>
+<body><nav epub:type="toc" id="toc"><h1>Contents</h1><ol>${lis}</ol></nav></body></html>`;
+}
+function buildCoverXhtml(p, hasImg) {
+  if (hasImg) {
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head><meta charset="UTF-8"/><title>Cover</title>
+<style>html,body{margin:0;padding:0;height:100%;}img{display:block;max-width:100%;max-height:100%;margin:0 auto;}</style>
+</head><body><img src="cover.${p._coverExt}" alt="Cover"/></body></html>`;
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head><meta charset="UTF-8"/><title>Cover</title>
+<style>html,body{margin:0;padding:0;height:100%;font-family:Georgia,serif;text-align:center;}.c{margin-top:40%;}h1{font-size:2.2em;margin:0 0 0.5em;}p{font-style:italic;}</style>
+</head><body><div class="c"><h1>${epubXmlEscape(p.title || "Untitled")}</h1>${p.author ? `<p>${epubXmlEscape(p.author)}</p>` : ""}</div></body></html>`;
+}
+function buildPackageOpf(p, items, hasCover, coverExt, coverMime) {
+  const uuid = "urn:uuid:" + (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random().toString(36).slice(2)));
+  const iso = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+  const manifestItems = [
+    `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
+    `<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>`,
+    `<item id="styles" href="styles.css" media-type="text/css"/>`,
+  ];
+  if (hasCover) {
+    manifestItems.push(`<item id="cover-image" href="cover.${coverExt}" media-type="${coverMime}" properties="cover-image"/>`);
+  }
+  for (const it of items) {
+    manifestItems.push(`<item id="${it.id}" href="${it.href}" media-type="application/xhtml+xml"/>`);
+  }
+  const spine = [
+    `<itemref idref="cover" linear="yes"/>`,
+    `<itemref idref="nav" linear="no"/>`,
+    ...items.map(it => `<itemref idref="${it.id}"/>`),
+  ];
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="en">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+    <dc:identifier id="bookid">${uuid}</dc:identifier>
+    <dc:title>${epubXmlEscape(p.title || "Untitled")}</dc:title>
+    <dc:creator>${epubXmlEscape(p.author || "")}</dc:creator>
+    <dc:language>en</dc:language>
+    <meta property="dcterms:modified">${iso}</meta>
+    ${hasCover ? '<meta name="cover" content="cover-image"/>' : ""}
+  </metadata>
+  <manifest>
+    ${manifestItems.join("\n    ")}
+  </manifest>
+  <spine>
+    ${spine.join("\n    ")}
+  </spine>
+</package>`;
+}
+function buildEpubStyles(p) {
+  const s = p.settings;
+  return `
+@namespace epub "http://www.idpf.org/2007/ops";
+body { font-family: '${s.bodyFont}', Georgia, serif; line-height: 1.55; margin: 1em; }
+h1 { font-family: '${s.titleFont}', '${s.bodyFont}', serif; text-align: center; margin: 2em 0 1em; font-weight: 600; font-size: 1.6em; }
+p { text-indent: 1.4em; margin: 0; text-align: justify; orphans: 2; widows: 2; }
+p + p { text-indent: 1.4em; }
+section > p:first-of-type, h1 + p { text-indent: 0; }
+${s.dropCap ? `section > p:first-of-type::first-letter, h1 + p::first-letter {
+  font-family: '${s.dropCapFont}', '${s.titleFont}', serif;
+  font-weight: 700; color: ${s.dropCapColor};
+  font-size: 3.2em; line-height: 1; float: left;
+  padding-right: 0.06em; padding-top: 0.04em;
+}` : ""}
+section[epub|type="frontmatter"] h1 { font-size: 1.4em; }
+nav#toc ol { list-style: none; padding-left: 0; }
+nav#toc li { margin: 0.5em 0; }
+`;
+}
+
+async function exportEpub() {
+  if (typeof JSZip === "undefined") {
+    await confirmModal({ title: "EPUB tools loading…", subtitle: "Try again in a moment.", okLabel: "OK" });
+    return;
+  }
+  const p = activeProject();
+  const zip = new JSZip();
+  zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
+  zip.folder("META-INF").file("container.xml",
+    `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/package.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`);
+
+  const oebps = zip.folder("OEBPS");
+  oebps.file("styles.css", buildEpubStyles(p));
+
+  // Chapters
+  const items = [];
+  p.chapters.forEach((c, i) => {
+    const id = "c" + (i + 1);
+    const href = id + ".xhtml";
+    items.push({ id, href, title: c.title || "Untitled" });
+    oebps.file(href, chapterFile(p, c, i));
+  });
+
+  // Cover
+  let hasCover = false, coverExt = "jpg", coverMime = "image/jpeg";
+  if (p.cover && p.cover.dataUrl) {
+    const { bytes, mime } = dataUrlToBinary(p.cover.dataUrl);
+    coverMime = mime;
+    coverExt = (mime.split("/")[1] || "jpg").replace("jpeg", "jpg");
+    p._coverExt = coverExt;
+    oebps.file("cover." + coverExt, bytes);
+    hasCover = true;
+  }
+  oebps.file("cover.xhtml", buildCoverXhtml(p, hasCover));
+  oebps.file("nav.xhtml", buildNavXhtml(p, items));
+  oebps.file("package.opf", buildPackageOpf(p, items, hasCover, coverExt, coverMime));
+
+  const blob = await zip.generateAsync({ type: "blob", mimeType: "application/epub+zip" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = (p.title || "book").replace(/[^a-z0-9]+/gi, "-").toLowerCase() + ".epub";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function renderCoverPreview() {
+  const p = activeProject();
+  const prev = document.getElementById("coverPreview");
+  if (!prev) return;
+  if (p.cover && p.cover.dataUrl) {
+    prev.innerHTML = `<img alt="Cover" src="${p.cover.dataUrl}"/><button class="btn btn-mini" id="coverRemoveBtn" title="Remove">×</button>`;
+    prev.classList.add("has-cover");
+    document.getElementById("coverRemoveBtn").addEventListener("click", () => {
+      activeProject().cover = null;
+      markDirty(); renderCoverPreview();
+    });
+  } else {
+    prev.innerHTML = `<span class="cover-empty">No cover yet — upload an image to use on the EPUB.</span>`;
+    prev.classList.remove("has-cover");
   }
 }
 
@@ -1241,35 +1684,43 @@ function wireEvents() {
   scrim.addEventListener("click", closeDrawer);
 
   // Settings inputs
-  document.querySelectorAll("#trimSeg button").forEach(b => {
-    b.addEventListener("click", () => {
-      activeProject().settings.trim = b.dataset.trim;
-      markDirty(); renderSettings(); schedulePreview();
-    });
+  const onNum  = (id, fn) => document.getElementById(id)?.addEventListener("input",  (e) => { const v = parseFloat(e.target.value); if (!isFinite(v)) return; fn(v); markDirty(); schedulePreview(); });
+  const onText = (id, fn) => document.getElementById(id)?.addEventListener("change", (e) => { fn(e.target.value); markDirty(); schedulePreview(); });
+  const onChk  = (id, fn) => document.getElementById(id)?.addEventListener("change", (e) => { fn(e.target.checked); markDirty(); schedulePreview(); });
+
+  document.getElementById("setTrim")?.addEventListener("change", (e) => {
+    const key = e.target.value;
+    const s = activeProject().settings;
+    const p = TRIM_PRESETS[key];
+    s.trim = { preset: key, w: p.w, h: p.h };
+    markDirty(); renderSettings(); schedulePreview();
   });
-  const setNum = (id, key) => {
-    document.getElementById(id).addEventListener("input", (e) => {
-      const v = parseFloat(e.target.value);
-      if (!isFinite(v)) return;
-      activeProject().settings[key] = v;
-      markDirty(); schedulePreview();
-    });
-  };
-  setNum("setFontSize", "fontSize");
-  setNum("setLineHeight", "lineHeight");
-  setNum("setMargin", "margin");
-  document.getElementById("setBodyFont").addEventListener("change", (e) => {
-    activeProject().settings.bodyFont = e.target.value;
-    markDirty(); schedulePreview();
-  });
-  document.getElementById("setDropCap").addEventListener("change", (e) => {
-    activeProject().settings.dropCap = e.target.checked;
-    markDirty(); schedulePreview();
-  });
-  document.getElementById("setPageNumbers").addEventListener("change", (e) => {
-    activeProject().settings.pageNumbers = e.target.checked;
-    markDirty(); schedulePreview();
-  });
+  onNum("setTrimW", (v) => { activeProject().settings.trim.w = v; });
+  onNum("setTrimH", (v) => { activeProject().settings.trim.h = v; });
+
+  onNum("setMarginTop",     (v) => { activeProject().settings.margins.top = v; });
+  onNum("setMarginBottom",  (v) => { activeProject().settings.margins.bottom = v; });
+  onNum("setMarginInside",  (v) => { activeProject().settings.margins.inside = v; });
+  onNum("setMarginOutside", (v) => { activeProject().settings.margins.outside = v; });
+  onChk("setMirror",        (v) => { activeProject().settings.margins.mirror = v; });
+
+  onText("setBodyFont",       (v) => { activeProject().settings.bodyFont = v; });
+  onNum ("setBodyFontSize",   (v) => { activeProject().settings.bodyFontSize = v; });
+  onNum ("setBodyLineHeight", (v) => { activeProject().settings.bodyLineHeight = v; });
+
+  onText("setTitleFont",      (v) => { activeProject().settings.titleFont = v; });
+  onNum ("setTitleFontSize",  (v) => { activeProject().settings.titleFontSize = v; });
+
+  onText("setNumberFont",     (v) => { activeProject().settings.numberFont = v; });
+  onNum ("setNumberFontSize", (v) => { activeProject().settings.numberFontSize = v; });
+
+  onChk ("setDropCap",        (v) => { activeProject().settings.dropCap = v; });
+  onText("setDropCapFont",    (v) => { activeProject().settings.dropCapFont = v; });
+  onNum ("setDropCapLines",   (v) => { activeProject().settings.dropCapLines = v; });
+  onText("setDropCapColor",   (v) => { activeProject().settings.dropCapColor = v; });
+
+  onChk ("setPageNumbers",    (v) => { activeProject().settings.pageNumbers = v; });
+  onChk ("setRunningHeaders", (v) => { activeProject().settings.runningHeaders = v; });
 
   // Backup / restore / delete
   document.getElementById("exportJsonBtn").addEventListener("click", () => {
@@ -1318,10 +1769,33 @@ function wireEvents() {
     saveStore(store); renderAll();
   });
 
-  // PDF export
+  // PDF export — open a clean window with only the book + auto-print.
   document.getElementById("exportPdf").addEventListener("click", async () => {
     if (previewBusy) await new Promise(r => setTimeout(r, 400));
-    window.print();
+    exportPdf();
+  });
+
+  // EPUB export
+  document.getElementById("exportEpubBtn")?.addEventListener("click", () => exportEpub());
+
+  // Cover upload
+  document.getElementById("coverUpload")?.addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) {
+      await confirmModal({ title: "Image is too big", subtitle: "Please pick an image under 5 MB.", okLabel: "OK" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      activeProject().cover = { dataUrl: reader.result, name: f.name, type: f.type };
+      markDirty(); renderCoverPreview();
+    };
+    reader.readAsDataURL(f);
+  });
+  document.getElementById("coverRemoveBtn")?.addEventListener("click", () => {
+    activeProject().cover = null;
+    markDirty(); renderCoverPreview();
   });
 
   // Mobile tabs
