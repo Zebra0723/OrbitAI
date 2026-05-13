@@ -998,6 +998,7 @@ function renderEditor() {
   bodyEl.placeholder = "Paste or type the text here. Markdown italics (*like this*), bold (**like this**), and blank lines as paragraph breaks all work.";
   const wc = countWords(c.body);
   stats.innerHTML = `<span><strong>${wc}</strong> words</span><span>${Math.round(wc / 250 * 10) / 10} pages @ 250 wpp</span>`;
+  updateLiveStats();
 }
 
 function renderTop() {
@@ -1333,12 +1334,8 @@ async function runPreview() {
     const flow = await previewer.preview(html, [blobUrl], frame);
     URL.revokeObjectURL(blobUrl);
     const pages = frame.querySelectorAll(".pagedjs_page").length || flow?.total || 0;
-    const tw = totalWords();
-    const wpp = pages ? Math.round(tw / pages) : 0;
     document.getElementById("pageCount").textContent = pages;
-    document.getElementById("wordCount").textContent = tw;
-    document.getElementById("wppCount").textContent = wpp || "—";
-    document.getElementById("wppHintNum").textContent = wpp || "—";
+    updateLiveStats(pages);
     requestAnimationFrame(scrollPreviewToActive);
   } catch (err) {
     console.error("[paged.js]", err);
@@ -1352,6 +1349,20 @@ async function runPreview() {
 /* ──────────────────────────────────────────────────────────────
    Auto-scroll preview to the active chapter
    ────────────────────────────────────────────────────────────── */
+
+function updateLiveStats(pages) {
+  const ac = activeChapterId ? findChapter(activeChapterId) : null;
+  const chapWords = ac ? countWords(ac.body) : 0;
+  const wcEl = document.getElementById("wordCount");
+  if (wcEl) wcEl.textContent = chapWords;
+  const tw = totalWords();
+  const knownPages = (pages != null) ? pages : (parseInt(document.getElementById("pageCount")?.textContent, 10) || 0);
+  const wpp = knownPages ? Math.round(tw / knownPages) : 0;
+  const wppEl = document.getElementById("wppCount");
+  const wppHintEl = document.getElementById("wppHintNum");
+  if (wppEl) wppEl.textContent = wpp || "—";
+  if (wppHintEl) wppHintEl.textContent = wpp || "—";
+}
 
 function scrollPreviewToActive() {
   if (!activeChapterId) return;
@@ -1731,7 +1742,7 @@ function wireEvents() {
     c.body = e.target.value;
     const wc = countWords(c.body);
     document.getElementById("edStats").innerHTML = `<span><strong>${wc}</strong> words</span><span>${Math.round(wc / 250 * 10) / 10} pages @ 250 wpp</span>`;
-    renderSidebar(); markDirty(); schedulePreview();
+    renderSidebar(); updateLiveStats(); markDirty(); schedulePreview();
   });
 
   // Sidebar actions
