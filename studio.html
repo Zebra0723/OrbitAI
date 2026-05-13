@@ -444,7 +444,7 @@ button { font-family: inherit; cursor: pointer; }
       <input class="ed-title" id="edTitle" placeholder="Title">
       <button class="btn-ghost danger" id="deleteChapterBtn" title="Delete this section">Delete</button>
     </div>
-    <textarea class="ed-body" id="edBody" placeholder="Paste or type the text here. Markdown italics (*like this*), bold (**like this**), and blank lines as paragraph breaks all work."></textarea>
+    <textarea class="ed-body" id="edBody" placeholder="Paste or type the text here. Italics (*like this*), bold (**like this**), blank lines = paragraph break. Type *** on its own line for a scene break — the paragraph after it gets no indent."></textarea>
     <div class="ed-stats" id="edStats"><span>—</span></div>
   </section>
 
@@ -1094,12 +1094,30 @@ function inlineMd(s) {
   out = out.replace(/(^|\W)_(?=\S)([^_\n]+?)_(?=\W|$)/g, "$1<em>$2</em>");
   return out;
 }
+function isSceneBreak(line) {
+  const t = line.trim();
+  return /^[*\-_—]{3,}$/.test(t) || /^(\*\s+){2,}\*$/.test(t) || /^#\s*\*\s*#$/.test(t);
+}
 function paragraphsHtml(body) {
   const blocks = String(body || "").trim().split(/\n\s*\n+/);
-  return blocks.map((b, i) => {
-    const cls = i === 0 ? "para first-para" : "para";
-    return `<p class="${cls}">${inlineMd(b.replace(/\n/g, " "))}</p>`;
-  }).join("\n");
+  const out = [];
+  let nextIsFirst = true;     // next paragraph has no indent
+  let dropCapUsed = false;    // drop cap on the very first paragraph only
+  for (const b of blocks) {
+    const t = b.trim();
+    if (!t) continue;
+    if (isSceneBreak(t)) {
+      out.push(`<div class="scene-break" aria-hidden="true">* * *</div>`);
+      nextIsFirst = true;
+      continue;
+    }
+    let cls = "para";
+    if (nextIsFirst) cls += " first-para";
+    if (nextIsFirst && !dropCapUsed) { cls += " chapter-open"; dropCapUsed = true; }
+    out.push(`<p class="${cls}">${inlineMd(t.replace(/\n/g, " "))}</p>`);
+    nextIsFirst = false;
+  }
+  return out.join("\n");
 }
 
 function buildPagedSource() {
@@ -1249,15 +1267,12 @@ p.para {
 }
 p.first-para { text-indent: 0; }
 ${s.dropCap ? `
-section.section-body > p.first-para::first-letter,
-section.section-back  > p.first-para::first-letter {
+section.section-body > p.chapter-open::first-letter,
+section.section-back  > p.chapter-open::first-letter {
   font-family: '${s.dropCapFont}', '${titleFont}', serif;
   font-weight: 700;
   color: ${s.dropCapColor};
   float: left;
-  /* Cap-height is roughly 0.7em for serif fonts, so to fill N body
-     lines we set font-size = N * line-height / 0.7. line-height
-     locks the drop cap to exactly N body lines tall. */
   font-size: ${(s.dropCapLines * fs * lh / 0.7).toFixed(1)}pt;
   line-height: ${(s.dropCapLines * fs * lh).toFixed(1)}pt;
   margin-right: 0.06em;
@@ -1265,6 +1280,15 @@ section.section-back  > p.first-para::first-letter {
   margin-bottom: ${(-0.18 * fs * lh).toFixed(2)}pt;
 }
 ` : ""}
+
+div.scene-break {
+  text-align: center;
+  margin: ${(fs * lh * 1.2).toFixed(1)}pt 0 ${(fs * lh * 0.6).toFixed(1)}pt;
+  letter-spacing: 0.6em;
+  font-size: ${(fs * 0.9).toFixed(1)}pt;
+  color: #777;
+  break-inside: avoid;
+}
 
 /* Front-matter pages: centered both horizontally and vertically. */
 section.kind-halftitle, section.kind-title, section.kind-dedication, section.kind-epigraph {
@@ -1556,14 +1580,31 @@ function dataUrlToBinary(dataUrl) {
 }
 function chapterFile(p, c, i) {
   const title = epubXmlEscape(c.title || "");
-  const paras = String(c.body || "").trim().split(/\n\s*\n+/).map(b => `<p>${inlineMd(b.replace(/\n/g, " "))}</p>`).join("\n");
+  const blocks = String(c.body || "").trim().split(/\n\s*\n+/);
+  const out = [];
+  let nextIsFirst = true;
+  let dropCapUsed = false;
+  for (const b of blocks) {
+    const t = b.trim();
+    if (!t) continue;
+    if (isSceneBreak(t)) {
+      out.push(`<div class="scene-break">* * *</div>`);
+      nextIsFirst = true;
+      continue;
+    }
+    let cls = "para";
+    if (nextIsFirst) cls += " first-para";
+    if (nextIsFirst && !dropCapUsed) { cls += " chapter-open"; dropCapUsed = true; }
+    out.push(`<p class="${cls}">${inlineMd(t.replace(/\n/g, " "))}</p>`);
+    nextIsFirst = false;
+  }
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en">
 <head><meta charset="UTF-8"/><title>${title}</title><link rel="stylesheet" type="text/css" href="styles.css"/></head>
 <body><section epub:type="${c.role === "front" ? "frontmatter" : c.role === "back" ? "backmatter" : "chapter"}">
 <h1>${title}</h1>
-${paras}
+${out.join("\n")}
 </section></body></html>`;
 }
 function buildNavXhtml(p, items) {
@@ -1633,10 +1674,10 @@ function buildEpubStyles(p) {
 @namespace epub "http://www.idpf.org/2007/ops";
 body { font-family: '${s.bodyFont}', Georgia, serif; line-height: 1.55; margin: 1em; }
 h1 { font-family: '${s.titleFont}', '${s.bodyFont}', serif; text-align: center; margin: 2em 0 1em; font-weight: 600; font-size: 1.6em; }
-p { text-indent: 1.4em; margin: 0; text-align: justify; orphans: 2; widows: 2; }
-p + p { text-indent: 1.4em; }
-section > p:first-of-type, h1 + p { text-indent: 0; }
-${s.dropCap ? `section > p:first-of-type::first-letter, h1 + p::first-letter {
+p.para { text-indent: 1.4em; margin: 0; text-align: justify; orphans: 2; widows: 2; }
+p.first-para { text-indent: 0; }
+div.scene-break { text-align: center; letter-spacing: 0.6em; margin: 1.6em 0 0.8em; color: #777; font-size: 0.9em; }
+${s.dropCap ? `p.chapter-open::first-letter {
   font-family: '${s.dropCapFont}', '${s.titleFont}', serif;
   font-weight: 700; color: ${s.dropCapColor};
   font-size: 3.2em; line-height: 1; float: left;
