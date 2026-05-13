@@ -1087,12 +1087,85 @@ function escHtml(s) {
 }
 
 function inlineMd(s) {
-  // bold first (so it isn't eaten by italic)
   let out = escHtml(s);
+  // Bold-italic first, then bold, then italic — order matters so the
+  // shorter patterns don't swallow the longer ones.
+  out = out.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
+  out = out.replace(/___(.+?)___/g, "<strong><em>$1</em></strong>");
   out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  out = out.replace(/__(.+?)__/g, "<strong>$1</strong>");
   out = out.replace(/(^|\W)\*(?=\S)([^*\n]+?)\*(?=\W|$)/g, "$1<em>$2</em>");
   out = out.replace(/(^|\W)_(?=\S)([^_\n]+?)_(?=\W|$)/g, "$1<em>$2</em>");
   return out;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Rich-text paste — keep italics, bold, and paragraph breaks
+   when pasting from Reedsy, Google Docs, Word, etc.
+   ────────────────────────────────────────────────────────────── */
+
+function htmlToMarkdown(html) {
+  let doc;
+  try { doc = new DOMParser().parseFromString(`<!doctype html><body>${html}`, "text/html"); }
+  catch { return String(html).replace(/<[^>]+>/g, ""); }
+  doc.querySelectorAll("script, style, head, meta, link, title").forEach(n => n.remove());
+  const out = nodeToMd(doc.body);
+  return out
+    .replace(/ /g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+function nodeToMd(node) {
+  let s = "";
+  for (const ch of node.childNodes) {
+    if (ch.nodeType === 3) {
+      s += ch.nodeValue.replace(/\s+/g, " ");
+      continue;
+    }
+    if (ch.nodeType !== 1) continue;
+    const tag = ch.tagName.toLowerCase();
+    if (tag === "br") { s += "\n"; continue; }
+    if (tag === "hr") { s += "\n\n***\n\n"; continue; }
+    // Inline emphasis — also handle <span style="font-style:italic">
+    // and <span style="font-weight:bold|600|700"> which Google Docs
+    // and Reedsy sometimes emit.
+    const style = (ch.getAttribute && ch.getAttribute("style")) || "";
+    const italicByStyle = /font-style\s*:\s*italic/i.test(style);
+    const boldByStyle = /font-weight\s*:\s*(bold|[6-9]\d\d)/i.test(style);
+    const isEm = tag === "em" || tag === "i" || italicByStyle;
+    const isStrong = tag === "strong" || tag === "b" || boldByStyle;
+    if (isEm && isStrong) { s += "***" + nodeToMd(ch).trim() + "***"; continue; }
+    if (isStrong) { s += "**" + nodeToMd(ch).trim() + "**"; continue; }
+    if (isEm)     { s += "*"  + nodeToMd(ch).trim() + "*";  continue; }
+    if (/^h[1-6]$/.test(tag)) { s += "\n\n# " + nodeToMd(ch).trim() + "\n\n"; continue; }
+    if (tag === "li") { s += "\n- " + nodeToMd(ch).trim(); continue; }
+    if (["p","div","section","article","header","footer","blockquote","pre","figure","ul","ol"].includes(tag)) {
+      s += "\n\n" + nodeToMd(ch).trim() + "\n\n"; continue;
+    }
+    s += nodeToMd(ch);
+  }
+  return s;
+}
+
+function installPasteHandler() {
+  document.addEventListener("paste", (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLTextAreaElement)) return;
+    const cd = e.clipboardData;
+    if (!cd) return;
+    const html = (cd.getData && cd.getData("text/html")) || "";
+    if (!html || !html.trim()) return;
+    e.preventDefault();
+    const md = htmlToMarkdown(html);
+    const start = t.selectionStart ?? t.value.length;
+    const end   = t.selectionEnd   ?? t.value.length;
+    t.value = t.value.slice(0, start) + md + t.value.slice(end);
+    const caret = start + md.length;
+    t.selectionStart = t.selectionEnd = caret;
+    t.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 }
 function isSceneBreak(line) {
   const t = line.trim();
@@ -1982,6 +2055,7 @@ function bootstrap() {
   }
   activeChapterId = p.chapters[0]?.id || null;
   wireEvents();
+  installPasteHandler();
   renderAll();
 }
 
