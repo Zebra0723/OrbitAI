@@ -1254,11 +1254,14 @@ section.section-back  > p.first-para::first-letter {
   font-weight: 700;
   color: ${s.dropCapColor};
   float: left;
-  font-size: ${fs * (s.dropCapLines * 1.1)}pt;
-  line-height: ${fs * s.dropCapLines}pt;
-  padding-right: 0.08em;
-  padding-top: 0.04em;
-  margin-bottom: -0.1em;
+  /* Cap-height is roughly 0.7em for serif fonts, so to fill N body
+     lines we set font-size = N * line-height / 0.7. line-height
+     locks the drop cap to exactly N body lines tall. */
+  font-size: ${(s.dropCapLines * fs * lh / 0.7).toFixed(1)}pt;
+  line-height: ${(s.dropCapLines * fs * lh).toFixed(1)}pt;
+  margin-right: 0.06em;
+  margin-top: ${(-0.08 * fs * lh).toFixed(2)}pt;
+  margin-bottom: ${(-0.18 * fs * lh).toFixed(2)}pt;
 }
 ` : ""}
 
@@ -1462,21 +1465,47 @@ async function exportPdf() {
   const tw = +trim.w, th = +trim.h;
   const pdf = new jsPDF({ unit: "in", format: [tw, th], orientation: tw > th ? "landscape" : "portrait" });
 
+  // html2canvas needs the element to be in the viewport (or at least
+  // laid-out and visible) for content to render. We also force the
+  // page into a clean state inside the cloned DOM so paged.js's
+  // absolute positioning doesn't get clipped.
+  const frameOriginalScroll = frame.scrollTop;
   for (let i = 0; i < pages.length; i++) {
     setStatus(`Rendering ${i + 1} / ${pages.length}…`);
+    pages[i].scrollIntoView({ behavior: "auto", block: "start" });
+    await new Promise(r => setTimeout(r, 30));
     await new Promise(r => requestAnimationFrame(r));
+    const w = pages[i].offsetWidth || pages[i].getBoundingClientRect().width;
+    const h = pages[i].offsetHeight || pages[i].getBoundingClientRect().height;
     const canvas = await window.html2canvas(pages[i], {
       scale: 2,
       backgroundColor: "#ffffff",
       useCORS: true,
+      allowTaint: true,
       logging: false,
-      windowWidth: pages[i].offsetWidth,
-      windowHeight: pages[i].offsetHeight,
+      width: w,
+      height: h,
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      onclone: (doc) => {
+        // Ensure the cloned page is positioned at origin and
+        // unclipped, in case paged.js or our preview CSS uses
+        // shadows/margins/transforms that would offset capture.
+        doc.querySelectorAll(".pagedjs_page").forEach((el) => {
+          el.style.boxShadow = "none";
+          el.style.margin = "0";
+          el.style.transform = "none";
+          el.style.position = "relative";
+          el.style.top = "auto";
+          el.style.left = "auto";
+        });
+      },
     });
     const imgData = canvas.toDataURL("image/jpeg", 0.92);
     if (i > 0) pdf.addPage([tw, th], tw > th ? "landscape" : "portrait");
     pdf.addImage(imgData, "JPEG", 0, 0, tw, th, undefined, "FAST");
   }
+  frame.scrollTop = frameOriginalScroll;
 
   const filename = (p.title || "book").replace(/[^a-z0-9]+/gi, "-").toLowerCase() + ".pdf";
   pdf.save(filename);
