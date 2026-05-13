@@ -1431,19 +1431,72 @@ window.PagedConfig = {
 }
 
 async function exportPdf() {
-  const win = window.open("", "_blank");
-  if (!win) {
-    await confirmModal({
-      title: "Pop-up blocked",
-      subtitle: "Allow pop-ups for this site so Studio can open the print-ready book in a new tab.",
-      okLabel: "OK",
-    });
+  const status = document.getElementById("saveState");
+  const setStatus = (t, busy = true) => { status.textContent = t; status.classList.toggle("saving", busy); };
+  setStatus("Loading PDF tools…");
+  try {
+    await loadPdfLibs();
+  } catch (err) {
+    setStatus("Saved", false);
+    await confirmModal({ title: "Couldn't load PDF tools", subtitle: (err.message || "Check your connection and try again."), okLabel: "OK" });
     return;
   }
-  const html = buildStandaloneBookHtml();
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+
+  setStatus("Paginating…");
+  await runPreview();
+  if (document.fonts && document.fonts.ready) {
+    try { await document.fonts.ready; } catch {}
+  }
+
+  const frame = document.getElementById("prevFrame");
+  const pages = Array.from(frame.querySelectorAll(".pagedjs_page"));
+  if (!pages.length) {
+    setStatus("Saved", false);
+    await confirmModal({ title: "Nothing to export", subtitle: "Add a chapter (or some text) first.", okLabel: "OK" });
+    return;
+  }
+
+  const p = activeProject();
+  const trim = p.settings.trim;
+  const { jsPDF } = window.jspdf;
+  const tw = +trim.w, th = +trim.h;
+  const pdf = new jsPDF({ unit: "in", format: [tw, th], orientation: tw > th ? "landscape" : "portrait" });
+
+  for (let i = 0; i < pages.length; i++) {
+    setStatus(`Rendering ${i + 1} / ${pages.length}…`);
+    await new Promise(r => requestAnimationFrame(r));
+    const canvas = await window.html2canvas(pages[i], {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      logging: false,
+      windowWidth: pages[i].offsetWidth,
+      windowHeight: pages[i].offsetHeight,
+    });
+    const imgData = canvas.toDataURL("image/jpeg", 0.92);
+    if (i > 0) pdf.addPage([tw, th], tw > th ? "landscape" : "portrait");
+    pdf.addImage(imgData, "JPEG", 0, 0, tw, th, undefined, "FAST");
+  }
+
+  const filename = (p.title || "book").replace(/[^a-z0-9]+/gi, "-").toLowerCase() + ".pdf";
+  pdf.save(filename);
+  setStatus("Saved", false);
+}
+
+function loadPdfLibs() {
+  return Promise.all([
+    window.html2canvas ? Promise.resolve() : loadScript("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"),
+    window.jspdf ? Promise.resolve() : loadScript("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"),
+  ]);
+}
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src; s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Failed to load " + src));
+    document.head.appendChild(s);
+  });
 }
 
 /* ──────────────────────────────────────────────────────────────
