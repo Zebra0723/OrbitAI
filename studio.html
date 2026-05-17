@@ -821,6 +821,28 @@ function confirmModal({ title, subtitle, okLabel = "OK", danger = false }) {
 function findChapter(id) { return activeProject().chapters.find(c => c.id === id); }
 function indexOfChapter(id) { return activeProject().chapters.findIndex(c => c.id === id); }
 
+// Canonical professional book order. Body chapters keep author order.
+const FRONT_ORDER = ["halftitle","title","copyright","dedication","epigraph","toc","foreword","preface","intro"];
+const BACK_ORDER  = ["epilogue","afterword","acknowledgments","aboutauthor"];
+function sortStructure(p) {
+  const rank = (c) => {
+    if (c.role === "front") {
+      const i = FRONT_ORDER.indexOf(c.kind);
+      return [0, i < 0 ? FRONT_ORDER.length : i];
+    }
+    if (c.role === "back") {
+      const i = BACK_ORDER.indexOf(c.kind);
+      return [2, i < 0 ? BACK_ORDER.length : i];
+    }
+    return [1, 0];
+  };
+  // Stable sort: decorate with original index so equal ranks keep order.
+  p.chapters = p.chapters
+    .map((c, idx) => ({ c, idx, r: rank(c) }))
+    .sort((a, b) => (a.r[0] - b.r[0]) || (a.r[1] - b.r[1]) || (a.idx - b.idx))
+    .map(x => x.c);
+}
+
 function addChapter(role, kind, label, body) {
   const p = activeProject();
   const c = {
@@ -828,17 +850,8 @@ function addChapter(role, kind, label, body) {
     title: label || (role === "body" ? `Chapter ${p.chapters.filter(x => x.role === "body").length + 1}` : "Untitled"),
     body: body || "",
   };
-  // Insert at the end of its role-group.
-  let insertAt = p.chapters.length;
-  if (role === "front") {
-    // before first body or back
-    const idx = p.chapters.findIndex(x => x.role === "body" || x.role === "back");
-    if (idx >= 0) insertAt = idx;
-  } else if (role === "body") {
-    const idx = p.chapters.findIndex(x => x.role === "back");
-    if (idx >= 0) insertAt = idx;
-  }
-  p.chapters.splice(insertAt, 0, c);
+  p.chapters.push(c);
+  sortStructure(p);
   activeChapterId = c.id;
   markDirty(); renderAll();
   return c;
@@ -1288,60 +1301,37 @@ function buildPagedCSS() {
   const showNums = s.pageNumbers !== false;
   const showHeads = !!s.runningHeaders;
   const contentH = (th - m.top - m.bottom).toFixed(3);
-  const bookTitleEsc = JSON.stringify(p.title || "");
-  const authorEsc = JSON.stringify(p.author || "");
   // Margins: outside/inside swap on left vs right pages when mirroring.
   const ml = mirror ? m.outside : m.inside;   // left page = verso
   const mr = mirror ? m.inside  : m.outside;
-  const numBlock = showNums
-    ? `@bottom-center { content: counter(page); font-family: '${numFont}', serif; font-size: ${nfs}pt; color: #333; }`
-    : "";
-  const numBlockRoman = showNums
-    ? `@bottom-center { content: counter(page, lower-roman); font-family: '${numFont}', serif; font-size: ${nfs}pt; color: #333; }`
-    : "";
-  const headLeft = showHeads
-    ? `@top-left  { content: string(book-title);  font-family: '${numFont}', serif; font-size: ${nfs}pt; color: #555; font-style: italic; }`
-    : "";
-  const headRight = showHeads
-    ? `@top-right { content: string(chapter-title); font-family: '${numFont}', serif; font-size: ${nfs}pt; color: #555; font-style: italic; }`
-    : "";
+  // Placeholder content just so paged.js allocates the margin boxes;
+  // decoratePages() overwrites the text after render with the correct
+  // running header / page number (paged.js counters & string-set are
+  // unreliable across page splits).
+  const numStyle  = `font-family: '${numFont}', serif; font-size: ${nfs}pt; color: #333;`;
+  const headStyle = `font-family: '${numFont}', serif; font-size: ${nfs}pt; color: #555; font-style: italic;`;
+  const numBox  = showNums  ? `@bottom-center { content: "0"; ${numStyle} }` : "";
+  const headBoxL = showHeads ? `@top-left  { content: "\\00a0"; ${headStyle} }` : "";
+  const headBoxR = showHeads ? `@top-right { content: "\\00a0"; ${headStyle} }` : "";
   return `
 @page {
   size: ${tw}in ${th}in;
   margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
 }
-@page :left  { margin-left: ${mirror ? m.outside : m.inside}in;  margin-right: ${mirror ? m.inside : m.outside}in; ${showHeads ? "@top-left { content: string(book-title); font-family: '" + numFont + "', serif; font-size: " + nfs + "pt; color:#555; font-style:italic; } @top-right { content: none; }" : ""} }
-@page :right { margin-left: ${mirror ? m.inside : m.outside}in;  margin-right: ${mirror ? m.outside : m.inside}in; ${showHeads ? "@top-right { content: string(chapter-title); font-family: '" + numFont + "', serif; font-size: " + nfs + "pt; color:#555; font-style:italic; } @top-left { content: none; }" : ""} }
-
-@page roman {
-  size: ${tw}in ${th}in;
-  margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
-  ${numBlockRoman}
-  @top-left { content: none; } @top-right { content: none; }
-}
-@page chapter-open {
-  size: ${tw}in ${th}in;
-  margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
-  ${numBlock}
-  @top-left { content: none; } @top-right { content: none; }
-}
-@page chapter-open:left  { @top-left { content: none; } @top-right { content: none; } }
-@page chapter-open:right { @top-left { content: none; } @top-right { content: none; } }
-
-@page arabic {
-  size: ${tw}in ${th}in;
-  margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
-  ${numBlock}
-}
-@page arabic:left  { ${headLeft}  @top-right { content: none; } }
-@page arabic:right { ${headRight} @top-left  { content: none; } }
-@page arabic:first { @top-left { content: none; } @top-right { content: none; } }
+@page :left  { margin-left: ${mirror ? m.outside : m.inside}in;  margin-right: ${mirror ? m.inside : m.outside}in; }
+@page :right { margin-left: ${mirror ? m.inside : m.outside}in;  margin-right: ${mirror ? m.outside : m.inside}in; }
 
 @page centered {
   size: ${tw}in ${th}in;
   margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
-  ${numBlockRoman}
-  @top-left { content: none; } @top-right { content: none; }
+  ${numBox}
+}
+@page arabic {
+  size: ${tw}in ${th}in;
+  margin: ${m.top}in ${mr}in ${m.bottom}in ${ml}in;
+  ${numBox}
+  ${headBoxL}
+  ${headBoxR}
 }
 
 html { font-family: '${bodyFont}', Georgia, serif; }
@@ -1349,7 +1339,6 @@ body { margin: 0; }
 .book {
   font-family: '${bodyFont}', Georgia, serif;
   font-size: ${fs}pt; line-height: ${lh}; color: #111;
-  string-set: book-title ${bookTitleEsc};
 }
 
 section.ch { break-before: page; page-break-before: always; }
@@ -1357,12 +1346,6 @@ section.ch:first-of-type { break-before: avoid; }
 section.section-front { page: centered; }
 section.section-body  { page: arabic; }
 section.section-back  { page: arabic; }
-section.first-body    { counter-reset: page 0; }
-
-/* The h1 of each body/back chapter sets the running chapter title
-   so subsequent pages know which chapter they're in. */
-section.section-body > h1.ch-title { string-set: chapter-title content(text); }
-section.section-back  > h1.ch-title { string-set: chapter-title content(text); }
 
 h1.ch-title {
   font-family: '${titleFont}', '${bodyFont}', serif;
@@ -1370,7 +1353,7 @@ h1.ch-title {
   font-size: ${tfs}pt;
   text-align: center;
   margin: ${fs * 2}pt 0 ${fs * 2.5}pt;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   break-after: avoid;
 }
 
@@ -1452,6 +1435,50 @@ function schedulePreview() {
 function cssToBlobUrl(css) {
   return URL.createObjectURL(new Blob([css], { type: "text/css" }));
 }
+// paged.js's string-set / counter-reset don't survive page splits
+// reliably, so we set the running headers and page numbers directly
+// on the rendered DOM. This is the source of truth for both preview
+// and PDF export (export captures these same pages).
+function decoratePages(frame) {
+  const proj = activeProject();
+  const s = proj.settings;
+  const showNums = s.pageNumbers !== false;
+  const showHeads = !!s.runningHeaders;
+  const bookTitle = proj.title || "";
+  const pages = Array.from(frame.querySelectorAll(".pagedjs_page"));
+  let roman = 0, arabic = 0, currentChapter = "";
+  const setBox = (pg, cls, text) => {
+    let box = pg.querySelector(".pagedjs_margin-" + cls + " .pagedjs_margin-content");
+    if (!box) {
+      const m = pg.querySelector(".pagedjs_margin-" + cls);
+      if (m) { box = document.createElement("div"); box.className = "pagedjs_margin-content"; m.appendChild(box); }
+    }
+    if (box) box.textContent = text || "";
+  };
+  for (const pg of pages) {
+    const hasBody  = !!pg.querySelector(".section-body, .section-back");
+    const hasFront = !!pg.querySelector(".section-front");
+    const isFront  = hasFront && !hasBody;
+    const h1 = pg.querySelector("h1.ch-title");
+    const startsSection = !!h1;
+    if (h1 && hasBody) currentChapter = h1.textContent.trim();
+
+    let numText = "";
+    if (isFront) { roman++;  numText = toRoman(roman).toLowerCase(); }
+    else         { arabic++; numText = String(arabic); }
+    setBox(pg, "bottom-center", showNums ? numText : "");
+
+    let headLeft = "", headRight = "";
+    if (showHeads && !isFront && !startsSection) {
+      const isLeft = pg.classList.contains("pagedjs_left_page");
+      if (isLeft) headLeft = bookTitle;
+      else        headRight = currentChapter;
+    }
+    setBox(pg, "top-left",  headLeft);
+    setBox(pg, "top-right", headRight);
+  }
+}
+
 async function runPreview() {
   if (previewBusy) { previewQueued = true; return; }
   previewBusy = true;
@@ -1470,6 +1497,7 @@ async function runPreview() {
     const previewer = new Paged.Previewer();
     const flow = await previewer.preview(html, [blobUrl], frame);
     URL.revokeObjectURL(blobUrl);
+    decoratePages(frame);
     const pages = frame.querySelectorAll(".pagedjs_page").length || flow?.total || 0;
     document.getElementById("pageCount").textContent = pages;
     updateLiveStats(pages);
@@ -1656,8 +1684,21 @@ async function exportPdf() {
 
   setStatus("Paginating…");
   await runPreview();
-  if (document.fonts && document.fonts.ready) {
-    try { await document.fonts.ready; } catch {}
+  // Explicitly load every font/weight the book uses BEFORE rasterising.
+  // Otherwise html2canvas captures with a fallback font and the glyph
+  // advances are wrong → letters overlap/merge (e.g. "Foreword").
+  if (document.fonts && document.fonts.load) {
+    const sset = activeProject().settings;
+    const fams = [...new Set([sset.bodyFont, sset.titleFont, sset.numberFont, sset.dropCapFont])];
+    const specs = [];
+    for (const f of fams) {
+      specs.push(`400 14pt "${f}"`, `italic 400 14pt "${f}"`, `600 28pt "${f}"`, `700 40pt "${f}"`);
+    }
+    try {
+      await Promise.all(specs.map(s => document.fonts.load(s).catch(() => {})));
+      await document.fonts.ready;
+    } catch {}
+    await new Promise(r => setTimeout(r, 150));
   }
 
   const frame = document.getElementById("prevFrame");
@@ -2172,6 +2213,8 @@ function wireEvents() {
 function bootstrap() {
   // Pick something to view
   const p = activeProject();
+  // Reorder any existing project into professional book order.
+  for (const id in store.projects) sortStructure(store.projects[id]);
   if (!p.chapters.length) {
     // Seed a single empty chapter for first-run.
     addChapterSilent("body", "chapter", "Chapter 1", "");
