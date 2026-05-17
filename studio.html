@@ -1539,28 +1539,33 @@ async function autoTypeset(targetWpp, ageKey, genreKey) {
   // 3. First guess from a simple density model:
   //    WPP ≈ (Cw / (fs·0.5)) · (Ch / (fs·lh)) / 6.5  (6.5 ≈ avg word+space)
   //    ⇒ fs = sqrt( Cw·Ch / (3.25·lh·WPP) )
+  //    Font size is NOT capped to an age band — the user's target
+  //    WPP is honoured exactly. Age only chooses the line-height and
+  //    margin combo. A wide 4–40pt safety range just prevents
+  //    degenerate values.
+  const FS_MIN = 4, FS_MAX = 40;
   const tw = +s.trim.w, th = +s.trim.h, m = s.margins;
   const cw = Math.max(36, (tw - m.inside - m.outside) * 72);
   const ch = Math.max(36, (th - m.top - m.bottom) * 72);
   let fs = Math.sqrt((cw * ch) / (3.25 * s.bodyLineHeight * Math.max(40, targetWpp))) + genre.fsAdj;
-  s.bodyFontSize = +clamp(fs, age.minFs, age.maxFs).toFixed(1);
+  s.bodyFontSize = +clamp(fs, FS_MIN, FS_MAX).toFixed(1);
   s.autoTune = { targetWpp, age: ageKey, genre: genreKey };
   renderSettings();
 
   // 4. Converge on the real number. Paged.js gives us the true page
   //    count; WPP ∝ 1/fs², so fsₙ₊₁ = fsₙ · √(actual / target).
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     setStatus(`Tuning… (${i + 1})`);
     await runPreview();
     const pages = document.querySelectorAll("#prevFrame .pagedjs_page").length;
     const words = totalWords();
     if (!pages || !words) break;
     const actual = Math.round(words / pages);
-    const tol = Math.max(4, targetWpp * 0.03);
+    const tol = Math.max(3, targetWpp * 0.02);
     if (Math.abs(actual - targetWpp) <= tol) break;
     let next = s.bodyFontSize * Math.sqrt(actual / targetWpp);
-    next = +clamp(next, age.minFs, age.maxFs).toFixed(1);
-    if (Math.abs(next - s.bodyFontSize) < 0.05) break;  // clamped / converged
+    next = +clamp(next, FS_MIN, FS_MAX).toFixed(1);
+    if (Math.abs(next - s.bodyFontSize) < 0.05) break;  // converged
     s.bodyFontSize = next;
     renderSettings();
   }
@@ -2111,12 +2116,13 @@ function wireEvents() {
     btn.disabled = true; btn.textContent = "Typesetting…";
     const actual = await autoTypeset(target, ageKey, genreKey);
     btn.disabled = false; btn.textContent = "Typeset for this";
+    const st = activeProject().settings;
     const off = Math.abs(actual - target);
     await confirmModal({
       title: `Set to ≈ ${actual} words/page`,
-      subtitle: off <= Math.max(5, target * 0.04)
-        ? `Hit your target of ${target}. Font ${activeProject().settings.bodyFontSize}pt, line height ${activeProject().settings.bodyLineHeight}. Tweak anything below if you want.`
-        : `Closest comfortable fit for this age group is ${actual} (you asked for ${target}). Going further would make the type too ${actual > target ? "small" : "large"} for the reader. Adjust trim size or margins below to push further.`,
+      subtitle: off <= Math.max(4, target * 0.03)
+        ? `Hit your target of ${target}. Font ${st.bodyFontSize}pt, line height ${st.bodyLineHeight}, margins from the ${AGE_GROUPS[ageKey].label} profile. Tweak anything below if you want.`
+        : `Closest it could get is ${actual} (you asked for ${target}) at ${st.bodyFontSize}pt. To push further, change the trim size or margins below — line height + margins use the ${AGE_GROUPS[ageKey].label} profile.`,
       okLabel: "Got it",
     });
   });
