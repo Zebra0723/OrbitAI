@@ -1151,8 +1151,12 @@ function inlineMd(s) {
   out = out.replace(/___(.+?)___/g, "<strong><em>$1</em></strong>");
   out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   out = out.replace(/__(.+?)__/g, "<strong>$1</strong>");
-  out = out.replace(/(^|\W)\*(?=\S)([^*\n]+?)\*(?=\W|$)/g, "$1<em>$2</em>");
-  out = out.replace(/(^|\W)_(?=\S)([^_\n]+?)_(?=\W|$)/g, "$1<em>$2</em>");
+  // Italic: a * pair whose inner text starts and ends with a
+  // non-space char. No requirement on what's OUTSIDE the markers, so
+  // "word*italic*word" and *italic* hugging quotes/punctuation both
+  // work. Single-char (*x*) handled by the optional inner group.
+  out = out.replace(/\*(\S(?:[^*\n]*?\S)?)\*/g, "<em>$1</em>");
+  out = out.replace(/_(\S(?:[^_\n]*?\S)?)_/g, "<em>$1</em>");
   return out;
 }
 
@@ -1193,9 +1197,19 @@ function nodeToMd(node) {
     const boldByStyle = /font-weight\s*:\s*(bold|[6-9]\d\d)/i.test(style);
     const isEm = tag === "em" || tag === "i" || italicByStyle;
     const isStrong = tag === "strong" || tag === "b" || boldByStyle;
-    if (isEm && isStrong) { s += "***" + nodeToMd(ch).trim() + "***"; continue; }
-    if (isStrong) { s += "**" + nodeToMd(ch).trim() + "**"; continue; }
-    if (isEm)     { s += "*"  + nodeToMd(ch).trim() + "*";  continue; }
+    if (isEm || isStrong) {
+      // Move any leading/trailing whitespace OUTSIDE the markers, so
+      // we never produce "word*italic*word" (which then can't be
+      // re-parsed) and we never delete the space between words.
+      const raw = nodeToMd(ch);
+      const lead = (raw.match(/^\s+/) || [""])[0];
+      const trail = (raw.match(/\s+$/) || [""])[0];
+      const core = raw.slice(lead.length, raw.length - trail.length || undefined);
+      if (!core) { s += raw; continue; }
+      const mark = (isEm && isStrong) ? "***" : isStrong ? "**" : "*";
+      s += lead + mark + core + mark + trail;
+      continue;
+    }
     if (/^h[1-6]$/.test(tag)) { s += "\n\n# " + nodeToMd(ch).trim() + "\n\n"; continue; }
     if (tag === "li") { s += "\n- " + nodeToMd(ch).trim(); continue; }
     if (["p","div","section","article","header","footer","blockquote","pre","figure","ul","ol"].includes(tag)) {
