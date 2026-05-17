@@ -480,6 +480,15 @@ button { font-family: inherit; cursor: pointer; }
   </div>
 
   <div class="set-group">
+    <h4>Auto-typeset</h4>
+    <div class="field"><label>Target words per page</label><input id="autoWpp" type="number" min="80" max="500" step="5" value="250"></div>
+    <div class="field"><label>Age group</label><select id="autoAge"></select></div>
+    <div class="field"><label>Genre</label><select id="autoGenre"></select></div>
+    <button class="btn btn-primary" id="autoTypesetBtn" style="width:100%;margin-top:6px;">Typeset for this</button>
+    <p class="helper">Sets font size, line spacing and margins to hit your target — tuned for the age group and genre. You can still fine-tune everything below afterwards.</p>
+  </div>
+
+  <div class="set-group">
     <h4>Trim size</h4>
     <div class="field">
       <select id="setTrim"></select>
@@ -631,7 +640,27 @@ const DEFAULT_SETTINGS = {
   dropCapColor: "#1a1a1a",
   pageNumbers: true,
   runningHeaders: true,
+  autoTune: null,
 };
+// Typographic comfort profiles. Younger readers get larger type, more
+// leading, and a touch more margin. minFs/maxFs keep the font size in
+// an age-appropriate band even when chasing a words-per-page target.
+const AGE_GROUPS = {
+  early:  { label: "Early reader (6–8)",  lh: 1.6,  minFs: 13,   maxFs: 16,   margin: 0.85 },
+  middle: { label: "Middle grade (9–12)", lh: 1.5,  minFs: 11.5, maxFs: 14,   margin: 0.78 },
+  ya:     { label: "Young adult (13–17)", lh: 1.42, minFs: 10.5, maxFs: 13,   margin: 0.72 },
+  adult:  { label: "Adult",               lh: 1.35, minFs: 9.5,  maxFs: 12.5, margin: 0.7  },
+};
+const GENRES = {
+  literary:  { label: "Literary / general fiction", lhAdj: 0,     fsAdj: 0   },
+  fantasy:   { label: "Fantasy / sci-fi",           lhAdj: 0.03,  fsAdj: 0   },
+  mystery:   { label: "Mystery / thriller",         lhAdj: 0,     fsAdj: 0   },
+  romance:   { label: "Romance",                    lhAdj: 0.02,  fsAdj: 0   },
+  adventure: { label: "Adventure / action",         lhAdj: 0.02,  fsAdj: 0   },
+  nonfic:    { label: "Non-fiction / memoir",       lhAdj: -0.03, fsAdj: 0   },
+  childrens: { label: "Children's chapter book",    lhAdj: 0.08,  fsAdj: 0.5 },
+};
+function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 function migrateSettings(s) {
   s = s || {};
   if (typeof s.trim === "string") {
@@ -1024,6 +1053,16 @@ function populateFontSelects() {
     trimSel.innerHTML = Object.entries(TRIM_PRESETS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
     trimSel.dataset.populated = "1";
   }
+  const ageSel = document.getElementById("autoAge");
+  if (ageSel && !ageSel.dataset.populated) {
+    ageSel.innerHTML = Object.entries(AGE_GROUPS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
+    ageSel.dataset.populated = "1";
+  }
+  const genreSel = document.getElementById("autoGenre");
+  if (genreSel && !genreSel.dataset.populated) {
+    genreSel.innerHTML = Object.entries(GENRES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
+    genreSel.dataset.populated = "1";
+  }
 }
 
 function renderSettings() {
@@ -1052,6 +1091,11 @@ function renderSettings() {
   setVal("setDropCapColor", s.dropCapColor);
   setChk("setPageNumbers", s.pageNumbers);
   setChk("setRunningHeaders", s.runningHeaders);
+  if (s.autoTune) {
+    setVal("autoWpp", s.autoTune.targetWpp);
+    setVal("autoAge", s.autoTune.age);
+    setVal("autoGenre", s.autoTune.genre);
+  }
   document.getElementById("trimStat").textContent = TRIM_PRESETS[s.trim.preset]?.label || `${s.trim.w}″×${s.trim.h}″`;
 }
 
@@ -1180,7 +1224,7 @@ function paragraphsHtml(body) {
     const t = b.trim();
     if (!t) continue;
     if (isSceneBreak(t)) {
-      out.push(`<div class="scene-break" aria-hidden="true">* * *</div>`);
+      out.push(`<div class="scene-break" aria-hidden="true"></div>`);
       nextIsFirst = true;
       continue;
     }
@@ -1355,11 +1399,7 @@ section.section-back  > p.chapter-open::first-letter {
 ` : ""}
 
 div.scene-break {
-  text-align: center;
-  margin: ${(fs * lh * 1.2).toFixed(1)}pt 0 ${(fs * lh * 0.6).toFixed(1)}pt;
-  letter-spacing: 0.6em;
-  font-size: ${(fs * 0.9).toFixed(1)}pt;
-  color: #777;
+  height: ${(fs * lh * 1.3).toFixed(1)}pt;
   break-inside: avoid;
 }
 
@@ -1441,6 +1481,67 @@ async function runPreview() {
     previewBusy = false;
     if (previewQueued) { previewQueued = false; runPreview(); }
   }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Auto-typeset: hit a target words-per-page, tuned by age + genre
+   ────────────────────────────────────────────────────────────── */
+
+async function autoTypeset(targetWpp, ageKey, genreKey) {
+  const s = activeProject().settings;
+  const age = AGE_GROUPS[ageKey] || AGE_GROUPS.middle;
+  const genre = GENRES[genreKey] || GENRES.literary;
+  const status = document.getElementById("saveState");
+  const setStatus = (t, busy = true) => { status.textContent = t; status.classList.toggle("saving", busy); };
+
+  // 1. Line spacing is driven by age, nudged by genre.
+  s.bodyLineHeight = +clamp(age.lh + genre.lhAdj, 1.1, 1.9).toFixed(2);
+
+  // 2. Comfortable, age-appropriate margins (mirrored gutter kept a
+  //    little wider). Preserve the user's mirror preference.
+  const mg = age.margin;
+  s.margins = {
+    top: +mg.toFixed(2),
+    bottom: +mg.toFixed(2),
+    inside: +(mg + 0.12).toFixed(2),
+    outside: +Math.max(0.4, mg - 0.05).toFixed(2),
+    mirror: s.margins ? s.margins.mirror !== false : true,
+  };
+
+  // 3. First guess from a simple density model:
+  //    WPP ≈ (Cw / (fs·0.5)) · (Ch / (fs·lh)) / 6.5  (6.5 ≈ avg word+space)
+  //    ⇒ fs = sqrt( Cw·Ch / (3.25·lh·WPP) )
+  const tw = +s.trim.w, th = +s.trim.h, m = s.margins;
+  const cw = Math.max(36, (tw - m.inside - m.outside) * 72);
+  const ch = Math.max(36, (th - m.top - m.bottom) * 72);
+  let fs = Math.sqrt((cw * ch) / (3.25 * s.bodyLineHeight * Math.max(40, targetWpp))) + genre.fsAdj;
+  s.bodyFontSize = +clamp(fs, age.minFs, age.maxFs).toFixed(1);
+  s.autoTune = { targetWpp, age: ageKey, genre: genreKey };
+  renderSettings();
+
+  // 4. Converge on the real number. Paged.js gives us the true page
+  //    count; WPP ∝ 1/fs², so fsₙ₊₁ = fsₙ · √(actual / target).
+  for (let i = 0; i < 5; i++) {
+    setStatus(`Tuning… (${i + 1})`);
+    await runPreview();
+    const pages = document.querySelectorAll("#prevFrame .pagedjs_page").length;
+    const words = totalWords();
+    if (!pages || !words) break;
+    const actual = Math.round(words / pages);
+    const tol = Math.max(4, targetWpp * 0.03);
+    if (Math.abs(actual - targetWpp) <= tol) break;
+    let next = s.bodyFontSize * Math.sqrt(actual / targetWpp);
+    next = +clamp(next, age.minFs, age.maxFs).toFixed(1);
+    if (Math.abs(next - s.bodyFontSize) < 0.05) break;  // clamped / converged
+    s.bodyFontSize = next;
+    renderSettings();
+  }
+  markDirty();
+  await runPreview();
+  const pages = document.querySelectorAll("#prevFrame .pagedjs_page").length;
+  const actual = pages ? Math.round(totalWords() / pages) : 0;
+  setStatus("Saved", false);
+  return actual;
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -1749,7 +1850,7 @@ body { font-family: '${s.bodyFont}', Georgia, serif; line-height: 1.55; margin: 
 h1 { font-family: '${s.titleFont}', '${s.bodyFont}', serif; text-align: center; margin: 2em 0 1em; font-weight: 600; font-size: 1.6em; }
 p.para { text-indent: 1.4em; margin: 0; text-align: justify; orphans: 2; widows: 2; }
 p.first-para { text-indent: 0; }
-div.scene-break { text-align: center; letter-spacing: 0.6em; margin: 1.6em 0 0.8em; color: #777; font-size: 0.9em; }
+div.scene-break { height: 1.5em; }
 ${s.dropCap ? `p.chapter-open::first-letter {
   font-family: '${s.dropCapFont}', '${s.titleFont}', serif;
   font-weight: 700; color: ${s.dropCapColor};
@@ -1956,6 +2057,28 @@ function wireEvents() {
 
   onChk ("setPageNumbers",    (v) => { activeProject().settings.pageNumbers = v; });
   onChk ("setRunningHeaders", (v) => { activeProject().settings.runningHeaders = v; });
+
+  document.getElementById("autoTypesetBtn")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const target = parseInt(document.getElementById("autoWpp").value, 10);
+    if (!isFinite(target) || target < 60) {
+      await confirmModal({ title: "Enter a target", subtitle: "Type a words-per-page number (try 200–300 for a novel).", okLabel: "OK" });
+      return;
+    }
+    const ageKey = document.getElementById("autoAge").value;
+    const genreKey = document.getElementById("autoGenre").value;
+    btn.disabled = true; btn.textContent = "Typesetting…";
+    const actual = await autoTypeset(target, ageKey, genreKey);
+    btn.disabled = false; btn.textContent = "Typeset for this";
+    const off = Math.abs(actual - target);
+    await confirmModal({
+      title: `Set to ≈ ${actual} words/page`,
+      subtitle: off <= Math.max(5, target * 0.04)
+        ? `Hit your target of ${target}. Font ${activeProject().settings.bodyFontSize}pt, line height ${activeProject().settings.bodyLineHeight}. Tweak anything below if you want.`
+        : `Closest comfortable fit for this age group is ${actual} (you asked for ${target}). Going further would make the type too ${actual > target ? "small" : "large"} for the reader. Adjust trim size or margins below to push further.`,
+      okLabel: "Got it",
+    });
+  });
 
   // Backup / restore / delete
   document.getElementById("exportJsonBtn").addEventListener("click", () => {
