@@ -1207,7 +1207,19 @@ function nodeToMd(node) {
       const core = raw.slice(lead.length, raw.length - trail.length || undefined);
       if (!core) { s += raw; continue; }
       const mark = (isEm && isStrong) ? "***" : isStrong ? "**" : "*";
-      s += lead + mark + core + mark + trail;
+      // If the emphasis spans paragraph breaks (e.g. an italicised
+      // multi-paragraph flashback/letter), wrap EACH paragraph in its
+      // own markers. Otherwise the paragraph splitter would leave a
+      // lone unmatched '*' in each block and the asterisks would show
+      // literally.
+      if (/\n\s*\n/.test(core)) {
+        s += lead + core.split(/\n\s*\n+/)
+          .map(seg => { const t2 = seg.trim(); return t2 ? mark + t2 + mark : ""; })
+          .filter(Boolean)
+          .join("\n\n") + trail;
+      } else {
+        s += lead + mark + core + mark + trail;
+      }
       continue;
     }
     if (/^h[1-6]$/.test(tag)) { s += "\n\n# " + nodeToMd(ch).trim() + "\n\n"; continue; }
