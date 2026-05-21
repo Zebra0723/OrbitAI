@@ -703,6 +703,123 @@
     .editor-shell { padding: 22px; }
     .cover-editor { grid-template-columns: 1fr; }
   }
+
+  /* ── The Machine ─────────────────────────────────────────────── */
+  .mc-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+  .mc-bar .spacer { flex: 1; }
+  .mc-btn {
+    border: 1px solid var(--line); background: var(--surface);
+    color: var(--ink); font-weight: 600; font-size: 13.5px;
+    padding: 8px 14px; border-radius: 999px; transition: background .12s, border-color .12s;
+  }
+  .mc-btn:hover { background: var(--line-soft); }
+  .mc-btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .mc-btn.primary:hover { opacity: .88; }
+  .mc-btn.ghost { border-color: transparent; color: var(--muted); }
+  .mc-btn.ghost:hover { color: var(--ink); background: var(--line-soft); }
+
+  .mc-cat { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.06em; padding:3px 9px; border-radius:999px; }
+  .mc-cat .dot { width:7px; height:7px; border-radius:50%; background: currentColor; }
+  .mc-cat.builder    { color:#2647ff; background:#eef0ff; }
+  .mc-cat.athlete    { color:#1d7a47; background:#e6f4ec; }
+  .mc-cat.creator    { color:#9b3d8c; background:#f6ecf5; }
+  .mc-cat.scholar    { color:#b07d10; background:#fbf3df; }
+  .mc-cat.discipline { color:#c9591a; background:#fbede3; }
+
+  .mc-grid { display:grid; gap:14px; }
+  @media (min-width:720px){ .mc-grid.two { grid-template-columns: 1fr 1fr; } }
+
+  .mc-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .mc-card h3 { margin: 0 0 2px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+  .mc-card .mc-sub { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  .mc-card.clickable { cursor: pointer; transition: border-color .12s, transform .08s; text-align:left; width:100%; }
+  .mc-card.clickable:hover { border-color: #cfccc1; }
+  .mc-card.clickable:active { transform: translateY(1px); }
+
+  .mc-arc { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; }
+  .mc-status { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; }
+  .mc-status .dot { width:8px; height:8px; border-radius:50%; }
+  .mc-status.ontrack { color: var(--good); } .mc-status.ontrack .dot { background: var(--good); }
+  .mc-status.behind  { color: var(--warn); } .mc-status.behind  .dot { background: var(--warn); }
+
+  .mc-warn { background:#fbede3; border:1px solid #f0c9ad; color:#9a4313;
+    border-radius: var(--radius-sm); padding:10px 12px; font-size:13.5px; line-height:1.5; margin-bottom:14px; }
+  .mc-coach { background:#eef0ff; border:1px solid #cdd4ff; color:#23306e;
+    border-radius: var(--radius-sm); padding:10px 12px; font-size:13.5px; line-height:1.5; }
+
+  .mc-progress { height:8px; border-radius:999px; background: var(--line); overflow:hidden; margin:8px 0; }
+  .mc-progress > i { display:block; height:100%; background: var(--accent); border-radius:999px; transition: width .3s; }
+
+  .mc-metrics { display:flex; gap:18px; flex-wrap:wrap; margin-top:4px; }
+  .mc-metric { font-variant-numeric: tabular-nums; }
+  .mc-metric b { display:block; font-size:22px; font-weight:800; letter-spacing:-0.02em; }
+  .mc-metric span { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+
+  .mc-xp-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .mc-xp { flex:1 1 120px; border:1px solid var(--line); border-radius: var(--radius-sm); padding:10px 12px; }
+  .mc-xp .lvl { font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+  .mc-xp b { font-size:18px; font-weight:800; }
+
+  .mc-orders { list-style:none; margin:0; padding:0; }
+  .mc-order { border:1px solid var(--line); border-radius: var(--radius-sm); padding:12px 14px; margin-bottom:10px; }
+  .mc-order.done { opacity:.55; }
+  .mc-order .mc-order-top { display:flex; align-items:flex-start; gap:10px; }
+  .mc-order .mc-order-text { flex:1; font-size:15px; line-height:1.45; }
+  .mc-order.done .mc-order-text { text-decoration: line-through; }
+  .mc-order .mc-xp-badge { font-size:11px; font-weight:700; color:var(--save); white-space:nowrap; }
+  .mc-order-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .mc-order-actions button {
+    border:1px solid var(--line); background: var(--surface); color: var(--ink-soft);
+    font-size:12.5px; font-weight:600; padding:6px 11px; border-radius:999px;
+  }
+  .mc-order-actions button:hover { background: var(--line-soft); }
+  .mc-order-actions button.done { border-color: var(--good); color: var(--good); }
+  .mc-order-actions button.done:hover { background: var(--good); color:white; }
+
+  .mc-stage { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-top:1px solid var(--line-soft); }
+  .mc-stage:first-child { border-top:0; }
+  .mc-stage .mc-stage-num {
+    width:26px; height:26px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; border:2px solid var(--line); color:var(--muted); background:var(--surface);
+  }
+  .mc-stage.done .mc-stage-num { background:var(--good); border-color:var(--good); color:white; }
+  .mc-stage.current .mc-stage-num { border-color:var(--accent); color:var(--accent); }
+  .mc-stage .mc-stage-body h4 { margin:0 0 2px; font-size:14.5px; font-weight:700; }
+  .mc-stage.current .mc-stage-body h4 { color:var(--accent); }
+  .mc-stage .mc-stage-body p { margin:0; color:var(--muted); font-size:13px; line-height:1.5; }
+
+  .mc-missions { list-style:none; margin:0; padding:0; }
+  .mc-mission { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-top:1px solid var(--line-soft); }
+  .mc-mission:first-child { border-top:0; }
+  .mc-mission input { margin-top:3px; width:17px; height:17px; flex:none; accent-color: var(--accent); }
+  .mc-mission.done .mc-mission-text { text-decoration: line-through; color: var(--muted); }
+  .mc-mission-text { font-size:14.5px; line-height:1.45; }
+
+  .mc-form label { display:block; font-size:13px; font-weight:600; color:var(--ink-soft); margin:14px 0 6px; }
+  .mc-form input[type=text], .mc-form input[type=date], .mc-form textarea, .mc-form select {
+    width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:10px;
+    background: var(--bg); color: var(--ink); font-size:14.5px; font-family:inherit; outline:none;
+  }
+  .mc-form textarea { min-height:60px; resize:vertical; line-height:1.5; }
+  .mc-form input:focus, .mc-form textarea:focus, .mc-form select:focus { border-color: var(--accent); background:white; }
+  .mc-form .mc-cat-pick { display:flex; gap:8px; flex-wrap:wrap; }
+  .mc-form .mc-cat-pick button {
+    border:1.5px solid var(--line); background:var(--bg); color:var(--ink-soft);
+    font-weight:600; font-size:13px; padding:8px 14px; border-radius:999px;
+  }
+  .mc-form .mc-cat-pick button.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .mc-spin { display:inline-block; width:15px; height:15px; border:2px solid var(--line); border-top-color:var(--accent);
+    border-radius:50%; animation: mc-spin .7s linear infinite; vertical-align:-2px; margin-right:7px; }
+  @keyframes mc-spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -783,6 +900,7 @@
 const PASSWORD       = "vortex123";
 const SESSION_KEY    = "vortex_unlocked";
 const REMINDERS_KEY  = "vortex_reminders";
+const MACHINE_KEY    = "vortex_machine";
 const VOTES_KEY      = "vortex_votes";
 const STUDIO_KEY     = "vortex_studio";
 const LEGACY_JOY_KEY = "vortex_joy_draft";
@@ -1028,6 +1146,7 @@ function buildDrawerNav() {
   studioLink.className = "nav-btn";
   studioLink.innerHTML = `<span class="nav-dot"></span>Studio`;
   drawerNav.appendChild(studioLink);
+  drawerNav.appendChild(navBtn("machine", "The Machine"));
   drawerNav.appendChild(navBtn("reminders", "Reminders"));
   drawerNav.appendChild(navBtn("starred", "Starred"));
   const sep = document.createElement("hr"); sep.className = "nav-divider"; drawerNav.appendChild(sep);
@@ -1528,6 +1647,7 @@ function navigate(view) {
   if (view === "home")           return renderHome();
   if (view === "starred")        return renderStarred();
   if (view === "studio")         return renderStudioLibrary();
+  if (view === "machine")        return renderMachine();
   if (view === "reminders")      return renderReminders();
   if (view.startsWith("section:")) return renderSection(view.slice(8));
   renderHome();
@@ -1540,6 +1660,7 @@ function renderHome() {
 
   const work = document.createElement("div"); work.className = "nav-grid";
   work.appendChild(navCard("Studio",     "Write your books. Multiple drafts, autosave.",        "workspace", () => navigate("studio")));
+  work.appendChild(navCard("The Machine","Turn big goals into today's exact orders.",            "workspace", () => navigate("machine")));
   work.appendChild(navCard("Reminders",  "Things to remember. Mark them done.",                  "workspace", () => navigate("reminders")));
   work.appendChild(navCard("Starred",    "Items you've saved across sections.",                  "library",   () => navigate("starred")));
 
@@ -1780,6 +1901,764 @@ function renderReminders() {
     input.value = ""; dateIn.value = ""; render(); input.focus();
   });
   render();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   THE MACHINE — personal goal engine
+   Turns goals into mission maps, weekly missions, and daily orders.
+   Tracks XP, levels, streaks, and predicts pace. AI when a key is
+   set; a built-in rule engine otherwise, so it always works offline.
+   ════════════════════════════════════════════════════════════════ */
+
+const MC_CATS = [
+  { key: "builder", label: "Builder",  xp: "Builder XP",   blurb: "Make things — apps, projects, inventions." },
+  { key: "athlete", label: "Athlete",  xp: "Athlete XP",   blurb: "Sport, training, the body." },
+  { key: "creator", label: "Creator",  xp: "Creator XP",   blurb: "Write, draw, compose, design." },
+  { key: "scholar", label: "Scholar",  xp: "Scholar XP",   blurb: "Learn, study, master a subject." },
+];
+const MC_CAT_BY = Object.fromEntries(MC_CATS.map(c => [c.key, c]));
+
+function mcDefault() {
+  return {
+    settings: { provider: "claude", claudeKey: "", openaiKey: "", model: "" },
+    goals: {}, activeGoalId: null,
+    xp: { builder: 0, athlete: 0, creator: 0, scholar: 0, discipline: 0 },
+    streak: { count: 0, lastDate: null },
+  };
+}
+function loadMachine() {
+  let m; try { m = JSON.parse(localStorage.getItem(MACHINE_KEY) || "null"); } catch { m = null; }
+  if (!m || typeof m !== "object") m = mcDefault();
+  const d = mcDefault();
+  m.settings = Object.assign({}, d.settings, m.settings || {});
+  m.xp = Object.assign({}, d.xp, m.xp || {});
+  m.streak = Object.assign({}, d.streak, m.streak || {});
+  if (!m.goals) m.goals = {};
+  return m;
+}
+function saveMachine(m) { localStorage.setItem(MACHINE_KEY, JSON.stringify(m)); }
+
+const mcToday = () => new Date().toISOString().slice(0, 10);
+function mcDaysBetween(a, b) {
+  const d1 = new Date(a + "T00:00:00"), d2 = new Date(b + "T00:00:00");
+  return Math.round((d2 - d1) / 86400000);
+}
+function mcFmtDate(iso) {
+  if (!iso) return "";
+  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+// Levels grow ~quadratically: lvl n needs 50*n*(n+1)/2 cumulative XP.
+function mcLevelFor(xp) {
+  let lvl = 1, need = 0, step = 50;
+  while (xp >= need + step) { need += step; lvl++; step += 50; }
+  return { level: lvl, into: xp - need, span: step, total: xp };
+}
+
+/* ── AI + fallback plan generation ────────────────────────────── */
+
+function mcHasKey(m) {
+  const p = m.settings.provider;
+  return !!(p === "claude" ? m.settings.claudeKey : m.settings.openaiKey).trim();
+}
+
+async function mcAICall(m, system, user) {
+  const s = m.settings;
+  if (s.provider === "openai") {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + s.openaiKey.trim() },
+      body: JSON.stringify({
+        model: s.model || "gpt-4o-mini",
+        messages: [{ role: "system", content: system }, { role: "user", content: user }],
+        temperature: 0.6,
+      }),
+    });
+    if (!res.ok) throw new Error("OpenAI " + res.status + ": " + (await res.text()).slice(0, 200));
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "";
+  }
+  // Claude (Anthropic), direct browser call.
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": s.claudeKey.trim(),
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: s.model || "claude-sonnet-4-6",
+      max_tokens: 1500,
+      system,
+      messages: [{ role: "user", content: user }],
+    }),
+  });
+  if (!res.ok) throw new Error("Claude " + res.status + ": " + (await res.text()).slice(0, 200));
+  const data = await res.json();
+  return (data.content || []).map(b => b.text || "").join("");
+}
+
+function mcParseJSON(text) {
+  if (!text) return null;
+  let t = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a !== -1 && b !== -1) t = t.slice(a, b + 1);
+  try { return JSON.parse(t); } catch { return null; }
+}
+
+// Build a fresh plan (stages + this week's missions + today's orders).
+async function mcGeneratePlan(m, goal) {
+  if (mcHasKey(m)) {
+    try {
+      const plan = await mcAIPlan(m, goal);
+      if (plan) return plan;
+    } catch (e) { console.warn("Machine AI failed, using built-in engine:", e); }
+  }
+  return mcRulePlan(goal);
+}
+
+async function mcAIPlan(m, goal) {
+  const system =
+    "You are The Machine: a sharp, brutally useful personal goal coach for a motivated young person. " +
+    "You turn a big goal into a concrete plan. Be specific and actionable — never say 'be motivated'. " +
+    "Reply with ONLY valid JSON, no prose, matching this shape: " +
+    '{"stages":[{"name":"...","desc":"..."}],"weekly":["mission",...],"today":[{"text":"action","cat":"builder|athlete|creator|scholar|discipline","xp":10}]}. ' +
+    "Give 4-5 stages from now to the goal, 3-5 weekly missions, and 3-4 today actions. " +
+    "Each today action must be small and finishable in one session. xp is 5-25 by effort.";
+  const s = goal.setup;
+  const user =
+    `Goal: ${goal.title}\nCategory: ${goal.category}\n` +
+    `Current level: ${s.level || "?"}\nTime available: ${s.time || "?"}\nDeadline: ${s.deadline || "none"}\n` +
+    `Obstacles: ${s.obstacles || "?"}\nHates doing: ${s.hates || "?"}\nAlready does: ${s.already || "?"}\n` +
+    `Success looks like: ${s.success || "?"}`;
+  const plan = mcParseJSON(await mcAICall(m, system, user));
+  if (!plan || !Array.isArray(plan.stages) || !plan.stages.length) return null;
+  return mcNormalisePlan(plan, goal);
+}
+
+function mcNormalisePlan(plan, goal) {
+  const cat = goal.category;
+  const stages = (plan.stages || []).slice(0, 6).map(st => ({
+    id: uid(), name: String(st.name || "Stage").slice(0, 60),
+    desc: String(st.desc || "").slice(0, 200), done: false,
+  }));
+  const weekly = (plan.weekly || []).slice(0, 6).map(t => ({ id: uid(), text: String(t).slice(0, 140), done: false }));
+  const today = (plan.today || []).slice(0, 6).map(o => {
+    const oc = (typeof o === "object" ? o : {});
+    let c = (oc.cat || cat); if (!MC_CAT_BY[c] && c !== "discipline") c = cat;
+    let xp = parseInt(oc.xp, 10); if (!(xp > 0)) xp = 10; xp = Math.min(30, Math.max(5, xp));
+    return { id: uid(), text: String(oc.text || o).slice(0, 160), cat: c, xp, status: "pending", feedback: null };
+  });
+  return { stages, weekly, today };
+}
+
+// Built-in deterministic engine. Always produces a usable plan.
+function mcRulePlan(goal) {
+  const cat = goal.category;
+  const STAGE_SETS = {
+    builder: [
+      ["Foundation", "Set up tools, sketch the idea, ship one tiny working piece."],
+      ["Prototype", "Build the core feature end to end, even if rough."],
+      ["Make it real", "Polish the main flow, fix the worst bugs, test with someone."],
+      ["Ship it", "Release a usable version and gather feedback."],
+      ["Level up", "Refine, add the next big feature, make it yours."],
+    ],
+    athlete: [
+      ["Foundation", "Build base fitness and clean technique on the basics."],
+      ["Acceleration", "Raise intensity, drill weaknesses, add match/scenario practice."],
+      ["Competition mode", "Compete often, learn under pressure, track results."],
+      ["Elite refinement", "Sharpen edges, fix patterns, peak for the target."],
+    ],
+    creator: [
+      ["Foundation", "Decide the project, set a rhythm, finish a small first piece."],
+      ["Build the body", "Make the bulk of the work in steady sessions."],
+      ["Shape it", "Edit, refine, raise the quality bar."],
+      ["Finish & share", "Complete it and put it in front of real people."],
+    ],
+    scholar: [
+      ["Foundation", "Map the subject, gather sources, learn the basics cold."],
+      ["Acceleration", "Go deep on the hard parts, practise actively."],
+      ["Mastery", "Apply it to real problems, teach it back, close gaps."],
+      ["Elite refinement", "Polish, test yourself, reach the target level."],
+    ],
+  };
+  const TODAY_SETS = {
+    builder: [
+      ["Open the project and fix one visible thing", "builder", 10],
+      ["Write one new feature idea down", "creator", 5],
+      ["Work for 25 focused minutes", "discipline", 15],
+      ["Log what was hard today", "discipline", 5],
+    ],
+    athlete: [
+      ["Warm up properly, no skipping", "discipline", 5],
+      ["Drill your weakest skill for 15 minutes", "athlete", 15],
+      ["Do one focused fitness set", "athlete", 10],
+      ["Note one thing that improved", "discipline", 5],
+    ],
+    creator: [
+      ["Create for 25 minutes, no editing", "creator", 15],
+      ["Improve one thing you made before", "creator", 10],
+      ["Jot one new idea", "creator", 5],
+      ["Log what felt good or hard", "discipline", 5],
+    ],
+    scholar: [
+      ["Study one tricky topic for 25 minutes", "scholar", 15],
+      ["Do 5 practice questions or problems", "scholar", 10],
+      ["Explain one idea in your own words", "scholar", 10],
+      ["Note what you still don't get", "discipline", 5],
+    ],
+  };
+  const WEEKLY_SETS = {
+    builder: ["Finish one working screen or feature", "Test it with 2 people", "Improve the UI", "Write next week's roadmap"],
+    athlete: ["Hit every training session this week", "Improve one measurable stat", "Play one practice match", "Review and adjust the plan"],
+    creator: ["Finish a complete draft section", "Get feedback from one person", "Edit your weakest part", "Plan the next section"],
+    scholar: ["Master one full topic", "Take a self-test", "Fix your top 3 weak spots", "Map next week's topics"],
+  };
+  const ss = STAGE_SETS[cat] || STAGE_SETS.builder;
+  return {
+    stages: ss.map(([name, desc]) => ({ id: uid(), name, desc, done: false })),
+    weekly: (WEEKLY_SETS[cat] || WEEKLY_SETS.builder).map(t => ({ id: uid(), text: t, done: false })),
+    today: (TODAY_SETS[cat] || TODAY_SETS.builder).map(([text, c, xp]) => ({ id: uid(), text, cat: c, xp, status: "pending", feedback: null })),
+  };
+}
+
+// Regenerate today's orders for the active day (built-in or AI).
+async function mcRefreshToday(m, goal) {
+  let today = null;
+  if (mcHasKey(m)) {
+    try {
+      const plan = await mcAIPlan(m, goal);
+      if (plan && plan.today.length) today = plan.today;
+    } catch (e) { console.warn("Machine today refresh failed:", e); }
+  }
+  if (!today) today = mcRulePlan(goal).today;
+  goal.today = { date: mcToday(), orders: today };
+}
+
+/* ── Prediction + adaptation ──────────────────────────────────── */
+
+function mcPredict(goal) {
+  const stages = goal.stages || [];
+  const doneCount = stages.filter(s => s.done).length;
+  const curIdx = Math.min(doneCount, stages.length - 1);
+  const log = goal.log || [];
+  const doneEvents = log.filter(e => e.type === "done");
+  const days = goal.createdAt ? Math.max(1, mcDaysBetween(goal.createdAt.slice(0, 10), mcToday()) + 1) : 1;
+  const perDay = doneEvents.length / days;          // actions completed per day
+  const remainingStages = stages.length - doneCount;
+  if (remainingStages <= 0) return { msg: "Goal complete. Every stage cleared.", behind: false };
+  // Rough model: ~12 completed actions advance a stage.
+  const actionsPerStage = 12;
+  if (perDay < 0.15) {
+    return { behind: true, msg: "Not much movement yet. Knock out today's orders and a pace will appear." };
+  }
+  const etaNext = Math.ceil(actionsPerStage / Math.max(0.2, perDay));
+  const dayWord = n => n + (n === 1 ? " day" : " days");
+  let msg = `At this pace, you'll reach Stage ${curIdx + 2 <= stages.length ? curIdx + 2 : stages.length} in about ${dayWord(etaNext)}.`;
+  let behind = false;
+  if (goal.setup && goal.setup.deadline) {
+    const left = mcDaysBetween(mcToday(), goal.setup.deadline);
+    const need = etaNext * Math.max(1, remainingStages);
+    if (left > 0 && need > left) {
+      behind = true;
+      msg = `Pace too slow for your deadline (${dayWord(need)} needed, ${dayWord(left)} left). Shrink missions or add sessions.`;
+    }
+  }
+  return { behind, msg };
+}
+
+function mcCoachLine(goal) {
+  const t = goal.today;
+  if (!t || !t.orders.length) return "Generate today's orders to get moving.";
+  const done = t.orders.filter(o => o.status === "done").length;
+  const hard = t.orders.filter(o => o.feedback === "hard").length;
+  const easy = t.orders.filter(o => o.feedback === "easy").length;
+  if (done === t.orders.length) return "All orders cleared. That's a full day. Tomorrow gets a touch harder.";
+  if (hard >= 2) return "Today felt heavy — tomorrow's orders will be smaller. Just keep showing up.";
+  if (easy >= 2) return "Too easy? Good. The Machine will push harder next round.";
+  if (done > 0) return `${done}/${t.orders.length} done. Finish the rest — momentum is the whole game.`;
+  return "Start with the smallest order. One done beats a perfect plan.";
+}
+
+function mcAwardXP(m, cat, amount) {
+  if (m.xp[cat] == null) cat = "discipline";
+  m.xp[cat] = (m.xp[cat] || 0) + amount;
+}
+function mcBumpStreak(m) {
+  const today = mcToday();
+  if (m.streak.lastDate === today) return;
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const yStr = y.toISOString().slice(0, 10);
+  m.streak.count = (m.streak.lastDate === yStr) ? (m.streak.count + 1) : 1;
+  m.streak.lastDate = today;
+}
+
+// Adapt difficulty of the orders based on a feedback signal.
+function mcAdapt(goal, order, signal) {
+  order.feedback = signal;
+  if (signal === "easy") order.xp = Math.min(30, order.xp + 3);
+  if (signal === "hard") order.xp = Math.max(5, order.xp - 2);
+}
+
+/* ── Views ────────────────────────────────────────────────────── */
+
+function renderMachine() {
+  const m = loadMachine();
+  const goals = Object.values(m.goals).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const head = pageHead("The Machine", "Turn big goals into today's exact orders.");
+
+  const bar = document.createElement("div"); bar.className = "mc-bar";
+  const newBtn = document.createElement("button"); newBtn.className = "mc-btn primary"; newBtn.textContent = "+ New goal";
+  newBtn.addEventListener("click", () => mcNewGoalFlow());
+  const setBtn = document.createElement("button"); setBtn.className = "mc-btn ghost"; setBtn.textContent = "⚙ Settings";
+  setBtn.addEventListener("click", () => mcSettingsModal());
+  const spacer = document.createElement("div"); spacer.className = "spacer";
+  bar.append(newBtn, spacer, setBtn);
+
+  if (!goals.length) {
+    const empty = document.createElement("div"); empty.className = "empty";
+    empty.innerHTML = `<strong>No goals yet.</strong>Add a serious goal and The Machine builds your mission map, weekly missions, and today's orders.`;
+    main.replaceChildren(head, bar, empty);
+    return;
+  }
+
+  const active = m.goals[m.activeGoalId] || goals[0];
+  m.activeGoalId = active.id; saveMachine(m);
+
+  // Command Centre card for the active goal.
+  const cmd = mcCommandCard(m, active);
+
+  // XP / levels.
+  const xpCard = document.createElement("div"); xpCard.className = "mc-card";
+  xpCard.innerHTML = `<h3>Levels</h3><p class="mc-sub">XP from every order you complete.</p>`;
+  const xpRow = document.createElement("div"); xpRow.className = "mc-xp-row";
+  for (const c of MC_CATS.concat([{ key: "discipline", label: "Discipline" }])) {
+    const lv = mcLevelFor(m.xp[c.key] || 0);
+    const box = document.createElement("div"); box.className = "mc-xp";
+    box.innerHTML = `<div class="lvl">${escapeHtml(c.label)}</div><b>Lv ${lv.level}</b>
+      <div class="mc-progress"><i style="width:${Math.round(lv.into / lv.span * 100)}%"></i></div>
+      <div class="lvl" style="text-transform:none">${lv.into}/${lv.span} XP</div>`;
+    xpRow.appendChild(box);
+  }
+  xpCard.appendChild(xpRow);
+
+  // Other goals list.
+  const others = goals.filter(g => g.id !== active.id);
+  const listWrap = document.createElement("div");
+  if (others.length) {
+    const lab = document.createElement("div"); lab.className = "group-label"; lab.textContent = "All goals";
+    const grid = document.createElement("div"); grid.className = "mc-grid two";
+    for (const g of goals) grid.appendChild(mcGoalMiniCard(m, g));
+    listWrap.append(lab, grid);
+  }
+
+  main.replaceChildren(head, bar, cmd, xpCard, listWrap);
+}
+
+function mcCommandCard(m, goal) {
+  const card = document.createElement("div"); card.className = "mc-card";
+  const cat = MC_CAT_BY[goal.category] || MC_CATS[0];
+  const stages = goal.stages || [];
+  const doneCount = stages.filter(s => s.done).length;
+  const curStage = stages[Math.min(doneCount, stages.length - 1)];
+  const pred = mcPredict(goal);
+  const pendingToday = (goal.today && goal.today.date === mcToday())
+    ? goal.today.orders.filter(o => o.status === "pending").length : null;
+
+  card.innerHTML = `
+    <div class="mc-arc"><span class="mc-cat ${cat.key}"><span class="dot"></span>${escapeHtml(cat.label)} Arc</span></div>
+    <h3>${escapeHtml(goal.title)}</h3>
+    <p class="mc-sub">Main mission: ${escapeHtml(curStage ? curStage.name : "—")} · Stage ${Math.min(doneCount + 1, stages.length)}/${stages.length}</p>
+    <div class="mc-progress"><i style="width:${stages.length ? Math.round(doneCount / stages.length * 100) : 0}%"></i></div>
+    <div class="mc-metrics">
+      <div class="mc-metric"><b>${pendingToday == null ? "—" : pendingToday}</b><span>Orders today</span></div>
+      <div class="mc-metric"><b>${m.streak.count}🔥</b><span>Day streak</span></div>
+      <div class="mc-metric"><b>${doneCount}/${stages.length}</b><span>Stages</span></div>
+    </div>
+  `;
+  if (pred.behind) {
+    const w = document.createElement("div"); w.className = "mc-warn"; w.textContent = "⚠ " + pred.msg;
+    card.appendChild(w);
+  }
+  const actions = document.createElement("div"); actions.className = "mc-order-actions"; actions.style.marginTop = "14px";
+  const todayBtn = document.createElement("button"); todayBtn.className = "done"; todayBtn.textContent = "Today's orders →";
+  todayBtn.addEventListener("click", () => renderToday(goal.id));
+  const goalBtn = document.createElement("button"); goalBtn.textContent = "Goal screen";
+  goalBtn.addEventListener("click", () => renderGoalScreen(goal.id));
+  const revBtn = document.createElement("button"); revBtn.textContent = "Weekly review";
+  revBtn.addEventListener("click", () => renderReview(goal.id));
+  actions.append(todayBtn, goalBtn, revBtn);
+  card.appendChild(actions);
+  return card;
+}
+
+function mcGoalMiniCard(m, goal) {
+  const cat = MC_CAT_BY[goal.category] || MC_CATS[0];
+  const stages = goal.stages || [];
+  const doneCount = stages.filter(s => s.done).length;
+  const b = document.createElement("button"); b.className = "mc-card clickable";
+  const isActive = goal.id === m.activeGoalId;
+  b.innerHTML = `
+    <div class="mc-arc"><span class="mc-cat ${cat.key}"><span class="dot"></span>${escapeHtml(cat.label)}</span>${isActive ? ' · active' : ''}</div>
+    <h3>${escapeHtml(goal.title)}</h3>
+    <p class="mc-sub">Stage ${Math.min(doneCount + 1, stages.length)}/${stages.length}</p>
+    <div class="mc-progress"><i style="width:${stages.length ? Math.round(doneCount / stages.length * 100) : 0}%"></i></div>
+  `;
+  b.addEventListener("click", () => {
+    const mm = loadMachine(); mm.activeGoalId = goal.id; saveMachine(mm); renderGoalScreen(goal.id);
+  });
+  return b;
+}
+
+/* New goal: setup questions → generate plan. */
+function mcNewGoalFlow() {
+  openModal((modal, close) => {
+    let cat = "builder";
+    const h = document.createElement("h3"); h.textContent = "New goal"; modal.appendChild(h);
+    const sub = document.createElement("p"); sub.className = "modal-sub";
+    sub.textContent = "Answer a few questions. The Machine builds the plan."; modal.appendChild(sub);
+    const form = document.createElement("div"); form.className = "mc-form";
+    form.innerHTML = `
+      <label>The goal (be specific)</label>
+      <input type="text" id="mc-g-title" placeholder="e.g. Reach Top 100 11U tennis" />
+      <label>Type</label>
+      <div class="mc-cat-pick" id="mc-g-cat"></div>
+      <label>Current level</label>
+      <input type="text" id="mc-g-level" placeholder="Where are you now?" />
+      <label>Time available</label>
+      <input type="text" id="mc-g-time" placeholder="e.g. 1 hour on weekdays" />
+      <label>Deadline (optional)</label>
+      <input type="date" id="mc-g-deadline" />
+      <label>Biggest obstacle</label>
+      <input type="text" id="mc-g-obstacles" placeholder="What gets in the way?" />
+      <label>What you hate doing</label>
+      <input type="text" id="mc-g-hates" placeholder="The Machine avoids piling this on" />
+      <label>What you already do</label>
+      <input type="text" id="mc-g-already" placeholder="Current habits worth keeping" />
+      <label>What success looks like</label>
+      <textarea id="mc-g-success" placeholder="How you'll know you made it"></textarea>
+    `;
+    modal.appendChild(form);
+    const catWrap = form.querySelector("#mc-g-cat");
+    for (const c of MC_CATS) {
+      const cb = document.createElement("button"); cb.type = "button"; cb.textContent = c.label;
+      cb.className = c.key === cat ? "sel" : ""; cb.title = c.blurb;
+      cb.addEventListener("click", () => { cat = c.key; catWrap.querySelectorAll("button").forEach(x => x.classList.remove("sel")); cb.classList.add("sel"); });
+      catWrap.appendChild(cb);
+    }
+    const actions = document.createElement("div"); actions.className = "modal-actions";
+    const cancel = document.createElement("button"); cancel.className = "btn-cancel"; cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => close(null));
+    const ok = document.createElement("button"); ok.className = "btn-ok"; ok.textContent = "Build my plan";
+    ok.addEventListener("click", async () => {
+      const val = id => (form.querySelector("#" + id).value || "").trim();
+      const title = val("mc-g-title");
+      if (!title) { form.querySelector("#mc-g-title").focus(); return; }
+      ok.disabled = true; cancel.disabled = true;
+      ok.innerHTML = `<span class="mc-spin"></span>Building…`;
+      const m = loadMachine();
+      const goal = {
+        id: uid(), title, category: cat, createdAt: new Date().toISOString(),
+        setup: {
+          level: val("mc-g-level"), time: val("mc-g-time"), deadline: val("mc-g-deadline"),
+          obstacles: val("mc-g-obstacles"), hates: val("mc-g-hates"),
+          already: val("mc-g-already"), success: val("mc-g-success"),
+        },
+        notes: "", log: [], currentStageIndex: 0,
+      };
+      const plan = await mcGeneratePlan(m, goal);
+      goal.stages = plan.stages;
+      goal.weekly = { weekStart: mcToday(), missions: plan.weekly };
+      goal.today = { date: mcToday(), orders: plan.today };
+      m.goals[goal.id] = goal; m.activeGoalId = goal.id; saveMachine(m);
+      close(null); renderGoalScreen(goal.id);
+    });
+    actions.append(cancel, ok); modal.appendChild(actions);
+  });
+}
+
+function mcBackBar(label, onBack) {
+  const bar = document.createElement("div"); bar.className = "mc-bar";
+  const back = document.createElement("button"); back.className = "mc-btn"; back.textContent = "← " + label;
+  back.addEventListener("click", onBack);
+  bar.appendChild(back);
+  return bar;
+}
+
+function renderGoalScreen(goalId) {
+  const m = loadMachine();
+  const goal = m.goals[goalId]; if (!goal) return renderMachine();
+  m.activeGoalId = goalId; saveMachine(m);
+  const cat = MC_CAT_BY[goal.category] || MC_CATS[0];
+  const stages = goal.stages || [];
+  const doneCount = stages.filter(s => s.done).length;
+  const pred = mcPredict(goal);
+
+  const head = pageHead(goal.title, (cat.label + " Arc") + (goal.setup.deadline ? " · deadline " + mcFmtDate(goal.setup.deadline) : ""));
+  const bar = mcBackBar("Command centre", () => renderMachine());
+  const todayBtn = document.createElement("button"); todayBtn.className = "mc-btn primary"; todayBtn.textContent = "Today's orders";
+  todayBtn.addEventListener("click", () => renderToday(goalId));
+  const revBtn = document.createElement("button"); revBtn.className = "mc-btn"; revBtn.textContent = "Weekly review";
+  revBtn.addEventListener("click", () => renderReview(goalId));
+  const delBtn = document.createElement("button"); delBtn.className = "mc-btn ghost"; delBtn.textContent = "Delete goal";
+  delBtn.addEventListener("click", async () => {
+    if (await confirmModal({ title: "Delete this goal?", subtitle: "Its plan and progress are removed.", okLabel: "Delete", danger: true })) {
+      const mm = loadMachine(); delete mm.goals[goalId];
+      if (mm.activeGoalId === goalId) mm.activeGoalId = Object.keys(mm.goals)[0] || null;
+      saveMachine(mm); renderMachine();
+    }
+  });
+  const sp = document.createElement("div"); sp.className = "spacer";
+  bar.append(todayBtn, revBtn, sp, delBtn);
+
+  // Mission map.
+  const mapCard = document.createElement("div"); mapCard.className = "mc-card";
+  mapCard.innerHTML = `<h3>Mission map</h3><p class="mc-sub">${doneCount}/${stages.length} stages cleared</p>
+    <div class="mc-progress"><i style="width:${stages.length ? Math.round(doneCount / stages.length * 100) : 0}%"></i></div>`;
+  stages.forEach((st, i) => {
+    const isDone = st.done, isCur = !isDone && i === doneCount;
+    const row = document.createElement("div"); row.className = "mc-stage" + (isDone ? " done" : isCur ? " current" : "");
+    row.innerHTML = `<div class="mc-stage-num">${isDone ? "✓" : i + 1}</div>
+      <div class="mc-stage-body"><h4>${escapeHtml(st.name)}</h4><p>${escapeHtml(st.desc || "")}</p></div>`;
+    const toggle = document.createElement("button"); toggle.className = "mc-btn ghost"; toggle.style.flex = "none";
+    toggle.textContent = isDone ? "Undo" : "Mark done";
+    toggle.addEventListener("click", () => {
+      const mm = loadMachine(); const g = mm.goals[goalId];
+      g.stages[i].done = !g.stages[i].done; saveMachine(mm); renderGoalScreen(goalId);
+    });
+    row.appendChild(toggle);
+    mapCard.appendChild(row);
+  });
+
+  // Coach + prediction.
+  const coach = document.createElement("div"); coach.className = "mc-card";
+  coach.innerHTML = `<h3>AI coach</h3>`;
+  const predEl = document.createElement("div"); predEl.className = pred.behind ? "mc-warn" : "mc-coach";
+  predEl.textContent = (pred.behind ? "⚠ " : "") + pred.msg; coach.appendChild(predEl);
+  const cl = document.createElement("div"); cl.className = "mc-coach"; cl.style.marginTop = "10px";
+  cl.textContent = mcCoachLine(goal); coach.appendChild(cl);
+
+  // Weekly plan.
+  const weekCard = mcWeeklyCard(m, goal, () => renderGoalScreen(goalId));
+
+  // Notes.
+  const notesCard = document.createElement("div"); notesCard.className = "mc-card";
+  notesCard.innerHTML = `<h3>Notes</h3>`;
+  const ta = document.createElement("textarea"); ta.className = ""; ta.style.cssText =
+    "width:100%;min-height:90px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;background:var(--bg);resize:vertical;outline:none;";
+  ta.value = goal.notes || ""; ta.placeholder = "Anything worth remembering about this goal…";
+  ta.addEventListener("change", () => { const mm = loadMachine(); mm.goals[goalId].notes = ta.value; saveMachine(mm); });
+  notesCard.appendChild(ta);
+
+  const grid = document.createElement("div"); grid.className = "mc-grid two";
+  grid.append(mapCard, coach, weekCard, notesCard);
+  main.replaceChildren(head, bar, grid);
+}
+
+function mcWeeklyCard(m, goal, rerender) {
+  const card = document.createElement("div"); card.className = "mc-card";
+  const w = goal.weekly || { missions: [] };
+  const done = w.missions.filter(x => x.done).length;
+  card.innerHTML = `<h3>This week's missions</h3><p class="mc-sub">${done}/${w.missions.length} done · week of ${mcFmtDate(w.weekStart)}</p>`;
+  const ul = document.createElement("ul"); ul.className = "mc-missions";
+  w.missions.forEach((mi, i) => {
+    const li = document.createElement("li"); li.className = "mc-mission" + (mi.done ? " done" : "");
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = mi.done;
+    cb.addEventListener("change", () => {
+      const mm = loadMachine(); const g = mm.goals[goal.id];
+      g.weekly.missions[i].done = cb.checked;
+      if (cb.checked) { mcAwardXP(mm, "discipline", 10); g.log = g.log || []; g.log.push({ type: "mission", date: mcToday() }); }
+      saveMachine(mm); rerender();
+    });
+    const tx = document.createElement("div"); tx.className = "mc-mission-text"; tx.textContent = mi.text;
+    li.append(cb, tx); ul.appendChild(li);
+  });
+  card.appendChild(ul);
+  return card;
+}
+
+function renderToday(goalId) {
+  const m = loadMachine();
+  const goal = m.goals[goalId]; if (!goal) return renderMachine();
+  m.activeGoalId = goalId;
+
+  // Roll over to a fresh day if needed.
+  if (!goal.today || goal.today.date !== mcToday()) {
+    main.replaceChildren(pageHead("Today's Orders", "Building today's orders…"));
+    mcRefreshToday(m, goal).then(() => { saveMachine(m); renderToday(goalId); });
+    return;
+  }
+  saveMachine(m);
+
+  const head = pageHead("Today's Orders", "Only what matters today. Nothing else.");
+  const bar = mcBackBar("Goal screen", () => renderGoalScreen(goalId));
+  const regen = document.createElement("button"); regen.className = "mc-btn ghost"; regen.textContent = "↻ New orders";
+  regen.addEventListener("click", async () => {
+    regen.disabled = true; regen.innerHTML = `<span class="mc-spin"></span>`;
+    const mm = loadMachine(); await mcRefreshToday(mm, mm.goals[goalId]); saveMachine(mm); renderToday(goalId);
+  });
+  const sp = document.createElement("div"); sp.className = "spacer"; bar.append(sp, regen);
+
+  const card = document.createElement("div"); card.className = "mc-card";
+  const orders = goal.today.orders;
+  const doneN = orders.filter(o => o.status === "done").length;
+  card.innerHTML = `<h3>${escapeHtml(goal.title)}</h3><p class="mc-sub">${doneN}/${orders.length} orders done today</p>`;
+  const ul = document.createElement("ul"); ul.className = "mc-orders";
+
+  orders.forEach((o, i) => {
+    const li = document.createElement("li"); li.className = "mc-order" + (o.status !== "pending" ? " done" : "");
+    const cat = MC_CAT_BY[o.cat];
+    const catTag = cat ? `<span class="mc-cat ${cat.key}"><span class="dot"></span>${escapeHtml(cat.label)}</span>` :
+      `<span class="mc-cat discipline"><span class="dot"></span>Discipline</span>`;
+    const top = document.createElement("div"); top.className = "mc-order-top";
+    top.innerHTML = `<div class="mc-order-text">${escapeHtml(o.text)}<div style="margin-top:6px">${catTag}</div></div>
+      <div class="mc-xp-badge">+${o.xp} XP</div>`;
+    li.appendChild(top);
+
+    if (o.status === "pending") {
+      const acts = document.createElement("div"); acts.className = "mc-order-actions";
+      const mk = (label, cls, fn) => { const b = document.createElement("button"); if (cls) b.className = cls; b.textContent = label; b.addEventListener("click", fn); return b; };
+      acts.append(
+        mk("✓ Done", "done", () => mcCompleteOrder(goalId, i, "done")),
+        mk("Too easy", "", () => mcCompleteOrder(goalId, i, "done", "easy")),
+        mk("Too hard", "", () => mcCompleteOrder(goalId, i, "done", "hard")),
+        mk("Skip", "", () => mcSkipOrder(goalId, i)),
+      );
+      li.appendChild(acts);
+    } else {
+      const tag = document.createElement("div"); tag.style.cssText = "margin-top:8px;font-size:12.5px;font-weight:600;color:var(--muted)";
+      tag.textContent = o.status === "skipped" ? "Skipped" + (o.feedback ? " — " + o.feedback : "") : "Done" + (o.feedback === "easy" ? " · too easy" : o.feedback === "hard" ? " · too hard" : "");
+      li.appendChild(tag);
+    }
+    ul.appendChild(li);
+  });
+  card.appendChild(ul);
+
+  const coach = document.createElement("div"); coach.className = "mc-coach"; coach.style.marginTop = "14px";
+  coach.textContent = mcCoachLine(goal); card.appendChild(coach);
+
+  main.replaceChildren(head, bar, card);
+}
+
+function mcCompleteOrder(goalId, i, status, signal) {
+  const m = loadMachine(); const goal = m.goals[goalId]; if (!goal) return;
+  const o = goal.today.orders[i]; if (!o || o.status !== "pending") return;
+  o.status = status;
+  if (signal) mcAdapt(goal, o, signal);
+  mcAwardXP(m, o.cat, o.xp);
+  mcBumpStreak(m);
+  goal.log = goal.log || [];
+  goal.log.push({ type: "done", date: mcToday(), cat: o.cat, xp: o.xp, feedback: signal || null });
+  saveMachine(m); renderToday(goalId);
+}
+
+function mcSkipOrder(goalId, i) {
+  pickModal({
+    title: "Skip — why?", subtitle: "The Machine uses this to change the task.",
+    options: [
+      { label: "Too hard", value: "too hard" },
+      { label: "Too boring", value: "boring" },
+      { label: "Not clear", value: "unclear" },
+      { label: "Not important", value: "not important" },
+    ],
+  }).then(reason => {
+    if (!reason) return;
+    const m = loadMachine(); const goal = m.goals[goalId]; if (!goal) return;
+    const o = goal.today.orders[i]; if (!o) return;
+    o.status = "skipped"; o.feedback = reason;
+    // Adapt: replace with an easier/clearer version next time it's hard/unclear.
+    if (reason === "too hard" || reason === "unclear") {
+      o.text = "Open it and do the smallest possible first step";
+      o.xp = Math.max(5, o.xp - 3);
+    }
+    goal.log = goal.log || []; goal.log.push({ type: "skip", date: mcToday(), reason });
+    saveMachine(m); renderToday(goalId);
+  });
+}
+
+function renderReview(goalId) {
+  const m = loadMachine(); const goal = m.goals[goalId]; if (!goal) return renderMachine();
+  const head = pageHead("Weekly Review", "What worked, what you avoided, what changes.");
+  const bar = mcBackBar("Goal screen", () => renderGoalScreen(goalId));
+
+  const log = goal.log || [];
+  const weekStart = (goal.weekly && goal.weekly.weekStart) || mcToday();
+  const since = log.filter(e => e.date >= weekStart);
+  const completed = since.filter(e => e.type === "done");
+  const skipped = since.filter(e => e.type === "skip");
+  const missions = (goal.weekly && goal.weekly.missions) || [];
+  const missDone = missions.filter(x => x.done);
+  const easier = completed.filter(e => e.feedback === "easy").length;
+
+  const card = document.createElement("div"); card.className = "mc-card";
+  card.innerHTML = `
+    <h3>Week of ${mcFmtDate(weekStart)}</h3>
+    <div class="mc-metrics" style="margin:12px 0">
+      <div class="mc-metric"><b>${completed.length}</b><span>Orders done</span></div>
+      <div class="mc-metric"><b>${missDone.length}/${missions.length}</b><span>Missions</span></div>
+      <div class="mc-metric"><b>${skipped.length}</b><span>Skipped</span></div>
+    </div>
+    <p class="mc-sub" style="margin-bottom:6px"><b>What got easier:</b> ${easier ? easier + " orders felt too easy — pushing harder." : "nothing flagged yet."}</p>
+    <p class="mc-sub" style="margin-bottom:6px"><b>What you avoided:</b> ${skipped.length ? escapeHtml(skipped.map(s => s.reason).join(", ")) : "nothing — clean week."}</p>
+  `;
+  const coach = document.createElement("div"); coach.className = "mc-coach";
+  coach.textContent = mcPredict(goal).msg; card.appendChild(coach);
+
+  const startBtn = document.createElement("button"); startBtn.className = "mc-btn primary"; startBtn.style.marginTop = "16px";
+  startBtn.textContent = "Start next week →";
+  startBtn.addEventListener("click", async () => {
+    startBtn.disabled = true; startBtn.innerHTML = `<span class="mc-spin"></span>Building next week…`;
+    const mm = loadMachine(); const g = mm.goals[goalId];
+    const plan = await mcGeneratePlan(mm, g);
+    g.weekly = { weekStart: mcToday(), missions: plan.weekly };
+    g.today = { date: mcToday(), orders: plan.today };
+    saveMachine(mm); renderGoalScreen(goalId);
+  });
+  card.appendChild(startBtn);
+
+  main.replaceChildren(head, bar, card);
+}
+
+function mcSettingsModal() {
+  const m = loadMachine();
+  openModal((modal, close) => {
+    const h = document.createElement("h3"); h.textContent = "Machine settings"; modal.appendChild(h);
+    const sub = document.createElement("p"); sub.className = "modal-sub";
+    sub.textContent = "Add an AI key for richer plans. Keys stay in this browser only. Without one, the built-in engine is used.";
+    modal.appendChild(sub);
+    const form = document.createElement("div"); form.className = "mc-form";
+    form.innerHTML = `
+      <label>AI provider</label>
+      <select id="mc-s-provider">
+        <option value="claude">Claude (Anthropic)</option>
+        <option value="openai">OpenAI (GPT)</option>
+      </select>
+      <label>Claude API key</label>
+      <input type="text" id="mc-s-claude" placeholder="sk-ant-…" autocomplete="off" />
+      <label>OpenAI API key</label>
+      <input type="text" id="mc-s-openai" placeholder="sk-…" autocomplete="off" />
+      <label>Model (optional)</label>
+      <input type="text" id="mc-s-model" placeholder="default per provider" />
+    `;
+    modal.appendChild(form);
+    form.querySelector("#mc-s-provider").value = m.settings.provider;
+    form.querySelector("#mc-s-claude").value = m.settings.claudeKey;
+    form.querySelector("#mc-s-openai").value = m.settings.openaiKey;
+    form.querySelector("#mc-s-model").value = m.settings.model;
+    const actions = document.createElement("div"); actions.className = "modal-actions";
+    const cancel = document.createElement("button"); cancel.className = "btn-cancel"; cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => close(null));
+    const ok = document.createElement("button"); ok.className = "btn-ok"; ok.textContent = "Save";
+    ok.addEventListener("click", () => {
+      const mm = loadMachine();
+      mm.settings.provider = form.querySelector("#mc-s-provider").value;
+      mm.settings.claudeKey = form.querySelector("#mc-s-claude").value.trim();
+      mm.settings.openaiKey = form.querySelector("#mc-s-openai").value.trim();
+      mm.settings.model = form.querySelector("#mc-s-model").value.trim();
+      saveMachine(mm); close(null);
+    });
+    actions.append(cancel, ok); modal.appendChild(actions);
+  });
 }
 
 /* ── Studio: library ──────────────────────────────────────────── */
