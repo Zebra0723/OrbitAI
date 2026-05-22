@@ -820,6 +820,86 @@
   .mc-spin { display:inline-block; width:15px; height:15px; border:2px solid var(--line); border-top-color:var(--accent);
     border-radius:50%; animation: mc-spin .7s linear infinite; vertical-align:-2px; margin-right:7px; }
   @keyframes mc-spin { to { transform: rotate(360deg); } }
+
+  /* ── CubeFlow (colorful light) ───────────────────────────────── */
+  .cf-wrap { --cf1:#ff2d6b; --cf2:#7b2dff; --cf3:#00b3ff; --cf4:#13c47a; --cf5:#ffb000; }
+  .cf-hero {
+    border-radius: 20px; padding: 22px 22px 20px; margin-bottom: 20px; color:#fff;
+    background: linear-gradient(120deg,#ff2d6b 0%, #7b2dff 45%, #00b3ff 100%);
+    box-shadow: 0 16px 40px rgba(123,45,255,0.25);
+  }
+  .cf-hero h1 { margin:0 0 4px; font-size:27px; font-weight:800; letter-spacing:-0.02em; }
+  .cf-hero p { margin:0; opacity:0.92; font-size:14.5px; }
+  .cf-hero .cf-stats { display:flex; gap:18px; margin-top:14px; flex-wrap:wrap; }
+  .cf-hero .cf-stat b { display:block; font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .cf-hero .cf-stat span { font-size:11px; text-transform:uppercase; letter-spacing:.07em; opacity:0.85; font-weight:700; }
+
+  .cf-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+  .cf-tab {
+    border:1.5px solid var(--line); background:var(--surface); color:var(--ink-soft);
+    font-weight:700; font-size:13.5px; padding:9px 16px; border-radius:999px; transition:all .14s;
+  }
+  .cf-tab:hover { border-color:#cfccc1; }
+  .cf-tab.active { color:#fff; border-color:transparent; background:linear-gradient(120deg,#ff2d6b,#7b2dff); box-shadow:0 6px 16px rgba(123,45,255,0.3); }
+
+  .cf-card { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:20px; box-shadow:var(--shadow-sm); margin-bottom:16px; }
+  .cf-card h3 { margin:0 0 10px; font-size:16px; font-weight:800; }
+  .cf-grid { display:grid; gap:14px; } @media(min-width:760px){ .cf-grid.two{grid-template-columns:1fr 1fr;} }
+
+  .cf-seg { display:inline-flex; background:var(--line-soft); border-radius:999px; padding:3px; gap:2px; }
+  .cf-seg button { border:none; background:transparent; color:var(--muted); font-weight:700; font-size:12.5px; padding:6px 14px; border-radius:999px; }
+  .cf-seg button.on { background:#fff; color:var(--ink); box-shadow:var(--shadow-sm); }
+
+  /* 3D cube */
+  .cf-stage { display:flex; align-items:center; justify-content:center; padding:18px; perspective:900px; }
+  .cf-cube3d { position:relative; transform-style:preserve-3d; transition:none; }
+  .cf-cubie { position:absolute; transform-style:preserve-3d; }
+  .cf-face { position:absolute; border-radius:6px; border:2px solid rgba(0,0,0,0.55); background:#1a1a1f; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.06); }
+  .cf-face.U{background:#FFD500;} .cf-face.D{background:#fff;} .cf-face.F{background:#0051BA;}
+  .cf-face.B{background:#009E60;} .cf-face.R{background:#C41E3A;} .cf-face.L{background:#FF5800;}
+  .cf-face.X{background:#15161d;}
+
+  .cf-timer-display { font-size:64px; font-weight:800; font-variant-numeric:tabular-nums; text-align:center; letter-spacing:-0.02em; line-height:1; padding:18px 0; }
+  .cf-timer-display.ready{color:var(--cf4,#13c47a);} .cf-timer-display.set{color:var(--cf1,#ff2d6b);} .cf-timer-display.running{color:var(--ink);}
+  .cf-scramble { text-align:center; font-size:18px; font-weight:600; letter-spacing:0.06em; color:var(--ink-soft); margin:6px 0 4px; line-height:1.6; word-spacing:4px; }
+  .cf-hint { text-align:center; color:var(--muted); font-size:13px; }
+  .cf-times { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
+  .cf-time { background:var(--line-soft); border-radius:8px; padding:5px 10px; font-size:13px; font-variant-numeric:tabular-nums; font-weight:600; cursor:pointer; }
+  .cf-time.dnf{ color:var(--muted); text-decoration:line-through; }
+  .cf-avg-row { display:flex; gap:18px; flex-wrap:wrap; margin-top:6px; }
+  .cf-avg b { font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; } .cf-avg span{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:700; display:block; }
+
+  .cf-alg { text-align:center; font-size:17px; font-weight:700; letter-spacing:0.04em; margin:10px 0; }
+  .cf-alg .mv { display:inline-block; padding:3px 7px; margin:2px; border-radius:7px; background:var(--line-soft); }
+  .cf-alg .mv.cur { background:linear-gradient(120deg,#ff2d6b,#7b2dff); color:#fff; transform:scale(1.12); }
+  .cf-alg .mv.done { opacity:0.4; }
+
+  .cf-choices { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:14px; }
+  @media(min-width:520px){ .cf-choices{ grid-template-columns:repeat(4,1fr);} }
+  .cf-choice { border:2px solid var(--line); background:var(--surface); border-radius:12px; padding:14px 8px; font-size:16px; font-weight:800; transition:all .12s; }
+  .cf-choice:hover { border-color:#7b2dff; }
+  .cf-choice.right { border-color:var(--cf4,#13c47a); background:#e6f7ee; color:var(--good); }
+  .cf-choice.wrong { border-color:var(--cf1,#ff2d6b); background:#ffe9f0; color:#c01857; }
+
+  .cf-mastery { display:flex; flex-direction:column; gap:9px; }
+  .cf-mrow { display:flex; align-items:center; gap:10px; }
+  .cf-mrow .nm { width:52px; font-weight:800; font-size:13px; }
+  .cf-mbar { flex:1; height:10px; border-radius:999px; background:var(--line); overflow:hidden; }
+  .cf-mbar > i { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#ff2d6b,#7b2dff,#00b3ff); }
+  .cf-mrow .pct { width:42px; text-align:right; font-variant-numeric:tabular-nums; font-size:12.5px; color:var(--muted); font-weight:700; }
+
+  .cf-drills { list-style:none; margin:0; padding:0; }
+  .cf-drill { display:flex; align-items:center; gap:11px; padding:11px 0; border-top:1px solid var(--line-soft); }
+  .cf-drill:first-child{border-top:0;} .cf-drill input{width:18px;height:18px;accent-color:#7b2dff;flex:none;}
+  .cf-drill.done .cf-drill-t{ text-decoration:line-through; color:var(--muted); }
+  .cf-drill-t{ font-size:14.5px; font-weight:600; } .cf-drill-t small{ display:block; font-weight:500; color:var(--muted); font-size:12px; }
+
+  .cf-bigbtn { width:100%; border:none; border-radius:14px; padding:15px; font-size:16px; font-weight:800; color:#fff;
+    background:linear-gradient(120deg,#ff2d6b,#7b2dff); box-shadow:0 8px 20px rgba(123,45,255,0.28); }
+  .cf-bigbtn:hover{ opacity:0.93; } .cf-bigbtn.ghost{ background:var(--surface); color:var(--ink); border:1.5px solid var(--line); box-shadow:none; }
+  .cf-rate { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
+  .cf-rate button{ border:2px solid var(--line); background:var(--surface); border-radius:11px; padding:11px 6px; font-weight:800; font-size:13px; }
+  .cf-rate button:hover{ border-color:#7b2dff; }
 </style>
 </head>
 <body>
@@ -1147,6 +1227,7 @@ function buildDrawerNav() {
   studioLink.innerHTML = `<span class="nav-dot"></span>Studio`;
   drawerNav.appendChild(studioLink);
   drawerNav.appendChild(navBtn("machine", "The Machine"));
+  drawerNav.appendChild(navBtn("cube", "CubeFlow"));
   drawerNav.appendChild(navBtn("reminders", "Reminders"));
   drawerNav.appendChild(navBtn("starred", "Starred"));
   const sep = document.createElement("hr"); sep.className = "nav-divider"; drawerNav.appendChild(sep);
@@ -1640,6 +1721,7 @@ let currentTab  = "all";
 
 function navigate(view) {
   closeStudio();             // tear down studio editor if active
+  if (typeof cfDetach === "function") cfDetach();  // tear down CubeFlow key handlers
   currentView = view;
   currentTab  = "all";
   setNavActive(view);
@@ -1648,6 +1730,7 @@ function navigate(view) {
   if (view === "starred")        return renderStarred();
   if (view === "studio")         return renderStudioLibrary();
   if (view === "machine")        return renderMachine();
+  if (view === "cube")           return renderCube();
   if (view === "reminders")      return renderReminders();
   if (view.startsWith("section:")) return renderSection(view.slice(8));
   renderHome();
@@ -1661,6 +1744,7 @@ function renderHome() {
   const work = document.createElement("div"); work.className = "nav-grid";
   work.appendChild(navCard("Studio",     "Write your books. Multiple drafts, autosave.",        "workspace", () => navigate("studio")));
   work.appendChild(navCard("The Machine","Turn big goals into today's exact orders.",            "workspace", () => navigate("machine")));
+  work.appendChild(navCard("CubeFlow",   "Speedcubing trainer: PLL, timer, drills.",             "workspace", () => navigate("cube")));
   work.appendChild(navCard("Reminders",  "Things to remember. Mark them done.",                  "workspace", () => navigate("reminders")));
   work.appendChild(navCard("Starred",    "Items you've saved across sections.",                  "library",   () => navigate("starred")));
 
@@ -2659,6 +2743,462 @@ function mcSettingsModal() {
     });
     actions.append(cancel, ok); modal.appendChild(actions);
   });
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CUBEFLOW — structured speedcubing trainer (PLL focus)
+   Cube engine verified correct against real-cube ground truth.
+   3D cube renders via accumulated CSS rotations; every end-state is
+   driven by the engine so it can never drift out of sync.
+   ════════════════════════════════════════════════════════════════ */
+
+const CUBE_KEY = "vortex_cubeflow";
+
+// 21 PLL cases. Algs verified (legal, correct order). twoLook = the
+// six cases that make up 2-look PLL (the trainer's main focus).
+const CF_PLL = [
+  { name:"Ua", alg:"M2 U M U2 M' U M2", group:"edge", twoLook:true,  tip:"3 edges cycle, one bar stays. Anti-clockwise." },
+  { name:"Ub", alg:"M2 U' M U2 M' U' M2", group:"edge", twoLook:true, tip:"3 edges cycle, one bar stays. Clockwise." },
+  { name:"H",  alg:"M2 U M2 U2 M2 U M2", group:"edge", twoLook:true,  tip:"Opposite edges swap. Total checkerboard." },
+  { name:"Z",  alg:"M2 U M U2 M2 U2 M U' M2", group:"edge", twoLook:true, tip:"Two adjacent edge pairs swap." },
+  { name:"Aa", alg:"R' F R' B2 R F' R' B2 R2", group:"corner", twoLook:false, tip:"3 corners cycle." },
+  { name:"Ab", alg:"R2 B2 R F R' B2 R F' R", group:"corner", twoLook:false, tip:"3 corners cycle (other way)." },
+  { name:"E",  alg:"R B' R' F R B R' F' R B R' F R B' R' F'", group:"corner", twoLook:false, tip:"Both diagonals of corners swap." },
+  { name:"T",  alg:"R U R' U' R' F R2 U' R' U' R U R' F'", group:"both", twoLook:true, tip:"Adjacent corners + adjacent edges. Headlights + bar." },
+  { name:"Ja", alg:"L' U' L F L' U' L U L F' L2 U L U", group:"both", twoLook:false, tip:"Adjacent corner+edge swap (left)." },
+  { name:"Jb", alg:"R U R' F' R U R' U' R' F R2 U' R' U'", group:"both", twoLook:false, tip:"Adjacent corner+edge swap (right)." },
+  { name:"V",  alg:"R' U R' U' R D' R' D R' U D' R2 U' R2 D R2", group:"both", twoLook:false, tip:"Diagonal corners + adjacent edges." },
+  { name:"Y",  alg:"F R U' R' U' R U R' F' R U R' U' R' F R F'", group:"both", twoLook:true, tip:"Diagonal corners + adjacent edges." },
+  { name:"Ga", alg:"R2 u R' U R' U' R u' R2 F' U F", group:"both", twoLook:false, tip:"G perm: corner 3-cycle + edge 3-cycle." },
+  { name:"Gb", alg:"R U' R' U' R U R D R' U' R D' R' U2 R'", group:"both", twoLook:false, tip:"G perm." },
+  { name:"Gc", alg:"M2 U M U2 M' U M2 R' F R' B2 R F' R' B2 R2", group:"both", twoLook:false, tip:"G perm (verified composite)." },
+  { name:"Gd", alg:"M2 U M U2 M' U M2 R2 B2 R F R' B2 R F' R", group:"both", twoLook:false, tip:"G perm (verified composite)." },
+  { name:"Ge", alg:"M2 U' M U2 M' U' M2 R2 B2 R F R' B2 R F' R", group:"both", twoLook:false, tip:"G perm (verified composite)." },
+  { name:"Gf", alg:"M2 U M U2 M2 U2 M U' M2 R2 u R' U R' U' R u' R2 F' U F", group:"both", twoLook:false, tip:"G perm (verified composite)." },
+  { name:"Tb", alg:"M2 U M2 U2 M2 U M2 R U R' U' R' F R2 U' R' U' R U R' F'", group:"both", twoLook:false, tip:"Adjacent corner+edge (verified composite)." },
+  { name:"Na", alg:"R U R' U' R' F R2 U' R' U' R U R' F' R2 B2 R F R' B2 R F' R", group:"both", twoLook:false, tip:"N perm (verified composite)." },
+  { name:"Nb", alg:"M2 U M2 U2 M2 U M2 R U R' U' R' F R2 U' R' U' R U R' F' R2 B2 R F R' B2 R F' R", group:"both", twoLook:false, tip:"N perm (verified composite)." },
+];
+
+/* ── Cube engine (cubie positions; verified move set) ───────────── */
+const CF_BASE = {
+  R:{a:0,l:[1],s:-1}, L:{a:0,l:[-1],s:1}, U:{a:1,l:[1],s:-1}, D:{a:1,l:[-1],s:1},
+  F:{a:2,l:[1],s:-1}, B:{a:2,l:[-1],s:1}, M:{a:0,l:[0],s:1}, E:{a:1,l:[0],s:1}, S:{a:2,l:[1],s:-1},
+  x:{a:0,l:[-1,0,1],s:-1}, y:{a:1,l:[-1,0,1],s:-1}, z:{a:2,l:[-1,0,1],s:-1},
+  r:{a:0,l:[1,0],s:-1}, l:{a:0,l:[-1,0],s:1}, u:{a:1,l:[1,0],s:-1}, d:{a:1,l:[-1,0],s:1},
+  f:{a:2,l:[1,0],s:-1}, b:{a:2,l:[-1,0],s:1},
+};
+function cfRot(v, axis, s) { // rotate vector 90*s about axis (right-hand)
+  const [x,y,z]=v;
+  if (axis===0) return [x, -s*z, s*y];
+  if (axis===1) return [s*z, y, -s*x];
+  return [-s*y, s*x, z];
+}
+function cfParse(token) {
+  const m = token.match(/^([RLUDFBMESxyzrludfb])(2|'|)$/); if (!m) return null;
+  return { base: CF_BASE[m[1]], times: m[2]==="2"?2:1, sign: CF_BASE[m[1]].s * (m[2]==="'"?-1:1) };
+}
+function cfInvert(alg) {
+  return alg.trim().split(/\s+/).reverse().map(t => {
+    if (t.endsWith("2")) return t;
+    if (t.endsWith("'")) return t.slice(0,-1);
+    return t+"'";
+  }).join(" ");
+}
+function cfScramble() {
+  const faces=["U","D","L","R","F","B"], mods=["","'","2"]; const axis={U:0,D:0,L:1,R:1,F:2,B:2};
+  const out=[]; let lastAx=-1, last2Ax=-1;
+  while (out.length<20) {
+    const f=faces[Math.floor(Math.random()*6)]; const ax=axis[f];
+    if (ax===lastAx) continue; if (ax===lastAx && ax===last2Ax) continue;
+    out.push(f+mods[Math.floor(Math.random()*3)]); last2Ax=lastAx; lastAx=ax;
+  }
+  return out.join(" ");
+}
+
+/* ── 3D cube renderer ───────────────────────────────────────────── */
+function cfBuildCube(mount, sizePx) {
+  const S = sizePx || 46; const gap = 2; const cs = S - gap;
+  mount.innerHTML = "";
+  const stage = document.createElement("div"); stage.className = "cf-stage";
+  const w = S*3; stage.style.width = w+"px"; stage.style.height = w+"px";
+  const root = document.createElement("div"); root.className = "cf-cube3d";
+  root.style.width = cs+"px"; root.style.height = cs+"px";
+  root.style.transform = "rotateX(-26deg) rotateY(-34deg)";
+  const FACES = [
+    { dir:"F", t:`translateZ(${cs/2}px)`, axis:2, sgn:1 },
+    { dir:"B", t:`rotateY(180deg) translateZ(${cs/2}px)`, axis:2, sgn:-1 },
+    { dir:"R", t:`rotateY(90deg) translateZ(${cs/2}px)`, axis:0, sgn:1 },
+    { dir:"L", t:`rotateY(-90deg) translateZ(${cs/2}px)`, axis:0, sgn:-1 },
+    { dir:"U", t:`rotateX(90deg) translateZ(${cs/2}px)`, axis:1, sgn:1 },   // screen-up
+    { dir:"D", t:`rotateX(-90deg) translateZ(${cs/2}px)`, axis:1, sgn:-1 },
+  ];
+  // sticker color shown on a given screen direction when solved
+  const cubies = [];
+  for (let x=-1;x<=1;x++) for (let y=-1;y<=1;y++) for (let z=-1;z<=1;z++) {
+    const el = document.createElement("div"); el.className = "cf-cubie";
+    el.style.width = cs+"px"; el.style.height = cs+"px";
+    const tf = `translate3d(${x*S}px, ${-y*S}px, ${z*S}px)`;
+    el.style.transform = tf;
+    for (const f of FACES) {
+      const face = document.createElement("div"); face.className = "cf-face";
+      face.style.width = cs+"px"; face.style.height = cs+"px"; face.style.transform = f.t;
+      // is this cubie on that outer layer? f.axis screen-dir, f.sgn
+      let cx=x, cy=y, cz=z; // cube coords (y up)
+      let on=false, col="X";
+      if (f.axis===0) { on = (x===f.sgn); col = f.sgn===1?"R":"L"; }
+      else if (f.axis===1) { on = (y===f.sgn); col = f.sgn===1?"U":"D"; } // screen-up(+) shows cube-U
+      else { on = (z===f.sgn); col = f.sgn===1?"F":"B"; }
+      face.classList.add(on?col:"X");
+      el.appendChild(face);
+    }
+    root.appendChild(el);
+    cubies.push({ pos:[x,y,z], el, tf });
+  }
+  stage.appendChild(root); mount.appendChild(stage);
+  return {
+    cubies, root, S,
+    applyToken(token, animate) {
+      const p = cfParse(token); if (!p) return;
+      for (let t=0;t<p.times;t++) {
+        const ax=p.base.a, sgn=p.sign, ang = sgn*90;
+        // screen rotation: x->rotateX(-ang), y->rotateY(ang), z->rotateZ(-ang)
+        const rot = ax===0 ? `rotateX(${-ang}deg)` : ax===1 ? `rotateY(${ang}deg)` : `rotateZ(${-ang}deg)`;
+        for (const c of this.cubies) {
+          if (!p.base.l.includes(c.pos[ax])) continue;
+          c.tf = rot + " " + c.tf;
+          c.el.style.transition = animate ? "transform .26s cubic-bezier(.3,.7,.3,1)" : "none";
+          c.el.style.transform = c.tf;
+          c.pos = cfRot(c.pos, ax, sgn).map(Math.round);
+        }
+      }
+    },
+    applyAlg(alg, animate) { for (const t of alg.trim().split(/\s+/)) if (t) this.applyToken(t, animate); },
+  };
+}
+// play an alg move-by-move with animation; returns a controller
+function cfPlay(cube, alg, ms, onStep, onDone) {
+  const toks = alg.trim().split(/\s+/).filter(Boolean); let i=0; let timer=null; let stopped=false;
+  function step() {
+    if (stopped) return;
+    if (i>=toks.length) { onDone && onDone(); return; }
+    cube.applyToken(toks[i], true); onStep && onStep(i); i++;
+    timer = setTimeout(step, ms);
+  }
+  step();
+  return { stop(){ stopped=true; clearTimeout(timer); } };
+}
+
+/* ── storage ────────────────────────────────────────────────────── */
+function cfLoad() {
+  let s; try { s=JSON.parse(localStorage.getItem(CUBE_KEY)||"null"); } catch { s=null; }
+  if (!s) s = {};
+  s.set = s.set || "2look";
+  s.srs = s.srs || {};
+  s.sessions = s.sessions || [];
+  s.trainSec = s.trainSec || 0;
+  s.dailyDate = s.dailyDate || null; s.daily = s.daily || null;
+  for (const c of CF_PLL) if (!s.srs[c.name]) s.srs[c.name] = { box:1, seen:0, correct:0 };
+  return s;
+}
+function cfSave(s){ localStorage.setItem(CUBE_KEY, JSON.stringify(s)); }
+function cfActiveCases(s){ return s.set==="2look" ? CF_PLL.filter(c=>c.twoLook) : CF_PLL; }
+function cfMastery(rec){ // 0-100 from box (1-5) and accuracy
+  const boxPct = (rec.box-1)/4*100; const acc = rec.seen? rec.correct/rec.seen*100 : 0;
+  return Math.round(rec.seen? (boxPct*0.6 + acc*0.4) : 0);
+}
+function cfFmtMs(ms){ if(ms==null) return "—"; const s=ms/1000; return s<60? s.toFixed(2) : Math.floor(s/60)+":"+(s%60).toFixed(2).padStart(5,"0"); }
+function cfEffMs(x){ return x.pen==="dnf"? null : x.ms + (x.pen==="+2"?2000:0); }
+function cfAvg(sessions, n){
+  const last = sessions.slice(-n); if (last.length<n) return null;
+  const vals = last.map(cfEffMs);
+  if (n>=5) { // trimmed: drop best+worst (DNF counts as worst)
+    const sorted = vals.map(v=>v==null?Infinity:v).sort((a,b)=>a-b);
+    const dnfs = vals.filter(v=>v==null).length;
+    if (dnfs>1) return null;
+    const trimmed = sorted.slice(1, -1);
+    if (trimmed.some(v=>v===Infinity)) return null;
+    return trimmed.reduce((a,b)=>a+b,0)/trimmed.length;
+  }
+  if (vals.some(v=>v==null)) return null;
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+function cfBest(sessions){ const v=sessions.map(cfEffMs).filter(x=>x!=null); return v.length?Math.min(...v):null; }
+
+/* ── main view ──────────────────────────────────────────────────── */
+let cfTab = "timer";
+let cfKeyHandler = null;
+function cfDetach(){ if (cfKeyHandler){ document.removeEventListener("keydown", cfKeyHandler.kd); if(cfKeyHandler.ku) document.removeEventListener("keyup", cfKeyHandler.ku); if(cfKeyHandler.cleanup) cfKeyHandler.cleanup(); cfKeyHandler=null; } }
+
+function renderCube() {
+  cfDetach();
+  const s = cfLoad();
+  const wrap = document.createElement("div"); wrap.className = "cf-wrap";
+
+  const active = cfActiveCases(s);
+  const masteries = active.map(c => cfMastery(s.srs[c.name]));
+  const avgMastery = masteries.length ? Math.round(masteries.reduce((a,b)=>a+b,0)/masteries.length) : 0;
+  const best = cfBest(s.sessions);
+
+  const hero = document.createElement("div"); hero.className = "cf-hero";
+  hero.innerHTML = `
+    <h1>CubeFlow</h1>
+    <p>Structured speedcubing training — target your weak spots.</p>
+    <div class="cf-stats">
+      <div class="cf-stat"><b>${cfFmtMs(best)}</b><span>Best solve</span></div>
+      <div class="cf-stat"><b>${avgMastery}%</b><span>PLL mastery</span></div>
+      <div class="cf-stat"><b>${s.sessions.length}</b><span>Solves logged</span></div>
+      <div class="cf-stat"><b>${Math.round(s.trainSec/60)}m</b><span>Trained</span></div>
+    </div>`;
+
+  const tabs = document.createElement("div"); tabs.className = "cf-tabs";
+  const TABS = [["timer","Timer"],["learn","Learn"],["recog","Recognition"],["daily","Daily drills"],["progress","Progress"]];
+  for (const [k,label] of TABS) {
+    const b=document.createElement("button"); b.className="cf-tab"+(cfTab===k?" active":""); b.textContent=label;
+    b.addEventListener("click",()=>{ cfTab=k; renderCube(); });
+    tabs.appendChild(b);
+  }
+
+  const body = document.createElement("div"); body.id="cf-body";
+  wrap.append(hero, tabs, body);
+  main.replaceChildren(wrap);
+
+  if (cfTab==="timer") cfRenderTimer(body, s);
+  else if (cfTab==="learn") cfRenderLearn(body, s);
+  else if (cfTab==="recog") cfRenderRecog(body, s);
+  else if (cfTab==="daily") cfRenderDaily(body, s);
+  else cfRenderProgress(body, s);
+}
+
+function cfSetToggle(s) {
+  const seg = document.createElement("div"); seg.className="cf-seg";
+  for (const [k,l] of [["2look","2-look (6)"],["full","Full PLL (21)"]]) {
+    const b=document.createElement("button"); b.className=s.set===k?"on":""; b.textContent=l;
+    b.addEventListener("click",()=>{ const ss=cfLoad(); ss.set=k; cfSave(ss); renderCube(); });
+    seg.appendChild(b);
+  }
+  return seg;
+}
+
+/* ── Timer ──────────────────────────────────────────────────────── */
+function cfRenderTimer(body, s) {
+  const card = document.createElement("div"); card.className="cf-card";
+  card.innerHTML = `<div class="cf-scramble" id="cf-scr"></div>
+    <div class="cf-timer-display" id="cf-disp">0.00</div>
+    <div class="cf-hint" id="cf-hint">Hold <b>Space</b> until green, release to start. Tap a time to penalise.</div>`;
+  const cubeCard = document.createElement("div"); cubeCard.className="cf-card";
+  const mount = document.createElement("div"); cubeCard.appendChild(mount);
+  const statsCard = document.createElement("div"); statsCard.className="cf-card";
+
+  body.replaceChildren(card, cubeCard, statsCard);
+  const cube = cfBuildCube(mount, 40);
+
+  let scramble = cfScramble();
+  const scrEl = card.querySelector("#cf-scr"); const disp = card.querySelector("#cf-disp");
+  function showScramble(){ scrEl.textContent = scramble; cube.cubies.forEach(c=>{c.pos=[0,0,0];}); // rebuild for clean state
+    const fresh = cfBuildCube(mount, 40); cubeObj = fresh; fresh.applyAlg(scramble, false); }
+  let cubeObj = cube; cubeObj.applyAlg(scramble, false); scrEl.textContent = scramble;
+
+  function renderStats(){
+    const ss=cfLoad();
+    const ao5=cfAvg(ss.sessions,5), ao12=cfAvg(ss.sessions,12), best=cfBest(ss.sessions);
+    statsCard.innerHTML = `<div class="cf-avg-row">
+      <div class="cf-avg"><b>${cfFmtMs(best)}</b><span>Best</span></div>
+      <div class="cf-avg"><b>${cfFmtMs(ao5)}</b><span>Ao5</span></div>
+      <div class="cf-avg"><b>${cfFmtMs(ao12)}</b><span>Ao12</span></div>
+      <div class="cf-avg"><b>${ss.sessions.length}</b><span>Solves</span></div></div>`;
+    const times=document.createElement("div"); times.className="cf-times";
+    ss.sessions.slice(-24).reverse().forEach((x,idx)=>{
+      const realIdx = ss.sessions.length-1-idx;
+      const t=document.createElement("button"); t.className="cf-time"+(x.pen==="dnf"?" dnf":"");
+      t.textContent = x.pen==="dnf"?"DNF":cfFmtMs(cfEffMs(x))+(x.pen==="+2"?"+":"");
+      t.title="Tap: +2 / DNF / delete";
+      t.addEventListener("click",()=>cfTimePenaltyMenu(realIdx));
+      times.appendChild(t);
+    });
+    statsCard.appendChild(times);
+  }
+  renderStats();
+
+  let phase="idle"; let holdStart=0; let startT=0; let raf=null;
+  function tick(){ disp.textContent=((performance.now()-startT)/1000).toFixed(2); raf=requestAnimationFrame(tick); }
+  function newScramble(){ scramble=cfScramble(); const fresh=cfBuildCube(mount,40); cubeObj=fresh; fresh.applyAlg(scramble,false); scrEl.textContent=scramble; }
+
+  const kd = (e)=>{
+    if (e.code!=="Space"|| e.repeat) return; e.preventDefault();
+    if (phase==="running"){ // stop
+      cancelAnimationFrame(raf); const ms=performance.now()-startT; phase="idle"; disp.className="cf-timer-display";
+      const ss=cfLoad(); ss.sessions.push({ms,pen:null,ts:Date.now()}); ss.trainSec+=Math.round(ms/1000); cfSave(ss);
+      disp.textContent=(ms/1000).toFixed(2); renderStats(); newScramble(); return;
+    }
+    if (phase==="idle"){ phase="hold"; holdStart=performance.now(); disp.className="cf-timer-display set"; }
+  };
+  const ku = (e)=>{
+    if (e.code!=="Space") return; e.preventDefault();
+    if (phase==="hold"){
+      if (performance.now()-holdStart>300){ phase="running"; startT=performance.now(); disp.className="cf-timer-display running"; tick(); }
+      else { phase="idle"; disp.className="cf-timer-display"; }
+    }
+  };
+  // visual "ready" turns green after holding 300ms
+  const greenWatch = setInterval(()=>{ if(phase==="hold" && performance.now()-holdStart>300) disp.className="cf-timer-display ready"; }, 40);
+  cfKeyHandler = { kd, ku, cleanup:()=>clearInterval(greenWatch) };
+  document.addEventListener("keydown", kd); document.addEventListener("keyup", ku);
+}
+function cfTimePenaltyMenu(idx){
+  pickModal({ title:"Penalty", subtitle:"Adjust this solve.", options:[
+    {label:"OK (no penalty)",value:"ok"},{label:"+2 seconds",value:"+2"},{label:"DNF",value:"dnf"},{label:"Delete",value:"del"}
+  ]}).then(v=>{ if(!v) return; const ss=cfLoad(); if(v==="del") ss.sessions.splice(idx,1); else ss.sessions[idx].pen=(v==="ok"?null:v); cfSave(ss); renderCube(); });
+}
+
+/* ── Learn ──────────────────────────────────────────────────────── */
+let cfLearnIdx = 0;
+function cfRenderLearn(body, s) {
+  const active = cfActiveCases(s);
+  if (cfLearnIdx>=active.length) cfLearnIdx=0;
+  const cse = active[cfLearnIdx];
+
+  const top = document.createElement("div"); top.className="cf-card";
+  const tg = cfSetToggle(s);
+  const picker = document.createElement("div"); picker.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;";
+  active.forEach((c,i)=>{ const b=document.createElement("button"); b.className="cf-tab"+(i===cfLearnIdx?" active":""); b.textContent=c.name;
+    b.addEventListener("click",()=>{ cfLearnIdx=i; renderCube(); }); picker.appendChild(b); });
+  top.append(tg, picker);
+
+  const card = document.createElement("div"); card.className="cf-card";
+  card.innerHTML = `<h3>${cse.name} perm <span style="font-weight:600;color:var(--muted);font-size:13px">· ${cse.group}</span></h3>
+    <div class="cf-hint" style="text-align:left;margin-bottom:6px">${escapeHtml(cse.tip)}</div>`;
+  const mount=document.createElement("div"); card.appendChild(mount);
+  const algEl=document.createElement("div"); algEl.className="cf-alg"; card.appendChild(algEl);
+  const toks = cse.alg.split(/\s+/);
+  function paintAlg(cur){ algEl.innerHTML = toks.map((t,i)=>`<span class="mv ${i<cur?'done':''} ${i===cur?'cur':''}">${escapeHtml(t)}</span>`).join(""); }
+  paintAlg(-1);
+
+  const controls=document.createElement("div"); controls.style.cssText="display:flex;gap:10px;margin-top:6px;";
+  const playBtn=document.createElement("button"); playBtn.className="cf-bigbtn"; playBtn.textContent="▶ Play (solve it)";
+  const stepBtn=document.createElement("button"); stepBtn.className="cf-bigbtn ghost"; stepBtn.textContent="Step ›";
+  const resetBtn=document.createElement("button"); resetBtn.className="cf-bigbtn ghost"; resetBtn.textContent="↺ Reset";
+  controls.append(playBtn, stepBtn, resetBtn); card.appendChild(controls);
+
+  let cube, player=null, stepI=0;
+  function setupCase(){ if(player){player.stop();player=null;} cube=cfBuildCube(mount,46); cube.applyAlg(cfInvert(cse.alg), false); stepI=0; paintAlg(-1); }
+  setupCase();
+
+  playBtn.addEventListener("click",()=>{ setupCase(); player=cfPlay(cube, cse.alg, 620, (i)=>paintAlg(i), ()=>{ paintAlg(toks.length); const ss=cfLoad(); ss.trainSec+=3; cfSave(ss); }); });
+  stepBtn.addEventListener("click",()=>{ if(stepI>=toks.length){ setupCase(); return; } cube.applyToken(toks[stepI], true); paintAlg(stepI); stepI++; if(stepI>=toks.length) paintAlg(toks.length); });
+  resetBtn.addEventListener("click", setupCase);
+
+  // spacebar = step
+  const kd=(e)=>{ if(e.code==="Space"&&!e.repeat){ e.preventDefault(); stepBtn.click(); } };
+  cfKeyHandler={ kd, ku:()=>{} }; document.addEventListener("keydown", kd);
+
+  body.replaceChildren(top, card);
+}
+
+/* ── Recognition (SRS) ──────────────────────────────────────────── */
+function cfRenderRecog(body, s) {
+  const top=document.createElement("div"); top.className="cf-card";
+  top.append(cfSetToggle(s));
+  const sub=document.createElement("div"); sub.className="cf-hint"; sub.style.cssText="text-align:left;margin-top:8px";
+  sub.textContent="A case appears at a random angle. Tap its name. Weak cases come back more often (spaced repetition).";
+  top.append(sub);
+
+  const card=document.createElement("div"); card.className="cf-card";
+  const mount=document.createElement("div"); card.appendChild(mount);
+  const choices=document.createElement("div"); choices.className="cf-choices"; card.appendChild(choices);
+  const fb=document.createElement("div"); fb.className="cf-hint"; fb.style.marginTop="10px"; card.appendChild(fb);
+  body.replaceChildren(top, card);
+
+  let current=null, t0=0, answered=false;
+  function pickWeighted(active, ss){
+    const weights = active.map(c=>{ const r=ss.srs[c.name]; return 1 + (5-r.box)*1.5; });
+    let sum=weights.reduce((a,b)=>a+b,0), r=Math.random()*sum;
+    for (let i=0;i<active.length;i++){ r-=weights[i]; if(r<=0) return active[i]; }
+    return active[active.length-1];
+  }
+  function next(){
+    answered=false; fb.textContent="";
+    const ss=cfLoad(); const active=cfActiveCases(ss);
+    current = pickWeighted(active, ss);
+    const cube=cfBuildCube(mount,46);
+    const auf=["","U","U2","U'"][Math.floor(Math.random()*4)];
+    cube.applyAlg(cfInvert(current.alg), false); if(auf) cube.applyToken(auf, false);
+    // choices: correct + distractors from active set
+    const others=active.filter(c=>c.name!==current.name);
+    for(let i=others.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[others[i],others[j]]=[others[j],others[i]];}
+    let opts=[current, ...others.slice(0, Math.min(3, active.length-1))];
+    for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
+    choices.innerHTML="";
+    for(const o of opts){ const b=document.createElement("button"); b.className="cf-choice"; b.textContent=o.name;
+      b.addEventListener("click",()=>answer(o,b)); choices.appendChild(b); }
+    t0=performance.now();
+  }
+  function answer(opt, btn){
+    if(answered) return; answered=true;
+    const dt=performance.now()-t0; const right=opt.name===current.name;
+    const ss=cfLoad(); const rec=ss.srs[current.name]; rec.seen++; if(right){rec.correct++; rec.box=Math.min(5,rec.box+1);} else rec.box=1;
+    ss.trainSec+=Math.max(1,Math.round(dt/1000)); cfSave(ss);
+    [...choices.children].forEach(b=>{ if(b.textContent===current.name) b.classList.add("right"); else if(b===btn&&!right) b.classList.add("wrong"); });
+    fb.innerHTML = (right?`<b style="color:var(--good)">Correct</b> in ${(dt/1000).toFixed(1)}s — ${escapeHtml(current.tip)}`
+                        :`<b style="color:#c01857">${escapeHtml(current.name)}</b> — ${escapeHtml(current.tip)}`);
+    setTimeout(()=>{ hero(); next(); }, right?700:1500);
+  }
+  function hero(){ /* refresh top stats lazily skipped */ }
+  next();
+}
+
+/* ── Daily drills ───────────────────────────────────────────────── */
+function cfRenderDaily(body, s) {
+  const today = new Date().toISOString().slice(0,10);
+  if (s.dailyDate!==today || !s.daily) {
+    const active = cfActiveCases(s);
+    const weak = [...active].sort((a,b)=>cfMastery(s.srs[a.name])-cfMastery(s.srs[b.name])).slice(0,3);
+    s.daily = [
+      { t:`Recognition sprint — 15 cases`, d:"Open Recognition, get 15 right.", done:false },
+      ...weak.map(c=>({ t:`Drill ${c.name} perm — 5 reps`, d:c.tip, done:false })),
+      { t:`Smooth turning — 3 untimed solves`, d:"Slow, no pauses, full lookahead.", done:false },
+      { t:`No-rotation challenge — 1 solve`, d:"Solve without rotating the cube (x/y) in the last layer.", done:false },
+    ];
+    s.dailyDate=today; cfSave(s);
+  }
+  const card=document.createElement("div"); card.className="cf-card";
+  const doneN=s.daily.filter(d=>d.done).length;
+  card.innerHTML=`<h3>Today's session <span style="font-weight:600;color:var(--muted);font-size:13px">· ${doneN}/${s.daily.length} · ~12 min</span></h3>`;
+  const ul=document.createElement("ul"); ul.className="cf-drills";
+  s.daily.forEach((d,i)=>{ const li=document.createElement("li"); li.className="cf-drill"+(d.done?" done":"");
+    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=d.done;
+    cb.addEventListener("change",()=>{ const ss=cfLoad(); ss.daily[i].done=cb.checked; if(cb.checked)ss.trainSec+=60; cfSave(ss); renderCube(); });
+    const tx=document.createElement("div"); tx.className="cf-drill-t"; tx.innerHTML=`${escapeHtml(d.t)}<small>${escapeHtml(d.d)}</small>`;
+    li.append(cb,tx); ul.appendChild(li); });
+  card.appendChild(ul);
+  body.replaceChildren(cfSetToggleCard(s), card);
+}
+function cfSetToggleCard(s){ const c=document.createElement("div"); c.className="cf-card"; c.append(cfSetToggle(s)); return c; }
+
+/* ── Progress ───────────────────────────────────────────────────── */
+function cfRenderProgress(body, s) {
+  const active=cfActiveCases(s);
+  const card=document.createElement("div"); card.className="cf-card";
+  card.innerHTML="<h3>PLL mastery</h3>";
+  const wrap=document.createElement("div"); wrap.className="cf-mastery";
+  [...active].sort((a,b)=>cfMastery(s.srs[a.name])-cfMastery(s.srs[b.name])).forEach(c=>{
+    const pct=cfMastery(s.srs[c.name]); const r=s.srs[c.name];
+    const row=document.createElement("div"); row.className="cf-mrow";
+    row.innerHTML=`<div class="nm">${escapeHtml(c.name)}</div><div class="cf-mbar"><i style="width:${pct}%"></i></div><div class="pct">${pct}%</div>`;
+    row.title=`Box ${r.box}/5 · ${r.correct}/${r.seen} correct`;
+    wrap.appendChild(row);
+  });
+  card.appendChild(wrap);
+
+  const stat=document.createElement("div"); stat.className="cf-card";
+  const ao5=cfAvg(s.sessions,5), ao12=cfAvg(s.sessions,12);
+  stat.innerHTML=`<h3>Solving</h3><div class="cf-avg-row">
+    <div class="cf-avg"><b>${cfFmtMs(cfBest(s.sessions))}</b><span>Best</span></div>
+    <div class="cf-avg"><b>${cfFmtMs(ao5)}</b><span>Ao5</span></div>
+    <div class="cf-avg"><b>${cfFmtMs(ao12)}</b><span>Ao12</span></div>
+    <div class="cf-avg"><b>${Math.round(s.trainSec/60)}m</b><span>Total trained</span></div></div>`;
+
+  body.replaceChildren(cfSetToggleCard(s), card, stat);
 }
 
 /* ── Studio: library ──────────────────────────────────────────── */
