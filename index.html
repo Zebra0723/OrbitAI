@@ -2757,27 +2757,33 @@ const CUBE_KEY = "vortex_cubeflow";
 // 21 PLL cases. Algs verified (legal, correct order). twoLook = the
 // six cases that make up 2-look PLL (the trainer's main focus).
 const CF_PLL = [
-  { name:"Ua", alg:"M2 U M U2 M' U M2", group:"edge", twoLook:true,  tip:"3 edges cycle, one bar stays. Anti-clockwise." },
-  { name:"Ub", alg:"M2 U' M U2 M' U' M2", group:"edge", twoLook:true, tip:"3 edges cycle, one bar stays. Clockwise." },
-  { name:"H",  alg:"M2 U M2 U2 M2 U M2", group:"edge", twoLook:true,  tip:"Opposite edges swap. Total checkerboard." },
-  { name:"Z",  alg:"M2 U M U2 M2 U2 M U' M2", group:"edge", twoLook:true, tip:"Two adjacent edge pairs swap." },
-  { name:"Aa", alg:"R' F R' B2 R F' R' B2 R2", group:"corner", twoLook:false, tip:"3 corners cycle." },
-  { name:"Ab", alg:"R2 B2 R F R' B2 R F' R", group:"corner", twoLook:false, tip:"3 corners cycle (other way)." },
-  { name:"E",  alg:"R B' R' F R B R' F' R B R' F R B' R' F'", group:"corner", twoLook:false, tip:"Both diagonals of corners swap." },
-  { name:"T",  alg:"R U R' U' R' F R2 U' R' U' R U R' F'", group:"both", twoLook:true, tip:"Adjacent corners + adjacent edges. Headlights + bar." },
-  { name:"Ja", alg:"L' U' L F L' U' L U L F' L2 U L U", group:"both", twoLook:false, tip:"Adjacent corner+edge swap (left)." },
-  { name:"Jb", alg:"R U R' F' R U R' U' R' F R2 U' R' U'", group:"both", twoLook:false, tip:"Adjacent corner+edge swap (right)." },
-  { name:"V",  alg:"R' U R' U' R D' R' D R' U D' R2 U' R2 D R2", group:"both", twoLook:false, tip:"Diagonal corners + adjacent edges." },
-  { name:"Y",  alg:"F R U' R' U' R U R' F' R U R' U' R' F R F'", group:"both", twoLook:true, tip:"Diagonal corners + adjacent edges." },
-  { name:"Ga", alg:"R2 u R' U R' U' R u' R2 F' U F", group:"both", twoLook:false, tip:"G perm: corner 3-cycle + edge 3-cycle." },
-  { name:"Gb", alg:"R U' R' U' R U R D R' U' R D' R' U2 R'", group:"both", twoLook:false, tip:"G perm." },
-  { name:"Gc", alg:"M2 U M U2 M' U M2 R' F R' B2 R F' R' B2 R2", group:"both", twoLook:false, tip:"G perm (verified composite)." },
-  { name:"Gd", alg:"M2 U M U2 M' U M2 R2 B2 R F R' B2 R F' R", group:"both", twoLook:false, tip:"G perm (verified composite)." },
-  { name:"Ge", alg:"M2 U' M U2 M' U' M2 R2 B2 R F R' B2 R F' R", group:"both", twoLook:false, tip:"G perm (verified composite)." },
-  { name:"Gf", alg:"M2 U M U2 M2 U2 M U' M2 R2 u R' U R' U' R u' R2 F' U F", group:"both", twoLook:false, tip:"G perm (verified composite)." },
-  { name:"Tb", alg:"M2 U M2 U2 M2 U M2 R U R' U' R' F R2 U' R' U' R U R' F'", group:"both", twoLook:false, tip:"Adjacent corner+edge (verified composite)." },
-  { name:"Na", alg:"R U R' U' R' F R2 U' R' U' R U R' F' R2 B2 R F R' B2 R F' R", group:"both", twoLook:false, tip:"N perm (verified composite)." },
-  { name:"Nb", alg:"M2 U M2 U2 M2 U M2 R U R' U' R' F R2 U' R' U' R U R' F' R2 B2 R F R' B2 R F' R", group:"both", twoLook:false, tip:"N perm (verified composite)." },
+  // Edge perms
+  { name:"Ua", alg:"M2 U M U2 M' U M2", group:"edge", twoLook:true,  tip:"3 edges cycle, one stays. Counter-clockwise direction." },
+  { name:"Ub", alg:"M2 U' M U2 M' U' M2", group:"edge", twoLook:true, tip:"3 edges cycle, one stays. Clockwise direction." },
+  { name:"H",  alg:"M2 U M2 U2 M2 U M2", group:"edge", twoLook:true,  tip:"Opposite edges swap — full checkerboard on top." },
+  { name:"Z",  alg:"M2 U M2 U M' U2 M2 U2 M'", group:"edge", twoLook:true, tip:"Two adjacent edge pairs swap." },
+  // Corner perms
+  { name:"Aa", alg:"x L2 D2 L' U' L D2 L' U L' x'", group:"corner", twoLook:false, tip:"3 corners cycle. Look for the headlights." },
+  { name:"Ab", alg:"x' L2 D2 L U L' D2 L U' L x", group:"corner", twoLook:false, tip:"3 corners cycle (mirror of Aa)." },
+  { name:"E",  alg:"x' L' U L D' L' U' L D L' U' L D' L' U L D x", group:"corner", twoLook:false, tip:"Both diagonals of corners swap." },
+  // Adjacent corner + edge swap
+  { name:"T",  alg:"R U R' U' R' F R2 U' R' U' R U R' F'", group:"both", twoLook:true, tip:"Headlights + a bar. Adjacent corner + adjacent edge swap." },
+  { name:"F",  alg:"R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R", group:"both", twoLook:false, tip:"Adjacent corner + opposite-edge swap." },
+  { name:"Ja", alg:"x R2 F R F' R U2 r' U r U2 x'", group:"both", twoLook:false, tip:"J perm (left mirror of Jb)." },
+  { name:"Jb", alg:"R U R' F' R U R' U' R' F R2 U' R' U'", group:"both", twoLook:false, tip:"Adjacent corner+edge swap. Bar on the right." },
+  { name:"Ra", alg:"R U' R' U' R U R D R' U' R D' R' U2 R'", group:"both", twoLook:false, tip:"R perm: corner+edge swap, bookface pattern." },
+  { name:"Rb", alg:"R' U2 R U2 R' F R U R' U' R' F' R2", group:"both", twoLook:false, tip:"R perm (mirror of Ra)." },
+  // Diagonal corner swap
+  { name:"V",  alg:"R' U R' U' y R' F' R2 U' R' U R' F R F", group:"both", twoLook:false, tip:"Diagonal corners + adjacent edges." },
+  { name:"Y",  alg:"F R U' R' U' R U R' F' R U R' U' R' F R F'", group:"both", twoLook:true, tip:"Diagonal corners + adjacent edges. Famous sledgehammer setup." },
+  // G perms (corner 3-cycle + edge 3-cycle)
+  { name:"Ga", alg:"R2 U R' U R' U' R U' R2 U' D R' U R D'", group:"both", twoLook:false, tip:"G perm: corner 3-cycle + edge 3-cycle." },
+  { name:"Gb", alg:"R' U' R U D' R2 U R' U R U' R U' R2 D", group:"both", twoLook:false, tip:"G perm (inverse of Ga)." },
+  { name:"Gc", alg:"R2 U' R U' R U R' U R2 U D' R U' R' D", group:"both", twoLook:false, tip:"G perm." },
+  { name:"Gd", alg:"R U R' U' D R2 U' R U' R' U R' U R2 D'", group:"both", twoLook:false, tip:"G perm (inverse of Gc)." },
+  // N perms
+  { name:"Na", alg:"R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'", group:"both", twoLook:false, tip:"N perm: diagonal corner swap + edge swap." },
+  { name:"Nb", alg:"R' U R U' R' F' U' F R U R' F R' F' R U' R", group:"both", twoLook:false, tip:"N perm (mirror of Na)." },
 ];
 
 /* ── Cube engine (cubie positions; verified move set) ───────────── */
