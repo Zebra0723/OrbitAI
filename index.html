@@ -2761,7 +2761,7 @@ const CF_PLL = [
   { name:"Ua", alg:"M2 U M U2 M' U M2", group:"edge", twoLook:true,  tip:"3 edges cycle, one stays. Counter-clockwise direction." },
   { name:"Ub", alg:"M2 U' M U2 M' U' M2", group:"edge", twoLook:true, tip:"3 edges cycle, one stays. Clockwise direction." },
   { name:"H",  alg:"M2 U M2 U2 M2 U M2", group:"edge", twoLook:true,  tip:"Opposite edges swap — full checkerboard on top." },
-  { name:"Z",  alg:"M2 U M2 U M' U2 M2 U2 M'", group:"edge", twoLook:true, tip:"Two adjacent edge pairs swap." },
+  { name:"Z",  alg:"M2 U M2 U M' U2 M2 U2 M' U2", group:"edge", twoLook:true, tip:"Two adjacent edge pairs swap. The final U2 is the AUF." },
   // Corner perms
   { name:"Aa", alg:"x L2 D2 L' U' L D2 L' U L' x'", group:"corner", twoLook:false, tip:"3 corners cycle. Look for the headlights." },
   { name:"Ab", alg:"x' L2 D2 L U L' D2 L U' L x", group:"corner", twoLook:false, tip:"3 corners cycle (mirror of Aa)." },
@@ -2771,19 +2771,19 @@ const CF_PLL = [
   { name:"F",  alg:"R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R", group:"both", twoLook:false, tip:"Adjacent corner + opposite-edge swap." },
   { name:"Ja", alg:"x R2 F R F' R U2 r' U r U2 x'", group:"both", twoLook:false, tip:"J perm (left mirror of Jb)." },
   { name:"Jb", alg:"R U R' F' R U R' U' R' F R2 U' R' U'", group:"both", twoLook:false, tip:"Adjacent corner+edge swap. Bar on the right." },
-  { name:"Ra", alg:"R U' R' U' R U R D R' U' R D' R' U2 R'", group:"both", twoLook:false, tip:"R perm: corner+edge swap, bookface pattern." },
-  { name:"Rb", alg:"R' U2 R U2 R' F R U R' U' R' F' R2", group:"both", twoLook:false, tip:"R perm (mirror of Ra)." },
+  { name:"Ra", alg:"R U' R' U' R U R D R' U' R D' R' U2 R' U'", group:"both", twoLook:false, tip:"R perm: corner+edge swap, bookface pattern. Ends with U' AUF." },
+  { name:"Rb", alg:"R' U2 R U2 R' F R U R' U' R' F' R2 U'", group:"both", twoLook:false, tip:"R perm (mirror of Ra). Ends with U' AUF." },
   // Diagonal corner swap
-  { name:"V",  alg:"R' U R' U' y R' F' R2 U' R' U R' F R F", group:"both", twoLook:false, tip:"Diagonal corners + adjacent edges." },
+  { name:"V",  alg:"R' U R' U' y R' F' R2 U' R' U R' F R F y'", group:"both", twoLook:false, tip:"Diagonal corners + adjacent edges. The y/y' rotations are setup and unwind." },
   { name:"Y",  alg:"F R U' R' U' R U R' F' R U R' U' R' F R F'", group:"both", twoLook:true, tip:"Diagonal corners + adjacent edges. Famous sledgehammer setup." },
   // G perms (corner 3-cycle + edge 3-cycle)
-  { name:"Ga", alg:"R2 U R' U R' U' R U' R2 U' D R' U R D'", group:"both", twoLook:false, tip:"G perm: corner 3-cycle + edge 3-cycle." },
-  { name:"Gb", alg:"R' U' R U D' R2 U R' U R U' R U' R2 D", group:"both", twoLook:false, tip:"G perm (inverse of Ga)." },
-  { name:"Gc", alg:"R2 U' R U' R U R' U R2 U D' R U' R' D", group:"both", twoLook:false, tip:"G perm." },
-  { name:"Gd", alg:"R U R' U' D R2 U' R U' R' U R' U R2 D'", group:"both", twoLook:false, tip:"G perm (inverse of Gc)." },
+  { name:"Ga", alg:"R2 U R' U R' U' R U' R2 U' D R' U R D' U", group:"both", twoLook:false, tip:"G perm: corner 3-cycle + edge 3-cycle. Ends with U AUF." },
+  { name:"Gb", alg:"R' U' R U D' R2 U R' U R U' R U' R2 D U", group:"both", twoLook:false, tip:"G perm (inverse of Ga)." },
+  { name:"Gc", alg:"R2 U' R U' R U R' U R2 U D' R U' R' D U", group:"both", twoLook:false, tip:"G perm." },
+  { name:"Gd", alg:"R U R' U' D R2 U' R U' R' U R' U R2 D' U", group:"both", twoLook:false, tip:"G perm (inverse of Gc)." },
   // N perms
-  { name:"Na", alg:"R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'", group:"both", twoLook:false, tip:"N perm: diagonal corner swap + edge swap." },
-  { name:"Nb", alg:"R' U R U' R' F' U' F R U R' F R' F' R U' R", group:"both", twoLook:false, tip:"N perm (mirror of Na)." },
+  { name:"Na", alg:"R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R' U", group:"both", twoLook:false, tip:"N perm: diagonal corner swap + edge swap." },
+  { name:"Nb", alg:"R' U R U' R' F' U' F R U R' F R' F' R U' R U", group:"both", twoLook:false, tip:"N perm (mirror of Na)." },
 ];
 
 /* ── Cube engine (cubie positions; verified move set) ───────────── */
