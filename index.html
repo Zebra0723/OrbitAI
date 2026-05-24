@@ -900,6 +900,252 @@
   .cf-rate { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
   .cf-rate button{ border:2px solid var(--line); background:var(--surface); border-radius:11px; padding:11px 6px; font-weight:800; font-size:13px; }
   .cf-rate button:hover{ border-color:#7b2dff; }
+
+  /* ── Wishlist (vibrant) ──────────────────────────────────────── */
+  .wl-wrap { --wl-builder:#ff7a18; --wl-creator:#a02bff; --wl-athlete:#19c37d; --wl-engineer:#0ea5e9; --wl-writer:#ec4899; }
+  .wl-hero {
+    border-radius: 22px; padding: 24px 24px 22px; margin-bottom: 22px; color:#fff;
+    background: linear-gradient(120deg, #a02bff 0%, #ec4899 35%, #ff7a18 70%, #19c37d 100%);
+    box-shadow: 0 18px 44px rgba(160,43,255,0.25);
+    position: relative; overflow: hidden;
+  }
+  .wl-hero::before { content:""; position:absolute; inset:0; pointer-events:none;
+    background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.18), transparent 60%); }
+  .wl-hero h1 { margin:0 0 4px; font-size:28px; font-weight:800; letter-spacing:-0.02em; position:relative; }
+  .wl-hero p { margin:0; opacity:0.95; font-size:14.5px; position:relative; }
+  .wl-hero .wl-stats { display:flex; gap:22px; margin-top:16px; flex-wrap:wrap; position:relative; }
+  .wl-hero .wl-stat b { display:block; font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .wl-hero .wl-stat span { font-size:11px; text-transform:uppercase; letter-spacing:.07em; opacity:0.88; font-weight:700; }
+
+  .wl-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+  .wl-tab {
+    border:1.5px solid var(--line); background:var(--surface); color:var(--ink-soft);
+    font-weight:700; font-size:13.5px; padding:9px 16px; border-radius:999px; transition:all .14s;
+  }
+  .wl-tab:hover { border-color:#cfccc1; }
+  .wl-tab.active { color:#fff; border-color:transparent;
+    background:linear-gradient(120deg,#a02bff,#ec4899);
+    box-shadow:0 6px 16px rgba(160,43,255,0.3); }
+
+  .wl-bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; align-items:center; }
+  .wl-btn {
+    border:1.5px solid var(--line); background:var(--surface); color:var(--ink);
+    font-weight:700; font-size:13.5px; padding:9px 15px; border-radius:999px;
+  }
+  .wl-btn:hover { background: var(--line-soft); }
+  .wl-btn.primary {
+    color:#fff; border:none;
+    background: linear-gradient(120deg,#a02bff,#ec4899);
+    box-shadow: 0 6px 16px rgba(160,43,255,0.28);
+  }
+  .wl-btn.primary:hover { opacity:0.93; }
+  .wl-btn.ghost { border-color:transparent; color: var(--muted); }
+
+  .wl-grid {
+    display:grid; gap:14px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+
+  .wl-item {
+    background: var(--surface); border:1px solid var(--line); border-radius:18px; overflow:hidden;
+    cursor:pointer; transition: transform .12s, box-shadow .12s, border-color .12s;
+    position:relative; display:flex; flex-direction:column; text-align:left;
+    padding: 0;
+  }
+  .wl-item:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(20,16,8,0.12); border-color:#cfccc1; }
+  .wl-item.locked { opacity: 0.75; }
+  .wl-item .wl-thumb {
+    aspect-ratio: 16/10; background-size:cover; background-position:center;
+    display:flex; align-items:center; justify-content:center;
+    font-size:54px; position:relative; color: rgba(255,255,255,0.92);
+  }
+  .wl-item .wl-thumb.arc-builder  { background: linear-gradient(135deg,#ff9a3c,#ff7a18); }
+  .wl-item .wl-thumb.arc-creator  { background: linear-gradient(135deg,#c061ff,#a02bff); }
+  .wl-item .wl-thumb.arc-athlete  { background: linear-gradient(135deg,#4ade80,#19c37d); }
+  .wl-item .wl-thumb.arc-engineer { background: linear-gradient(135deg,#38bdf8,#0ea5e9); }
+  .wl-item .wl-thumb.arc-writer   { background: linear-gradient(135deg,#f9a8d4,#ec4899); }
+  .wl-item .wl-thumb-lock { position:absolute; top:10px; right:10px;
+    background: rgba(0,0,0,0.6); color:#fff; padding:4px 10px; border-radius:999px;
+    font-size:11px; font-weight:800; letter-spacing:.05em; }
+  .wl-item .wl-body { padding:14px 14px 16px; display:flex; flex-direction:column; gap:7px; }
+  .wl-item h4 { margin:0; font-size:15.5px; font-weight:800; letter-spacing:-0.01em; line-height:1.3; }
+  .wl-item .wl-why { margin:0; color:var(--muted); font-size:13px; line-height:1.45;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .wl-item .wl-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:2px; }
+
+  .wl-chip { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.05em; padding:3px 9px; border-radius:999px;
+    background: var(--line-soft); color: var(--ink-soft); }
+  .wl-chip .dot { width:6px; height:6px; border-radius:50%; background: currentColor; }
+  .wl-chip.arc-builder  { color:#c25a00; background:#ffe9d3; }
+  .wl-chip.arc-creator  { color:#7b1bb5; background:#f3e0ff; }
+  .wl-chip.arc-athlete  { color:#0e8a55; background:#d7f5e6; }
+  .wl-chip.arc-engineer { color:#075985; background:#d5f0fd; }
+  .wl-chip.arc-writer   { color:#be1873; background:#fde0ed; }
+  .wl-chip.long-curiosity  { color:#0e8a55; background:#d7f5e6; }
+  .wl-chip.long-obsession  { color:#be1873; background:#fde0ed; }
+  .wl-chip.long-consistent { color:#075985; background:#d5f0fd; }
+  .wl-chip.long-fading     { color:#71717a; background: var(--line-soft); }
+  .wl-chip.long-essential  { color:#7b1bb5; background: linear-gradient(120deg,#f3e0ff,#fde0ed); }
+
+  .wl-score { display:inline-flex; align-items:center; gap:8px; padding:6px 12px;
+    border-radius:999px; font-weight:800; font-size:13px; color:#fff;
+    background: linear-gradient(120deg,#a02bff,#ec4899); }
+  .wl-score-bar { height:10px; background: var(--line); border-radius:999px; overflow:hidden; }
+  .wl-score-bar > i { display:block; height:100%; border-radius:999px;
+    background: linear-gradient(90deg,#19c37d 0%, #ffb000 40%, #ff7a18 70%, #ec4899 100%); transition: width .3s; }
+
+  .wl-empty { text-align:center; padding:50px 22px; color:var(--muted);
+    border:1.5px dashed var(--line); border-radius:18px; }
+  .wl-empty strong { display:block; font-size:17px; color:var(--ink); margin-bottom:6px; }
+
+  /* Modal */
+  .wl-modal-scrim { position:fixed; inset:0; background: rgba(20,16,8,0.62); z-index: 100;
+    display:flex; align-items:center; justify-content:center; padding:20px; }
+  .wl-modal { background: var(--surface); border-radius:20px; width: min(640px, 100%);
+    max-height: 90vh; overflow-y:auto; box-shadow: var(--shadow-lg); }
+  .wl-modal-head { padding:20px 22px 16px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; gap:10px; position:sticky; top:0; background:var(--surface); z-index:1; }
+  .wl-modal-head h2 { margin:0; font-size:19px; font-weight:800; letter-spacing:-0.01em; }
+  .wl-modal-body { padding:18px 22px 22px; }
+  .wl-modal-close { background:transparent; border:none; font-size:22px;
+    color: var(--muted); width:32px; height:32px; border-radius:8px; }
+  .wl-modal-close:hover { background: var(--line-soft); color: var(--ink); }
+
+  .wl-field { display:block; margin-bottom: 14px; }
+  .wl-field label { display:block; font-size:13px; font-weight:700; color:var(--ink-soft); margin-bottom:6px; }
+  .wl-field input[type=text], .wl-field input[type=url], .wl-field input[type=number],
+  .wl-field textarea, .wl-field select {
+    width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:10px;
+    background: var(--bg); color: var(--ink); font-size:14.5px; font-family:inherit; outline:none;
+  }
+  .wl-field textarea { min-height: 70px; resize: vertical; line-height: 1.5; }
+  .wl-field input:focus, .wl-field textarea:focus, .wl-field select:focus { border-color: #a02bff; background: white; }
+
+  .wl-pick { display:flex; gap:7px; flex-wrap:wrap; }
+  .wl-pick button { border:1.5px solid var(--line); background:var(--bg); color:var(--ink-soft);
+    font-weight:700; font-size:12.5px; padding:7px 13px; border-radius:999px; }
+  .wl-pick button.sel { border-color: #a02bff;
+    background: linear-gradient(120deg,#f3e0ff,#fde0ed); color:#7b1bb5; }
+
+  .wl-stars { display:flex; gap:4px; font-size:24px; }
+  .wl-stars button { background:transparent; border:none; padding:2px 4px;
+    color: var(--line); cursor: pointer; }
+  .wl-stars button.on { color: #ffb000; }
+
+  .wl-reflect { display:flex; flex-direction:column; gap:4px; }
+  .wl-reflect label { display:flex; align-items:flex-start; gap:10px;
+    font-size:14px; line-height:1.5; cursor:pointer; padding:8px 10px; border-radius:10px; }
+  .wl-reflect label:hover { background: var(--line-soft); }
+  .wl-reflect label input { margin-top:3px; width:17px; height:17px; accent-color: #a02bff; flex:none; }
+
+  /* Boards */
+  .wl-board-list { display:grid; gap:14px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .wl-board { background: var(--surface); border:1px solid var(--line); border-radius:18px;
+    overflow:hidden; cursor:pointer; transition: transform .12s, box-shadow .12s, border-color .12s; text-align:left; padding:0; }
+  .wl-board:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(20,16,8,0.12); border-color:#cfccc1; }
+  .wl-board-hero { aspect-ratio: 16/9;
+    background: linear-gradient(135deg, #a02bff 0%, #ec4899 50%, #ff7a18 100%);
+    display:flex; align-items:flex-end; padding:14px; color:#fff;
+    font-weight:800; font-size:17px; letter-spacing:-0.01em; }
+  .wl-board-meta { padding:12px 14px; font-size:12px; color: var(--muted); font-weight:600; }
+
+  .wl-canvas-wrap { background: linear-gradient(135deg, #1a1a2e 0%, #2a1a3e 100%);
+    border-radius:18px; padding:14px; box-shadow: var(--shadow); }
+  .wl-canvas { position: relative; width: 100%; aspect-ratio: 16/10;
+    background: radial-gradient(ellipse at top right, rgba(160,43,255,0.28), transparent 60%),
+                radial-gradient(ellipse at bottom left, rgba(236,72,153,0.22), transparent 60%),
+                #0f0f1a;
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06); }
+  .wl-canvas-item { position: absolute; width: 110px;
+    background: rgba(255,255,255,0.96);
+    border-radius: 12px; padding: 8px; cursor: grab;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    user-select: none; text-align: center; touch-action: none; }
+  .wl-canvas-item.dragging { cursor: grabbing; opacity: 0.85; transform: scale(1.05); z-index: 5; }
+  .wl-canvas-item .thumb { aspect-ratio: 1; background-size: cover; background-position: center;
+    display:flex; align-items:center; justify-content:center; font-size: 30px; border-radius: 8px;
+    color: rgba(255,255,255,0.95); }
+  .wl-canvas-item .ttl { font-size: 11px; font-weight: 800; margin-top: 6px; color: #15161d; line-height: 1.2;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .wl-canvas-drawer { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    margin-top: 14px; max-height: 200px; overflow-y: auto; }
+  .wl-canvas-drawer-empty { width: 100%; text-align: center; color: var(--muted); font-size: 13px; padding: 14px; }
+  .wl-pillet { display:inline-flex; align-items:center; gap:6px;
+    border:1.5px solid var(--line); background: var(--bg); color: var(--ink);
+    font-size: 12.5px; font-weight: 700; padding: 6px 11px 6px 6px; border-radius: 999px; cursor: pointer; }
+  .wl-pillet:hover { border-color: #a02bff; background: linear-gradient(120deg,#f3e0ff,#fde0ed); }
+  .wl-pillet .emoji { width:22px; height:22px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; background: var(--line-soft); font-size:14px; }
+
+  /* Timeline */
+  .wl-timeline { position: relative; padding-left: 24px; }
+  .wl-timeline::before { content:""; position:absolute; left: 8px; top: 6px; bottom: 6px; width: 2px;
+    background: linear-gradient(180deg, #a02bff, #ec4899, #ff7a18, #19c37d); border-radius: 999px; }
+  .wl-tl-event { position: relative; padding: 10px 0 16px; cursor: pointer; }
+  .wl-tl-event::before { content:""; position: absolute; left: -22px; top: 14px; width: 12px; height: 12px;
+    border-radius: 50%; background: #fff; border: 3px solid #a02bff; box-shadow: 0 0 0 2px #fff; }
+  .wl-tl-date { font-size: 11.5px; color: var(--muted); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .07em; }
+  .wl-tl-body { font-size: 14px; margin-top: 2px; color: var(--ink); line-height: 1.5; }
+  .wl-tl-body strong { font-weight: 800; }
+
+  /* Insights */
+  .wl-insights { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .wl-insight { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px;
+    position: relative; overflow: hidden; }
+  .wl-insight::after { content:""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(135deg, transparent 60%, rgba(160,43,255,0.07)); }
+  .wl-insight > * { position: relative; }
+  .wl-insight h4 { margin: 0 0 4px; font-size: 13px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .wl-insight .v { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+  .wl-insight p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); }
+
+  .wl-arc-bar-row { display: grid; grid-template-columns: 90px 1fr 36px; gap: 10px;
+    align-items: center; margin-top: 8px; }
+  .wl-arc-bar-row .nm { font-size: 12.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+  .wl-arc-bar { height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; }
+  .wl-arc-bar > i { display: block; height: 100%; border-radius: 999px; transition: width .3s; }
+  .wl-arc-bar > i.arc-builder  { background: linear-gradient(90deg,#ff9a3c,#ff7a18); }
+  .wl-arc-bar > i.arc-creator  { background: linear-gradient(90deg,#c061ff,#a02bff); }
+  .wl-arc-bar > i.arc-athlete  { background: linear-gradient(90deg,#4ade80,#19c37d); }
+  .wl-arc-bar > i.arc-engineer { background: linear-gradient(90deg,#38bdf8,#0ea5e9); }
+  .wl-arc-bar > i.arc-writer   { background: linear-gradient(90deg,#f9a8d4,#ec4899); }
+  .wl-arc-bar-row .ct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--muted); }
+
+  /* Item detail */
+  .wl-detail-hero { aspect-ratio: 16/9; background-size: cover; background-position: center;
+    border-radius: 14px; margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: center; font-size: 80px;
+    color: rgba(255,255,255,0.95); position: relative; overflow: hidden; }
+  .wl-detail-hero.arc-builder  { background: linear-gradient(135deg,#ff9a3c,#ff7a18); }
+  .wl-detail-hero.arc-creator  { background: linear-gradient(135deg,#c061ff,#a02bff); }
+  .wl-detail-hero.arc-athlete  { background: linear-gradient(135deg,#4ade80,#19c37d); }
+  .wl-detail-hero.arc-engineer { background: linear-gradient(135deg,#38bdf8,#0ea5e9); }
+  .wl-detail-hero.arc-writer   { background: linear-gradient(135deg,#f9a8d4,#ec4899); }
+  .wl-detail-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .wl-detail-section { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .wl-detail-section h5 { margin: 0 0 8px; font-size: 12.5px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .wl-detail-section p { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--ink); }
+
+  .wl-unlock-card { border-radius: 14px; padding: 14px 16px;
+    background: linear-gradient(120deg, #fff7ed, #fdf2f8);
+    border: 1px solid #fde68a; margin-top: 12px; }
+  .wl-unlock-card.unlocked { background: linear-gradient(120deg, #d7f5e6, #d5f0fd); border-color: #6ee7b7; }
+  .wl-unlock-card h5 { margin: 0 0 4px; font-size: 12.5px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .06em; }
+  .wl-unlock-card p { margin: 0; font-size: 14px; line-height: 1.5; }
+  .wl-unlock-card .bar { margin-top: 8px; height: 8px; background: rgba(255,255,255,0.6);
+    border-radius: 999px; overflow: hidden; }
+  .wl-unlock-card .bar > i { display: block; height: 100%; border-radius:999px;
+    background: linear-gradient(90deg,#19c37d,#a02bff); transition: width .3s; }
+
+  .wl-board-title { margin:0; font-size:22px; font-weight:800; letter-spacing:-0.02em; flex:1; }
 </style>
 </head>
 <body>
@@ -985,6 +1231,7 @@ const VOTES_KEY      = "vortex_votes";
 const STUDIO_KEY     = "vortex_studio";
 const LEGACY_JOY_KEY = "vortex_joy_draft";
 const OVERLAY_KEY    = "vortex_overlay";
+const WISHLIST_KEY   = "vortex_wishlist";
 
 // Live refresh uses Google News RSS as a single reliable source for every
 // section. Publisher-specific feeds were too brittle — half 404, half
@@ -1228,6 +1475,7 @@ function buildDrawerNav() {
   drawerNav.appendChild(studioLink);
   drawerNav.appendChild(navBtn("machine", "The Machine"));
   drawerNav.appendChild(navBtn("cube", "CubeFlow"));
+  drawerNav.appendChild(navBtn("wishlist", "Wishlist"));
   drawerNav.appendChild(navBtn("reminders", "Reminders"));
   drawerNav.appendChild(navBtn("starred", "Starred"));
   const sep = document.createElement("hr"); sep.className = "nav-divider"; drawerNav.appendChild(sep);
@@ -1731,6 +1979,7 @@ function navigate(view) {
   if (view === "studio")         return renderStudioLibrary();
   if (view === "machine")        return renderMachine();
   if (view === "cube")           return renderCube();
+  if (view === "wishlist")       return renderWishlist();
   if (view === "reminders")      return renderReminders();
   if (view.startsWith("section:")) return renderSection(view.slice(8));
   renderHome();
@@ -1745,6 +1994,7 @@ function renderHome() {
   work.appendChild(navCard("Studio",     "Write your books. Multiple drafts, autosave.",        "workspace", () => navigate("studio")));
   work.appendChild(navCard("The Machine","Turn big goals into today's exact orders.",            "workspace", () => navigate("machine")));
   work.appendChild(navCard("CubeFlow",   "Speedcubing trainer: PLL, timer, drills.",             "workspace", () => navigate("cube")));
+  work.appendChild(navCard("Wishlist",   "Future visions, identity arcs, setups, earned unlocks.","workspace", () => navigate("wishlist")));
   work.appendChild(navCard("Reminders",  "Things to remember. Mark them done.",                  "workspace", () => navigate("reminders")));
   work.appendChild(navCard("Starred",    "Items you've saved across sections.",                  "library",   () => navigate("starred")));
 
@@ -3832,6 +4082,816 @@ function placeCaretAtEnd(el) {
   range.selectNodeContents(el); range.collapse(false);
   const sel = window.getSelection();
   sel.removeAllRanges(); sel.addRange(range);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   WISHLIST — future visions, intentional desires, setup planning
+   ════════════════════════════════════════════════════════════════ */
+
+const WL_ARCS = [
+  { key: "builder",  label: "Builder",  emoji: "🔨" },
+  { key: "creator",  label: "Creator",  emoji: "🎨" },
+  { key: "athlete",  label: "Athlete",  emoji: "🏃" },
+  { key: "engineer", label: "Engineer", emoji: "⚙️" },
+  { key: "writer",   label: "Writer",   emoji: "✍️" },
+];
+const WL_ARC_BY = Object.fromEntries(WL_ARCS.map(a => [a.key, a]));
+
+const WL_CATEGORIES = [
+  { key: "tech",   label: "Tech",   emoji: "💻" },
+  { key: "books",  label: "Books",  emoji: "📚" },
+  { key: "gear",   label: "Gear",   emoji: "🎒" },
+  { key: "travel", label: "Travel", emoji: "✈️" },
+  { key: "setup",  label: "Setup",  emoji: "🖥️" },
+  { key: "tools",  label: "Tools",  emoji: "🔧" },
+  { key: "audio",  label: "Audio",  emoji: "🎧" },
+  { key: "lego",   label: "Lego",   emoji: "🧱" },
+  { key: "cubing", label: "Cubing", emoji: "🧩" },
+  { key: "other",  label: "Other",  emoji: "✨" },
+];
+const WL_CAT_BY = Object.fromEntries(WL_CATEGORIES.map(c => [c.key, c]));
+
+const WL_LONGING = [
+  { key: "curiosity",  label: "Curiosity",        weight: 0.5 },
+  { key: "obsession",  label: "Obsession",        weight: 1.0 },
+  { key: "consistent", label: "Consistent",       weight: 2.0 },
+  { key: "fading",     label: "Fading",           weight: 0.0 },
+  { key: "essential",  label: "Future essential", weight: 3.0 },
+];
+const WL_LONG_BY = Object.fromEntries(WL_LONGING.map(l => [l.key, l]));
+
+const WL_REFLECTIONS = [
+  { key: "future",     q: "Would my future self care about this?" },
+  { key: "tool",       q: "Is this a tool, not an impulse?" },
+  { key: "growth",     q: "Does this support real growth?" },
+  { key: "unlock",     q: "Will this unlock meaningful experiences?" },
+  { key: "consistent", q: "Have I wanted this consistently over time?" },
+];
+
+let wlCurrentTab = "vault";
+
+function wlDefault() {
+  return { items: {}, boards: {} };
+}
+function loadWL() {
+  let w; try { w = JSON.parse(localStorage.getItem(WISHLIST_KEY) || "null"); } catch { w = null; }
+  if (!w) w = wlDefault();
+  if (!w.items)  w.items  = {};
+  if (!w.boards) w.boards = {};
+  return w;
+}
+function saveWL(w) { localStorage.setItem(WISHLIST_KEY, JSON.stringify(w)); }
+
+function wlComputeScore(item) {
+  let score = 0;
+  score += (item.emotionalValue || 0) * 1.2;
+  score += (WL_LONG_BY[item.longing] && WL_LONG_BY[item.longing].weight) || 0;
+  if (item.reflections) {
+    const trues = Object.values(item.reflections).filter(Boolean).length;
+    score += trues * 0.4;
+  }
+  if (item.cost && item.cost > 0) {
+    score -= Math.min(2, Math.max(0, Math.log10(item.cost / 50)));
+  }
+  return Math.max(0, Math.min(10, Math.round(score * 10) / 10));
+}
+
+function wlIsUnlocked(item, machine) {
+  if (!item.unlock) return true;
+  if (item.unlock.manualUnlocked) return true;
+  const need = parseInt(item.unlock.streak, 10) || 0;
+  if (need > 0) {
+    const have = (machine && machine.streak && machine.streak.count) || 0;
+    return have >= need;
+  }
+  if (!item.unlock.criteria) return true;
+  return false;
+}
+
+function wlTopArc(items) {
+  if (!items.length) return null;
+  const counts = {};
+  for (const it of items) counts[it.arc] = (counts[it.arc] || 0) + 1;
+  let best = null, n = 0;
+  for (const [k, v] of Object.entries(counts)) if (v > n) { n = v; best = k; }
+  return WL_ARC_BY[best];
+}
+
+function renderWishlist(tab) {
+  const w = loadWL();
+  const m = loadMachine();
+  const items = Object.values(w.items);
+  const t = tab || wlCurrentTab || "vault";
+  wlCurrentTab = t;
+
+  const wrap = document.createElement("div"); wrap.className = "wl-wrap";
+
+  const unlockedCount = items.filter(it => wlIsUnlocked(it, m)).length;
+  const arcTop = wlTopArc(items);
+  const hero = document.createElement("div"); hero.className = "wl-hero";
+  hero.innerHTML = `
+    <h1>Wishlist</h1>
+    <p>Architect the life, tools, and identities you're growing into.</p>
+    <div class="wl-stats">
+      <div class="wl-stat"><b>${items.length}</b><span>Visions</span></div>
+      <div class="wl-stat"><b>${Object.keys(w.boards).length}</b><span>Boards</span></div>
+      <div class="wl-stat"><b>${unlockedCount}/${items.length || 0}</b><span>Unlocked</span></div>
+      <div class="wl-stat"><b>${arcTop ? escapeHtml(arcTop.label) : "—"}</b><span>Dominant arc</span></div>
+      <div class="wl-stat"><b>🔥 ${m.streak.count || 0}</b><span>Machine streak</span></div>
+    </div>
+  `;
+
+  const tabs = document.createElement("div"); tabs.className = "wl-tabs";
+  const tabDefs = [
+    ["vault",    "Vault"],
+    ["boards",   "Vision Boards"],
+    ["arcs",     "Identity Arcs"],
+    ["timeline", "Timeline"],
+    ["insights", "Insights"],
+  ];
+  for (const [k, lab] of tabDefs) {
+    const b = document.createElement("button");
+    b.className = "wl-tab" + (k === t ? " active" : "");
+    b.textContent = lab;
+    b.addEventListener("click", () => renderWishlist(k));
+    tabs.appendChild(b);
+  }
+
+  const bar = document.createElement("div"); bar.className = "wl-bar";
+  if (t === "vault" || t === "arcs") {
+    const add = document.createElement("button");
+    add.className = "wl-btn primary"; add.textContent = "+ Add vision";
+    add.addEventListener("click", () => wlEditItemModal(null));
+    bar.appendChild(add);
+  }
+  if (t === "boards") {
+    const add = document.createElement("button");
+    add.className = "wl-btn primary"; add.textContent = "+ New board";
+    add.addEventListener("click", () => wlNewBoardFlow());
+    bar.appendChild(add);
+  }
+
+  const body = document.createElement("div");
+  if (t === "vault")    wlRenderVault(body, w, m);
+  if (t === "boards")   wlRenderBoards(body, w, m);
+  if (t === "arcs")     wlRenderArcs(body, w, m);
+  if (t === "timeline") wlRenderTimeline(body, w, m);
+  if (t === "insights") wlRenderInsights(body, w, m);
+
+  wrap.appendChild(hero);
+  wrap.appendChild(tabs);
+  if (bar.children.length) wrap.appendChild(bar);
+  wrap.appendChild(body);
+  main.replaceChildren(wrap);
+}
+
+function wlEmpty(title, sub) {
+  const e = document.createElement("div"); e.className = "wl-empty";
+  e.innerHTML = `<strong>${escapeHtml(title)}</strong>${escapeHtml(sub)}`;
+  return e;
+}
+
+function wlRenderVault(body, w, m) {
+  const items = Object.values(w.items).sort((a, b) => b.addedAt - a.addedAt);
+  if (!items.length) {
+    body.appendChild(wlEmpty("Nothing in the vault yet",
+      "Add your first vision — a tool, a setup, a future essential."));
+    return;
+  }
+  const grid = document.createElement("div"); grid.className = "wl-grid";
+  for (const it of items) grid.appendChild(wlCard(it, m));
+  body.appendChild(grid);
+}
+
+function wlCard(item, m) {
+  const card = document.createElement("button");
+  const arc = WL_ARC_BY[item.arc] || WL_ARCS[0];
+  const cat = WL_CAT_BY[item.category] || WL_CATEGORIES[WL_CATEGORIES.length - 1];
+  const long = WL_LONG_BY[item.longing];
+  const unlocked = wlIsUnlocked(item, m);
+  card.type = "button";
+  card.className = "wl-item" + (unlocked ? "" : " locked");
+  const thumbStyle = item.image ? ` style="background-image:url('${escapeAttr(item.image)}')"` : "";
+  const emoji = item.image ? "" : cat.emoji;
+  const lockBadge = unlocked ? "" : `<span class="wl-thumb-lock">🔒 LOCKED</span>`;
+  const scoreLabel = typeof item.realityScore === "number" ? item.realityScore.toFixed(1) : "—";
+  card.innerHTML = `
+    <div class="wl-thumb arc-${arc.key}"${thumbStyle}>${emoji}${lockBadge}</div>
+    <div class="wl-body">
+      <h4>${escapeHtml(item.title)}</h4>
+      ${item.why ? `<p class="wl-why">${escapeHtml(item.why)}</p>` : ""}
+      <div class="wl-chips">
+        <span class="wl-chip arc-${arc.key}"><span class="dot"></span>${escapeHtml(arc.label)}</span>
+        ${long ? `<span class="wl-chip long-${long.key}">${escapeHtml(long.label)}</span>` : ""}
+        <span class="wl-chip">⭐ ${scoreLabel}</span>
+      </div>
+    </div>
+  `;
+  card.addEventListener("click", () => wlItemDetail(item.id));
+  return card;
+}
+
+function wlEditItemModal(itemId) {
+  const w = loadWL();
+  const existing = itemId ? w.items[itemId] : null;
+  const draft = existing ? JSON.parse(JSON.stringify(existing)) : {
+    id: uid(),
+    title: "", image: "", notes: "", why: "",
+    category: "tech", arc: "builder",
+    emotionalValue: 3, longing: "curiosity",
+    longingHistory: [],
+    cost: null,
+    addedAt: Date.now(),
+    reflections: {},
+    unlock: { criteria: "", streak: 0, manualUnlocked: false },
+  };
+
+  const { scrim, body } = wlModal(existing ? "Edit vision" : "Add a vision");
+  body.innerHTML = `
+    <div class="wl-field"><label>Title</label><input type="text" id="wl-f-title" placeholder="What is it?" /></div>
+    <div class="wl-field"><label>Image URL (optional)</label><input type="url" id="wl-f-image" placeholder="https://…" /></div>
+    <div class="wl-field"><label>Why it matters</label><textarea id="wl-f-why" placeholder="Would enable deeper AI, coding, and CAD projects."></textarea></div>
+    <div class="wl-field"><label>Notes</label><textarea id="wl-f-notes" placeholder="Anything else worth remembering."></textarea></div>
+    <div class="wl-field"><label>Future-self arc</label><div class="wl-pick" id="wl-f-arc"></div></div>
+    <div class="wl-field"><label>Category</label><div class="wl-pick" id="wl-f-cat"></div></div>
+    <div class="wl-field"><label>Longing</label><div class="wl-pick" id="wl-f-long"></div></div>
+    <div class="wl-field"><label>Emotional value</label><div class="wl-stars" id="wl-f-ev"></div></div>
+    <div class="wl-field"><label>Approx cost (optional)</label><input type="number" id="wl-f-cost" min="0" step="1" placeholder="0" /></div>
+    <div class="wl-field"><label>Unlock criteria (optional)</label>
+      <textarea id="wl-f-unlock" placeholder="e.g. complete 20 coding sessions in The Machine"></textarea></div>
+    <div class="wl-field"><label>Auto-unlock at Machine streak (days, 0 = off)</label>
+      <input type="number" id="wl-f-streak" min="0" step="1" placeholder="0" /></div>
+    <div class="wl-field"><label>Reflection prompts</label><div class="wl-reflect" id="wl-f-refl"></div></div>
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+      ${existing ? `<button class="wl-btn" id="wl-f-del" style="margin-right:auto; color:#c01857;">Delete</button>` : ""}
+      <button class="wl-btn" id="wl-f-cancel">Cancel</button>
+      <button class="wl-btn primary" id="wl-f-save">${existing ? "Save changes" : "Add to vault"}</button>
+    </div>
+  `;
+
+  body.querySelector("#wl-f-title").value = draft.title || "";
+  body.querySelector("#wl-f-image").value = draft.image || "";
+  body.querySelector("#wl-f-why").value   = draft.why || "";
+  body.querySelector("#wl-f-notes").value = draft.notes || "";
+  body.querySelector("#wl-f-cost").value  = draft.cost != null ? draft.cost : "";
+  body.querySelector("#wl-f-unlock").value = (draft.unlock && draft.unlock.criteria) || "";
+  body.querySelector("#wl-f-streak").value = (draft.unlock && draft.unlock.streak) || 0;
+
+  const wlPicker = (host, options, getKey, onPick, labelFn) => {
+    for (const o of options) {
+      const b = document.createElement("button"); b.type = "button";
+      b.textContent = labelFn(o);
+      if (o.key === getKey()) b.classList.add("sel");
+      b.addEventListener("click", () => {
+        onPick(o.key);
+        host.querySelectorAll("button").forEach(x => x.classList.remove("sel"));
+        b.classList.add("sel");
+      });
+      host.appendChild(b);
+    }
+  };
+  wlPicker(body.querySelector("#wl-f-arc"),  WL_ARCS,       () => draft.arc,      k => draft.arc = k,      a => `${a.emoji} ${a.label}`);
+  wlPicker(body.querySelector("#wl-f-cat"),  WL_CATEGORIES, () => draft.category, k => draft.category = k, c => `${c.emoji} ${c.label}`);
+  wlPicker(body.querySelector("#wl-f-long"), WL_LONGING,    () => draft.longing,  k => draft.longing = k,  l => l.label);
+
+  const ev = body.querySelector("#wl-f-ev");
+  const drawStars = () => {
+    ev.innerHTML = "";
+    for (let i = 1; i <= 5; i++) {
+      const s = document.createElement("button"); s.type = "button";
+      s.textContent = "★";
+      if (i <= (draft.emotionalValue || 0)) s.classList.add("on");
+      s.addEventListener("click", () => { draft.emotionalValue = i; drawStars(); });
+      ev.appendChild(s);
+    }
+  };
+  drawStars();
+
+  const refl = body.querySelector("#wl-f-refl");
+  for (const r of WL_REFLECTIONS) {
+    const lab = document.createElement("label");
+    const cb = document.createElement("input"); cb.type = "checkbox";
+    cb.checked = !!(draft.reflections && draft.reflections[r.key]);
+    cb.addEventListener("change", () => { draft.reflections[r.key] = cb.checked; });
+    const span = document.createElement("span"); span.textContent = r.q;
+    lab.appendChild(cb); lab.appendChild(span);
+    refl.appendChild(lab);
+  }
+
+  body.querySelector("#wl-f-cancel").addEventListener("click", () => scrim.remove());
+  if (existing) {
+    body.querySelector("#wl-f-del").addEventListener("click", () => {
+      if (!confirm("Delete this vision?")) return;
+      const cur = loadWL();
+      delete cur.items[draft.id];
+      for (const b of Object.values(cur.boards)) {
+        b.layout = (b.layout || []).filter(p => p.itemId !== draft.id);
+      }
+      saveWL(cur);
+      scrim.remove();
+      renderWishlist(wlCurrentTab);
+    });
+  }
+  body.querySelector("#wl-f-save").addEventListener("click", () => {
+    draft.title = body.querySelector("#wl-f-title").value.trim();
+    if (!draft.title) { alert("A vision needs a title."); return; }
+    draft.image = body.querySelector("#wl-f-image").value.trim() || null;
+    draft.why   = body.querySelector("#wl-f-why").value.trim();
+    draft.notes = body.querySelector("#wl-f-notes").value.trim();
+    const cost  = parseFloat(body.querySelector("#wl-f-cost").value);
+    draft.cost  = isFinite(cost) && cost > 0 ? cost : null;
+    draft.unlock = {
+      criteria: body.querySelector("#wl-f-unlock").value.trim(),
+      streak:   Math.max(0, parseInt(body.querySelector("#wl-f-streak").value, 10) || 0),
+      manualUnlocked: (draft.unlock && draft.unlock.manualUnlocked) || false,
+    };
+    const prevItem = w.items[draft.id];
+    if (!draft.longingHistory) draft.longingHistory = [];
+    if (!prevItem) {
+      draft.longingHistory.push({ state: draft.longing, ts: draft.addedAt });
+    } else if (prevItem.longing !== draft.longing) {
+      draft.longingHistory.push({ state: draft.longing, ts: Date.now() });
+    }
+    draft.realityScore = wlComputeScore(draft);
+    const cur = loadWL();
+    cur.items[draft.id] = draft;
+    saveWL(cur);
+    scrim.remove();
+    renderWishlist(wlCurrentTab);
+  });
+}
+
+function wlModal(title) {
+  const scrim = document.createElement("div"); scrim.className = "wl-modal-scrim";
+  scrim.addEventListener("click", (e) => { if (e.target === scrim) scrim.remove(); });
+  const modal = document.createElement("div"); modal.className = "wl-modal";
+  modal.addEventListener("click", (e) => e.stopPropagation());
+  const head = document.createElement("div"); head.className = "wl-modal-head";
+  head.innerHTML = `<h2>${escapeHtml(title)}</h2><button class="wl-modal-close" type="button">×</button>`;
+  head.querySelector(".wl-modal-close").addEventListener("click", () => scrim.remove());
+  const body = document.createElement("div"); body.className = "wl-modal-body";
+  modal.appendChild(head); modal.appendChild(body);
+  scrim.appendChild(modal);
+  document.body.appendChild(scrim);
+  return { scrim, body };
+}
+
+function wlItemDetail(itemId) {
+  const w = loadWL();
+  const item = w.items[itemId]; if (!item) return;
+  const m = loadMachine();
+  const arc  = WL_ARC_BY[item.arc] || WL_ARCS[0];
+  const cat  = WL_CAT_BY[item.category] || WL_CATEGORIES[WL_CATEGORIES.length - 1];
+  const long = WL_LONG_BY[item.longing];
+  const unlocked = wlIsUnlocked(item, m);
+  const { scrim, body } = wlModal(item.title);
+
+  const heroStyle = item.image ? ` style="background-image:url('${escapeAttr(item.image)}')"` : "";
+  const heroEmoji = item.image ? "" : cat.emoji;
+  const score = typeof item.realityScore === "number" ? item.realityScore : wlComputeScore(item);
+  const reflectionsList = WL_REFLECTIONS
+    .filter(r => item.reflections && item.reflections[r.key])
+    .map(r => "✓ " + escapeHtml(r.q))
+    .join("<br>");
+  const streakNeed = (item.unlock && item.unlock.streak) || 0;
+  const streakHave = (m && m.streak && m.streak.count) || 0;
+  const unlockText = item.unlock && item.unlock.criteria
+    ? item.unlock.criteria
+    : (streakNeed > 0 ? `Auto-unlocks at ${streakNeed}-day Machine streak.` : "");
+
+  body.innerHTML = `
+    <div class="wl-detail-hero arc-${arc.key}"${heroStyle}>${heroEmoji}</div>
+    <div class="wl-detail-meta">
+      <span class="wl-chip arc-${arc.key}"><span class="dot"></span>${escapeHtml(arc.label)} arc</span>
+      <span class="wl-chip">${cat.emoji} ${escapeHtml(cat.label)}</span>
+      ${long ? `<span class="wl-chip long-${long.key}">${escapeHtml(long.label)}</span>` : ""}
+      ${item.cost ? `<span class="wl-chip">~$${item.cost}</span>` : ""}
+    </div>
+
+    <div class="wl-field">
+      <label>Reality score</label>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="wl-score-bar" style="flex:1;"><i style="width:${score * 10}%"></i></div>
+        <span class="wl-score">${score.toFixed(1)}/10</span>
+      </div>
+    </div>
+
+    ${item.why   ? `<div class="wl-detail-section"><h5>Why it matters</h5><p>${escapeHtml(item.why)}</p></div>` : ""}
+    ${item.notes ? `<div class="wl-detail-section"><h5>Notes</h5><p>${escapeHtml(item.notes)}</p></div>` : ""}
+
+    <div class="wl-detail-section">
+      <h5>Longing</h5>
+      <div class="wl-pick" id="wl-d-long"></div>
+    </div>
+
+    ${reflectionsList ? `
+      <div class="wl-detail-section">
+        <h5>Reflections</h5>
+        <p>${reflectionsList}</p>
+      </div>` : ""}
+
+    ${unlockText ? `
+      <div class="wl-unlock-card ${unlocked ? "unlocked" : ""}">
+        <h5>${unlocked ? "✓ Unlocked" : "🔒 Locked"}</h5>
+        <p>${escapeHtml(unlockText)}</p>
+        ${streakNeed > 0 ? `
+          <div class="bar"><i style="width:${Math.min(100, (streakHave / streakNeed) * 100)}%"></i></div>
+          <p style="margin-top:6px; font-size:12.5px;">${streakHave} / ${streakNeed} days</p>` : ""}
+        ${!unlocked && item.unlock && item.unlock.criteria ? `
+          <button class="wl-btn" id="wl-d-manual" style="margin-top:10px;">Mark criteria met</button>` : ""}
+      </div>` : ""}
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+      <button class="wl-btn" id="wl-d-edit">Edit</button>
+      <button class="wl-btn primary" id="wl-d-close">Done</button>
+    </div>
+  `;
+
+  const longBox = body.querySelector("#wl-d-long");
+  for (const l of WL_LONGING) {
+    const b = document.createElement("button"); b.type = "button";
+    b.textContent = l.label;
+    if (l.key === item.longing) b.classList.add("sel");
+    b.addEventListener("click", () => {
+      const cur = loadWL();
+      const it = cur.items[item.id]; if (!it) return;
+      if (it.longing !== l.key) {
+        it.longing = l.key;
+        if (!it.longingHistory) it.longingHistory = [];
+        it.longingHistory.push({ state: l.key, ts: Date.now() });
+        it.realityScore = wlComputeScore(it);
+        saveWL(cur);
+      }
+      scrim.remove();
+      wlItemDetail(item.id);
+    });
+    longBox.appendChild(b);
+  }
+  body.querySelector("#wl-d-close").addEventListener("click", () => { scrim.remove(); renderWishlist(wlCurrentTab); });
+  body.querySelector("#wl-d-edit").addEventListener("click",  () => { scrim.remove(); wlEditItemModal(item.id); });
+  const manual = body.querySelector("#wl-d-manual");
+  if (manual) manual.addEventListener("click", () => {
+    const cur = loadWL();
+    if (cur.items[item.id]) { cur.items[item.id].unlock.manualUnlocked = true; saveWL(cur); }
+    scrim.remove();
+    wlItemDetail(item.id);
+  });
+}
+
+/* ── Vision boards (Setup Builder) ────────────────────────────── */
+
+function wlNewBoardFlow() {
+  const name = prompt("Name this vision board (e.g. Dream Desk Setup, Future Room, Gaming Setup)");
+  if (!name || !name.trim()) return;
+  const w = loadWL();
+  const id = uid();
+  w.boards[id] = { id, name: name.trim(), layout: [], createdAt: Date.now() };
+  saveWL(w);
+  wlOpenBoard(id);
+}
+
+function wlRenderBoards(body, w, m) {
+  const boards = Object.values(w.boards).sort((a, b) => b.createdAt - a.createdAt);
+  if (!boards.length) {
+    body.appendChild(wlEmpty("No vision boards yet",
+      "Create one to arrange your items into a desk, room, workshop, or gaming setup."));
+    return;
+  }
+  const grid = document.createElement("div"); grid.className = "wl-board-list";
+  for (const b of boards) {
+    const card = document.createElement("button"); card.type = "button"; card.className = "wl-board";
+    const placed = (b.layout || []).length;
+    card.innerHTML = `
+      <div class="wl-board-hero">${escapeHtml(b.name)}</div>
+      <div class="wl-board-meta">${placed} item${placed === 1 ? "" : "s"} placed · ${new Date(b.createdAt).toLocaleDateString()}</div>
+    `;
+    card.addEventListener("click", () => wlOpenBoard(b.id));
+    grid.appendChild(card);
+  }
+  body.appendChild(grid);
+}
+
+function wlOpenBoard(boardId) {
+  currentView = "wishlist";
+  setNavActive("wishlist");
+  const w = loadWL();
+  const board = w.boards[boardId]; if (!board) return renderWishlist("boards");
+
+  const wrap = document.createElement("div"); wrap.className = "wl-wrap";
+
+  const head = document.createElement("div"); head.className = "wl-bar";
+  const back = document.createElement("button"); back.type = "button";
+  back.className = "wl-btn ghost"; back.textContent = "← All boards";
+  back.addEventListener("click", () => renderWishlist("boards"));
+  const title = document.createElement("h1"); title.className = "wl-board-title";
+  title.textContent = board.name;
+  const ren = document.createElement("button"); ren.type = "button"; ren.className = "wl-btn"; ren.textContent = "Rename";
+  ren.addEventListener("click", () => {
+    const n = prompt("Rename board", board.name);
+    if (n && n.trim()) {
+      const cur = loadWL(); cur.boards[boardId].name = n.trim(); saveWL(cur);
+      wlOpenBoard(boardId);
+    }
+  });
+  const del = document.createElement("button"); del.type = "button"; del.className = "wl-btn";
+  del.style.color = "#c01857"; del.textContent = "Delete";
+  del.addEventListener("click", () => {
+    if (!confirm("Delete this board?")) return;
+    const cur = loadWL(); delete cur.boards[boardId]; saveWL(cur);
+    renderWishlist("boards");
+  });
+  head.appendChild(back); head.appendChild(title); head.appendChild(ren); head.appendChild(del);
+
+  const canvasWrap = document.createElement("div"); canvasWrap.className = "wl-canvas-wrap";
+  const canvas = document.createElement("div"); canvas.className = "wl-canvas"; canvas.id = "wl-canvas";
+  canvasWrap.appendChild(canvas);
+
+  const placedIds = new Set((board.layout || []).map(p => p.itemId));
+  for (const p of (board.layout || [])) {
+    const it = w.items[p.itemId]; if (!it) continue;
+    canvas.appendChild(wlCanvasNode(it, p, boardId));
+  }
+
+  const drawerLabel = document.createElement("div");
+  drawerLabel.style.cssText = "font-size:12.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color: var(--muted); margin: 16px 0 8px;";
+  drawerLabel.textContent = "Tap to place on board · drag to arrange · right-click to remove";
+
+  const drawer = document.createElement("div"); drawer.className = "wl-canvas-drawer";
+  const unplaced = Object.values(w.items).filter(it => !placedIds.has(it.id));
+  if (!unplaced.length) {
+    const e = document.createElement("div"); e.className = "wl-canvas-drawer-empty";
+    e.textContent = Object.keys(w.items).length === 0
+      ? "Add items to the vault first, then arrange them here."
+      : "All vault items are on this board.";
+    drawer.appendChild(e);
+  } else {
+    for (const it of unplaced) {
+      const cat = WL_CAT_BY[it.category] || WL_CATEGORIES[WL_CATEGORIES.length - 1];
+      const p = document.createElement("button"); p.type = "button"; p.className = "wl-pillet";
+      p.innerHTML = `<span class="emoji">${cat.emoji}</span>${escapeHtml(it.title)}`;
+      p.addEventListener("click", () => {
+        const cur = loadWL();
+        const bd = cur.boards[boardId]; if (!bd) return;
+        bd.layout = bd.layout || [];
+        bd.layout.push({ itemId: it.id, x: 8 + Math.random() * 60, y: 12 + Math.random() * 55 });
+        saveWL(cur);
+        wlOpenBoard(boardId);
+      });
+      drawer.appendChild(p);
+    }
+  }
+
+  wrap.appendChild(head);
+  wrap.appendChild(canvasWrap);
+  wrap.appendChild(drawerLabel);
+  wrap.appendChild(drawer);
+  main.replaceChildren(wrap);
+}
+
+function wlCanvasNode(item, placement, boardId) {
+  const arc = WL_ARC_BY[item.arc] || WL_ARCS[0];
+  const cat = WL_CAT_BY[item.category] || WL_CATEGORIES[WL_CATEGORIES.length - 1];
+  const node = document.createElement("div");
+  node.className = "wl-canvas-item";
+  node.style.left = placement.x + "%";
+  node.style.top  = placement.y + "%";
+  node.innerHTML = `
+    <div class="thumb"${item.image ? ` style="background-image:url('${escapeAttr(item.image)}')"` : ""}>${item.image ? "" : cat.emoji}</div>
+    <div class="ttl">${escapeHtml(item.title)}</div>
+  `;
+  if (!item.image) {
+    const grads = {
+      builder:  "linear-gradient(135deg,#ff9a3c,#ff7a18)",
+      creator:  "linear-gradient(135deg,#c061ff,#a02bff)",
+      athlete:  "linear-gradient(135deg,#4ade80,#19c37d)",
+      engineer: "linear-gradient(135deg,#38bdf8,#0ea5e9)",
+      writer:   "linear-gradient(135deg,#f9a8d4,#ec4899)",
+    };
+    node.querySelector(".thumb").style.background = grads[arc.key];
+  }
+
+  let dragging = false;
+  const onDown = (e) => {
+    if (e.button === 2) return;
+    e.preventDefault();
+    dragging = true;
+    node.classList.add("dragging");
+    const pt = e.touches ? e.touches[0] : e;
+    const canvas = document.getElementById("wl-canvas"); if (!canvas) return;
+    const cRect = canvas.getBoundingClientRect();
+    const nRect = node.getBoundingClientRect();
+    const offX = pt.clientX - nRect.left;
+    const offY = pt.clientY - nRect.top;
+
+    const onMove = (ev) => {
+      if (!dragging) return;
+      if (ev.touches) ev.preventDefault();
+      const p = ev.touches ? ev.touches[0] : ev;
+      let xPx = p.clientX - cRect.left - offX;
+      let yPx = p.clientY - cRect.top  - offY;
+      xPx = Math.max(0, Math.min(cRect.width  - node.offsetWidth,  xPx));
+      yPx = Math.max(0, Math.min(cRect.height - node.offsetHeight, yPx));
+      const xPct = (xPx / cRect.width)  * 100;
+      const yPct = (yPx / cRect.height) * 100;
+      node.style.left = xPct + "%";
+      node.style.top  = yPct + "%";
+      placement.x = xPct; placement.y = yPct;
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      node.classList.remove("dragging");
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchend", onUp);
+      const cur = loadWL();
+      const bd = cur.boards[boardId]; if (!bd) return;
+      const pp = (bd.layout || []).find(x => x.itemId === item.id);
+      if (pp) { pp.x = placement.x; pp.y = placement.y; saveWL(cur); }
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("touchend", onUp);
+  };
+  node.addEventListener("mousedown", onDown);
+  node.addEventListener("touchstart", onDown, { passive: false });
+  node.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    if (!confirm("Remove '" + item.title + "' from this board?")) return;
+    const cur = loadWL();
+    const bd = cur.boards[boardId]; if (!bd) return;
+    bd.layout = (bd.layout || []).filter(p => p.itemId !== item.id);
+    saveWL(cur);
+    wlOpenBoard(boardId);
+  });
+  return node;
+}
+
+/* ── Arcs view ────────────────────────────────────────────────── */
+
+function wlRenderArcs(body, w, m) {
+  const items = Object.values(w.items);
+  if (!items.length) {
+    body.appendChild(wlEmpty("No arcs to show yet",
+      "Add visions and they'll cluster around your future-self arcs."));
+    return;
+  }
+  let any = false;
+  for (const arc of WL_ARCS) {
+    const list = items.filter(it => it.arc === arc.key).sort((a, b) => b.addedAt - a.addedAt);
+    if (!list.length) continue;
+    any = true;
+    const sec = document.createElement("section");
+    sec.style.marginBottom = "24px";
+    const h = document.createElement("h3");
+    h.style.cssText = "display:flex; align-items:center; gap:10px; margin:0 0 12px; font-size:17px; font-weight:800;";
+    h.innerHTML = `
+      <span class="wl-chip arc-${arc.key}"><span class="dot"></span>${arc.emoji} ${escapeHtml(arc.label)} Arc</span>
+      <span style="color:var(--muted); font-size:13px; font-weight:600;">${list.length} ${list.length === 1 ? "vision" : "visions"}</span>
+    `;
+    sec.appendChild(h);
+    const grid = document.createElement("div"); grid.className = "wl-grid";
+    for (const it of list) grid.appendChild(wlCard(it, m));
+    sec.appendChild(grid);
+    body.appendChild(sec);
+  }
+  if (!any) {
+    body.appendChild(wlEmpty("No arcs to show yet",
+      "Add visions and they'll cluster around your future-self arcs."));
+  }
+}
+
+/* ── Timeline ─────────────────────────────────────────────────── */
+
+function wlRenderTimeline(body, w, m) {
+  const events = [];
+  for (const it of Object.values(w.items)) {
+    events.push({ ts: it.addedAt, kind: "add", item: it });
+    for (const lh of (it.longingHistory || [])) {
+      if (lh.ts !== it.addedAt) events.push({ ts: lh.ts, kind: "long", item: it, state: lh.state });
+    }
+  }
+  if (!events.length) {
+    body.appendChild(wlEmpty("No history yet",
+      "Once you add visions, this becomes your interest timeline."));
+    return;
+  }
+  events.sort((a, b) => b.ts - a.ts);
+
+  const tl = document.createElement("div"); tl.className = "wl-timeline";
+  for (const ev of events) {
+    const e = document.createElement("div"); e.className = "wl-tl-event";
+    const dt = new Date(ev.ts);
+    const dateStr = dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    let bodyHtml;
+    if (ev.kind === "add") {
+      const arc = WL_ARC_BY[ev.item.arc];
+      bodyHtml = `Added <strong>${escapeHtml(ev.item.title)}</strong>${arc ? ` to <em>${escapeHtml(arc.label)} Arc</em>` : ""}.`;
+    } else {
+      const l = WL_LONG_BY[ev.state];
+      bodyHtml = `<strong>${escapeHtml(ev.item.title)}</strong> → ${escapeHtml((l && l.label) || ev.state)}`;
+    }
+    e.innerHTML = `<div class="wl-tl-date">${dateStr}</div><div class="wl-tl-body">${bodyHtml}</div>`;
+    e.addEventListener("click", () => wlItemDetail(ev.item.id));
+    tl.appendChild(e);
+  }
+  body.appendChild(tl);
+}
+
+/* ── Insights (smart pattern detection) ───────────────────────── */
+
+function wlRenderInsights(body, w, m) {
+  const items = Object.values(w.items);
+  if (!items.length) {
+    body.appendChild(wlEmpty("No insights yet",
+      "Add some visions and patterns will surface here."));
+    return;
+  }
+
+  const arcCounts = {};
+  for (const it of items) arcCounts[it.arc] = (arcCounts[it.arc] || 0) + 1;
+  const catCounts = {};
+  for (const it of items) catCounts[it.category] = (catCounts[it.category] || 0) + 1;
+  const longCounts = {};
+  for (const it of items) longCounts[it.longing] = (longCounts[it.longing] || 0) + 1;
+
+  const avgScore = items.reduce((s, it) => s + (it.realityScore || 0), 0) / items.length;
+  const topCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0];
+
+  const now = Date.now();
+  const D = 86400000;
+  const recent = items.filter(it => now - it.addedAt < 30 * D);
+  const prior  = items.filter(it => now - it.addedAt >= 30 * D && now - it.addedAt < 60 * D);
+  const recentArc = {}, priorArc = {};
+  for (const it of recent) recentArc[it.arc] = (recentArc[it.arc] || 0) + 1;
+  for (const it of prior)  priorArc[it.arc]  = (priorArc[it.arc]  || 0) + 1;
+  const trending = [];
+  for (const a of WL_ARCS) {
+    const r = recentArc[a.key] || 0, p = priorArc[a.key] || 0;
+    if (r > p && r >= 2) trending.push(a.label);
+  }
+
+  const essentials = (longCounts.essential || 0) + (longCounts.consistent || 0);
+
+  const patterns = [];
+  const arcLabel = (k) => (WL_ARC_BY[k] && WL_ARC_BY[k].label) || k;
+  const sortedArcs = Object.entries(arcCounts).sort((a, b) => b[1] - a[1]);
+  if (sortedArcs.length && sortedArcs[0][1] / items.length >= 0.4) {
+    patterns.push(`Most of what you save lives in the <strong>${escapeHtml(arcLabel(sortedArcs[0][0]))} Arc</strong> — your strongest identity signal right now.`);
+  }
+  if (trending.length) {
+    patterns.push("Rising interests over the last 30 days: " + trending.map(t => `<strong>${escapeHtml(t)}</strong>`).join(", ") + ".");
+  }
+  if (essentials >= 3) {
+    patterns.push(`<strong>${essentials}</strong> of your visions are marked as essential or consistent — these are the ones the Machine should be earning.`);
+  }
+  if ((longCounts.fading || 0) >= 2) {
+    patterns.push(`${longCounts.fading} visions are fading. Worth a clean-up pass?`);
+  }
+  if (avgScore < 4 && items.length >= 3) {
+    patterns.push("Average reality score is low. Try adding 'why it matters' notes or reflections to ground the impulses.");
+  }
+  if (!patterns.length) {
+    patterns.push("Not enough signal yet. Keep adding visions and patterns will surface here.");
+  }
+
+  const grid = document.createElement("div"); grid.className = "wl-insights";
+  const mk = (h, v, p) => {
+    const c = document.createElement("div"); c.className = "wl-insight";
+    c.innerHTML = `<h4>${escapeHtml(h)}</h4><div class="v">${v}</div>${p ? `<p>${p}</p>` : ""}`;
+    return c;
+  };
+
+  grid.appendChild(mk("Visions", items.length, "Saved across the vault."));
+  grid.appendChild(mk("Avg reality score", avgScore.toFixed(1) + "/10", "Higher = grounded in growth, not impulse."));
+  if (topCat) {
+    const tc = WL_CAT_BY[topCat[0]];
+    grid.appendChild(mk("Top category", `${tc ? tc.emoji : ""} ${escapeHtml(tc ? tc.label : topCat[0])}`, topCat[1] + " saved."));
+  }
+  grid.appendChild(mk("Future essentials", longCounts.essential || 0, "Long-term essential visions."));
+
+  const dist = document.createElement("div"); dist.className = "wl-insight";
+  dist.innerHTML = `<h4>Arc distribution</h4>`;
+  for (const a of WL_ARCS) {
+    const n = arcCounts[a.key] || 0;
+    const pct = items.length ? (n / items.length) * 100 : 0;
+    const row = document.createElement("div"); row.className = "wl-arc-bar-row";
+    row.innerHTML = `
+      <div class="nm">${escapeHtml(a.label)}</div>
+      <div class="wl-arc-bar"><i class="arc-${a.key}" style="width:${pct}%"></i></div>
+      <div class="ct">${n}</div>
+    `;
+    dist.appendChild(row);
+  }
+  grid.appendChild(dist);
+
+  const pat = document.createElement("div"); pat.className = "wl-insight";
+  pat.innerHTML = `<h4>Patterns Vortex sees</h4>` + patterns.map(p => `<p>${p}</p>`).join("");
+  grid.appendChild(pat);
+
+  body.appendChild(grid);
 }
 
 /* ── Helpers ──────────────────────────────────────────────────── */
