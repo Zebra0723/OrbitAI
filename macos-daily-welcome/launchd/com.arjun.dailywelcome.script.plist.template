@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>@@LABEL@@</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>@@BIN@@</string>
+        <string>--agent</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- launchd runs a missed StartInterval job as soon as the Mac wakes,
+         so this doubles as the "lid just opened" trigger. -->
+    <key>StartInterval</key>
+    <integer>@@INTERVAL@@</integer>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>@@PATH@@</string>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>@@LOG@@</string>
+    <key>StandardErrorPath</key>
+    <string>@@LOG@@</string>
+</dict>
+</plist>

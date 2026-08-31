@@ -1,0 +1,150 @@
+#!/bin/bash
+# Data sources for the daily briefing.
+#
+# Every source emits TAB-separated records:  when <TAB> title <TAB> context
+#   when    - "OVERDUE", a time like "9:30 AM", or empty for undated items
+#   title   - what it is
+#   context - reminder list / calendar name / empty
+# Formatting for the screen and phrasing for the voice both work off these,
+# so the two can't drift apart. A source that is unavailable emits nothing
+# but a single "#note" record explaining itself.
+
+_note() { printf '#note\t%s\t\n' "$1"; }
+
+# ---------------------------------------------------------------- reminders
+
+_reminders_applescript() {
+  local include_undated="$1"
+  osascript <<APPLESCRIPT
+on run
+  set dayStart to (current date)
+  set time of dayStart to 0
+  set dayEnd to dayStart + (1 * days)
+  set outText to ""
+  tell application "Reminders"
+    repeat with theList in lists
+      set listName to name of theList
+      repeat with r in (reminders of theList whose completed is false and due date is not missing value)
+        set dd to due date of r
+        if dd < dayEnd then
+          if dd < dayStart then
+            set whenLabel to "OVERDUE"
+          else
+            set whenLabel to (time string of dd)
+          end if
+          set outText to outText & whenLabel & tab & (name of r) & tab & listName & linefeed
+        end if
+      end repeat
+      if $include_undated is 1 then
+        repeat with r in (reminders of theList whose completed is false and due date is missing value and flagged is true)
+          set outText to outText & "flagged" & tab & (name of r) & tab & listName & linefeed
+        end repeat
+      end if
+    end repeat
+  end tell
+  return outText
+end run
+APPLESCRIPT
+}
+
+src_reminders() {
+  have_cmd osascript || return 0
+
+  local raw rc
+  raw="$(run_with_timeout "$WELCOME_SOURCE_TIMEOUT" \
+    _reminders_applescript "$WELCOME_REMINDERS_INCLUDE_UNDATED")"
+  rc=$?
+
+  if [ "$rc" -eq 124 ]; then
+    _note "Reminders took too long to answer"; return 0
+  fi
+  if [ "$rc" -ne 0 ]; then
+    _note "No access to Reminders yet - allow it once when macOS asks"; return 0
+  fi
+
+  # Overdue first, then chronological, then undated.
+  printf '%s\n' "$raw" | awk -F'\t' '
+    NF >= 2 && $2 != "" {
+      rank = ($1 == "OVERDUE") ? 0 : (($1 == "flagged") ? 2 : 1)
+      printf "%d\t%s\t%s\t%s\n", rank, $1, $2, $3
+    }' \
+  | sort -t"$(printf '\t')" -k1,1n -k2,2 \
+  | cut -f2-
+}
+
+# ----------------------------------------------------------------- calendar
+
+_calendar_icalbuddy() {
+  icalBuddy -n -nc -nrd -eep "notes,url,location,attendees" \
+    -iep "datetime,title" -df "" -tf "%-l:%M%p" -b "" -ps "|@@|" \
+    eventsToday 2>/dev/null
+}
+
+_calendar_applescript() {
+  osascript <<'APPLESCRIPT'
+on run
+  set dayStart to (current date)
+  set time of dayStart to 0
+  set dayEnd to dayStart + (1 * days)
+  set outText to ""
+  tell application "Calendar"
+    repeat with c in calendars
+      repeat with e in (every event of c whose start date is greater than or equal to dayStart and start date is less than dayEnd)
+        set outText to outText & (time string of (start date of e)) & tab & (summary of e) & tab & (name of c) & linefeed
+      end repeat
+    end repeat
+  end tell
+  return outText
+end run
+APPLESCRIPT
+}
+
+src_calendar() {
+  local raw rc
+  if have_cmd icalBuddy; then
+    raw="$(run_with_timeout "$WELCOME_SOURCE_TIMEOUT" _calendar_icalbuddy)"
+    rc=$?
+    [ "$rc" -eq 124 ] && { _note "Calendar took too long to answer"; return 0; }
+    # "9:00AM - 9:15AM@@Standup" -> when, title. Anything that doesn't match
+    # that shape is passed through as an undated title rather than dropped.
+    printf '%s\n' "$raw" | awk -F'@@' '
+      { gsub(/^[ \t]+|[ \t]+$/, "", $0) }
+      $0 == "" { next }
+      NF >= 2 {
+        when = $1; title = $2
+        gsub(/^[ \t]+|[ \t]+$/, "", when)
+        gsub(/^[ \t]+|[ \t]+$/, "", title)
+        sub(/ *- *.*$/, "", when)     # keep the start time only
+        printf "%s\t%s\t\n", when, title
+        next
+      }
+      { printf "\t%s\t\n", $0 }'
+    return 0
+  fi
+
+  if [ "$WELCOME_CALENDAR_APPLESCRIPT" != "1" ]; then
+    return 0
+  fi
+
+  raw="$(run_with_timeout "$WELCOME_SOURCE_TIMEOUT" _calendar_applescript)"
+  rc=$?
+  [ "$rc" -eq 124 ] && { _note "Calendar took too long to answer"; return 0; }
+  [ "$rc" -ne 0 ] && { _note "No access to Calendar yet - allow it once when macOS asks"; return 0; }
+  printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != "" { print }' | sort
+}
+
+# -------------------------------------------------------------- tasks file
+
+# Unchecked markdown checkboxes, or every non-comment line if the file
+# doesn't use checkboxes at all.
+src_tasks() {
+  local file="$WELCOME_TASKS_FILE"
+  [ -f "$file" ] || return 0
+
+  if grep -qE '^[[:space:]]*[-*] \[ \]' "$file"; then
+    grep -E '^[[:space:]]*[-*] \[ \]' "$file" \
+      | sed -E 's/^[[:space:]]*[-*] \[ \][[:space:]]*//'
+  else
+    grep -vE '^[[:space:]]*(#|$)' "$file" | trim_lines
+  fi | awk 'NF { printf "\t%s\t\n", $0 }'
+}
