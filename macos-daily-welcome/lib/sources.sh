@@ -69,7 +69,8 @@ src_reminders() {
       printf "%d\t%s\t%s\t%s\n", rank, $1, $2, $3
     }' \
   | sort -t"$(printf '\t')" -k1,1n -k2,2 \
-  | cut -f2-
+  | cut -f2- \
+  | tidy_time_field
 }
 
 # ----------------------------------------------------------------- calendar
@@ -130,7 +131,7 @@ src_calendar() {
   rc=$?
   [ "$rc" -eq 124 ] && { _note "Calendar took too long to answer"; return 0; }
   [ "$rc" -ne 0 ] && { _note "No access to Calendar yet - allow it once when macOS asks"; return 0; }
-  printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != "" { print }' | sort
+  printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != "" { print }' | sort | tidy_time_field
 }
 
 # -------------------------------------------------------------- tasks file

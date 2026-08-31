@@ -112,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Play Today's Briefing", #selector(playBriefing), "p"))
         menu.addItem(item("Show Briefing Only", #selector(showBriefing), "s"))
         menu.addItem(item("Speak Briefing Only", #selector(speakBriefing), ""))
+        menu.addItem(item("Stop Talking", #selector(hush), "."))
         menu.addItem(.separator())
 
         menu.addItem(item("Mute for Today", #selector(muteToday), ""))
@@ -157,6 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func playBriefing()  { run(["--force"]) }
     @objc private func showBriefing()  { run(["--preview", "--quiet"]) }
     @objc private func speakBriefing() { run(["--preview", "--present", "stdout"]) }
+    @objc private func hush()          { run(["--hush"]) }
     @objc private func muteToday()     { run(["--mute-today"]) }
     @objc private func resetToday()    { run(["--reset"]) }
 

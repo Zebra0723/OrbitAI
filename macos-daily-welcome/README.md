@@ -35,27 +35,53 @@ Same greeting, no icon.
 
 ## The voice
 
-Out of the box it uses the best American female voice you have installed,
-preferring the neural "Premium" ones, which sound markedly more real than the
-old defaults:
+It speaks with your ElevenLabs voice — **Veda Sky** by default, at the same
+settings your sample was rendered with (speed 1.00, stability 0.50, similarity
+0.75, style 0, speaker boost on).
+
+That voice is a hosted professional clone, so it needs your API key. Store it
+once in the login Keychain:
 
 ```bash
-daily-welcome --voices     # what's installed, and what it will use
+daily-welcome --set-key      # paste the key; input is hidden
+daily-welcome --test-voice   # confirms which voice actually spoke
 ```
 
-If it reports plain `Samantha`, install a better one: **System Settings →
-Accessibility → Spoken Content → System Voice → Manage Voices**, then download
-**Ava (Premium)** or **Zoe (Premium)**. No config change needed — it picks the
-best available one automatically.
+The voice is looked up by name in your account, so add Veda Sky to your voices
+in ElevenLabs first. To skip the lookup, put the id straight in your settings
+as `WELCOME_ELEVEN_VOICE_ID`.
 
-What it actually says:
+**Without a key it still works** — it falls back to the best built-in macOS
+voice, so a missing key, dead network, or API error costs you the voice, never
+the briefing. Each briefing is one short request, cached in
+`~/.local/state/daily-welcome/cache`, so replaying today's costs nothing.
 
-> *Welcome back, Arjun. Good morning, sir. It's 8:42 AM on Monday, August 31.
-> You have 4 reminders due today, 1 of them overdue, and 2 events on the
-> calendar. First up: Call the bank, which is overdue. Then, Design review, at
-> 9:00 AM. Standing by.*
+### Saying things correctly
 
-Drop the `sir` by setting `WELCOME_HONORIFIC=""` in your settings.
+Speech engines mangle raw data in their own ways — `9:00 AM` as "nine
+hundred", `August 31` as "August thirty one" — so nothing reaches the engine
+as digits. The briefing is written out in words first: times become "nine
+thirty in the morning", dates "Monday the thirty-first of August", counts
+"three reminders". Titles get cleaned too: markdown stripped, URLs collapsed
+to "a link", `w/` to "with", `3pm` to "3 PM".
+
+Pause markup like `[[slnc 400]]` is deliberately not used. Older Apple voices
+obey it; the newer neural ones read it out loud. Pacing comes from sentence
+structure instead, which every engine handles.
+
+### What it actually says
+
+> *Welcome back, Arjun. Good morning, sir. It's eight forty-two in the
+> morning, Monday the thirty-first of August. Three reminders due today, one
+> overdue. Two events on the calendar. Top of the list: Call the bank. That one
+> is overdue. Next: Design review, at nine o'clock. Standing by.*
+
+Short declaratives, no hedging. Times drop the "in the morning" tail when
+it's already obvious from the current hour.
+
+Tune the wording without touching code: `WELCOME_HONORIFIC=""` drops the
+"sir", `WELCOME_CLOSER="Let's get to it."` changes the sign-off, and
+`WELCOME_SPEAK_MAX_ITEMS` sets how many items get read.
 
 ## The menu bar item
 
@@ -64,6 +90,7 @@ Drop the `sir` by setting `WELCOME_HONORIFIC=""` in your settings.
 | Play Today's Briefing | Replay the whole thing, voice and all |
 | Show Briefing Only | The panel, silently |
 | Speak Briefing Only | Just the voice |
+| Stop Talking | Cuts playback immediately |
 | Mute for Today | Nothing more until tomorrow |
 | Greet Me Again Today | Forget that today's greeting happened |
 | Edit Settings… | Opens `~/.config/daily-welcome/config.sh` |
@@ -79,8 +106,11 @@ install from `config.example.sh`). The ones worth knowing:
 | `WELCOME_NAME` | `Arjun` | what it calls you |
 | `WELCOME_HONORIFIC` | `sir` | how the voice addresses you |
 | `WELCOME_SPEAK` | `1` | `0` for silent |
-| `WELCOME_SPEAK_RATE` | `168` | words per minute |
-| `WELCOME_VOICE` | *(auto)* | pin one voice by name |
+| `WELCOME_CLOSER` | `Standing by.` | the sign-off |
+| `WELCOME_TTS` | `auto` | `elevenlabs`, `say`, or `auto` |
+| `WELCOME_ELEVEN_VOICE_NAME` | `Veda Sky` | looked up in your account |
+| `WELCOME_ELEVEN_STABILITY` | `0.5` | lower is more expressive, higher steadier |
+| `WELCOME_VOICE` | *(auto)* | pin the fallback macOS voice |
 | `WELCOME_PRESENT` | `dialog` | `dialog`, `notification`, `both`, `stdout` |
 | `WELCOME_SECTIONS` | `reminders calendar tasks` | which sections, in order |
 | `WELCOME_TASKS_FILE` | `~/todo.md` | markdown checkboxes; unchecked ones show up |
@@ -111,7 +141,10 @@ daily-welcome --force      greet now regardless
 daily-welcome --preview    greet now without using up today's greeting
 daily-welcome --print      print the briefing as text, no voice, no dialog
 daily-welcome --status     what it thinks, and when it last ran
-daily-welcome --voices     installed voices and the chosen one
+daily-welcome --set-key    store your ElevenLabs key in the Keychain
+daily-welcome --test-voice speak one line and report which voice said it
+daily-welcome --voices     available voices and the chosen one
+daily-welcome --hush       stop talking right now
 daily-welcome --mute-today skip the rest of today
 daily-welcome --reset      forget today's greeting
 ```
@@ -122,9 +155,10 @@ daily-welcome --reset      forget today's greeting
 greeting date. Check the agent is loaded with
 `launchctl list | grep dailywelcome`, and read `~/.local/state/daily-welcome/agent.log`.
 
-**It shows reminders but says nothing.** `daily-welcome --voices` — if `say`
-has no usable voice it falls back to the system default. Check that Spoken
-Content has a voice downloaded.
+**It used the wrong voice.** `daily-welcome --voices` shows the backend in
+use. If it says `say`, the key isn't readable or the voice name isn't in your
+account — `--test-voice` prints the reason, and the agent log has the HTTP
+status from ElevenLabs.
 
 **"No access to Reminders yet."** macOS asked and got a no. Re-allow under
 System Settings → Privacy & Security → Reminders (and Calendars), enabling
@@ -145,7 +179,9 @@ lib/config.sh           defaults, then your ~/.config override
 lib/common.sh           timeouts, lock-screen check, small helpers
 lib/sources.sh          reminders, calendar, tasks -> tab-separated records
 lib/present.sh          records -> screen text, dialog, notification
-lib/voice.sh            records -> spoken sentences, voice selection
+lib/speech_text.sh      numbers, times and dates -> words a voice reads right
+lib/tts_eleven.sh       ElevenLabs synthesis, caching, and soft failure
+lib/voice.sh            records -> spoken sentences, backend choice
 menubar/main.swift      the menu bar agent (wake/unlock triggers)
 launchd/*.template      login agent, one per install mode
 install.sh              build, install, load

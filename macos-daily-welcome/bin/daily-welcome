@@ -19,6 +19,10 @@ welcome_load_user_config
 . "$ROOT/lib/sources.sh"
 # shellcheck source=../lib/present.sh
 . "$ROOT/lib/present.sh"
+# shellcheck source=../lib/speech_text.sh
+. "$ROOT/lib/speech_text.sh"
+# shellcheck source=../lib/tts_eleven.sh
+. "$ROOT/lib/tts_eleven.sh"
 # shellcheck source=../lib/voice.sh
 . "$ROOT/lib/voice.sh"
 
@@ -40,7 +44,10 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --preview       greet now without marking the day as done
   daily-welcome --agent         same as bare, plus lock-screen/quiet-hour guards
   daily-welcome --status        what it would do, and when it last ran
-  daily-welcome --voices        installed voices, and which one it will use
+  daily-welcome --set-key       store your ElevenLabs API key in the Keychain
+  daily-welcome --test-voice    say one line now, and report which voice said it
+  daily-welcome --voices        available voices, and which one it will use
+  daily-welcome --hush          stop talking right now
   daily-welcome --mute-today    skip the rest of today
   daily-welcome --reset         forget that today's greeting happened
   daily-welcome --print         print the briefing as text and exit
@@ -58,6 +65,9 @@ while [ $# -gt 0 ]; do
     --present)    shift; WELCOME_PRESENT="${1:-dialog}" ;;
     --print)      FORCE=1; PREVIEW=1; WELCOME_PRESENT=stdout; WELCOME_SPEAK=0 ;;
     --status)     MODE=status ;;
+    --set-key)    MODE=setkey ;;
+    --test-voice) MODE=testvoice ;;
+    --hush)       MODE=hush ;;
     --voices)     MODE=voices ;;
     --mute-today) MODE=mute ;;
     --reset)      MODE=reset ;;
@@ -83,19 +93,60 @@ case "$MODE" in
     echo "daily-welcome: muted for the rest of $TODAY."
     exit 0
     ;;
-  voices)
-    voice="$(resolve_voice)"
-    if [ -n "$voice" ]; then
-      echo "Will speak with: $voice"
+  hush)
+    hush
+    exit 0
+    ;;
+  setkey)
+    if ! have_cmd security; then
+      echo "daily-welcome: no Keychain here; put the key in $WELCOME_ELEVEN_KEY_FILE" >&2
+      exit 1
+    fi
+    printf 'ElevenLabs API key (input hidden): '
+    stty -echo 2>/dev/null; IFS= read -r new_key; stty echo 2>/dev/null; printf '\n'
+    if [ -z "$new_key" ]; then echo "daily-welcome: nothing entered." >&2; exit 1; fi
+    security add-generic-password -a "$USER" -s "$WELCOME_KEYCHAIN_SERVICE" \
+      -w "$new_key" -U >/dev/null || { echo "daily-welcome: could not save to Keychain." >&2; exit 1; }
+    unset new_key
+    rm -f "$WELCOME_STATE_DIR/eleven-voice-id"   # re-resolve against the new account
+    echo "Saved to the login Keychain as \"$WELCOME_KEYCHAIN_SERVICE\"."
+    echo "Check it works:  daily-welcome --test-voice"
+    exit 0
+    ;;
+  testvoice)
+    backend="$(tts_backend)"
+    line="Welcome back, $WELCOME_NAME. $(_greeting_word). It's $(now_words), on $(today_words). Voice check complete."
+    echo "Backend: $backend"
+    if [ "$backend" = "elevenlabs" ]; then
+      echo "Voice:   $WELCOME_ELEVEN_VOICE_NAME${WELCOME_ELEVEN_VOICE_ID:+ ($WELCOME_ELEVEN_VOICE_ID)}"
     else
-      echo "Will speak with: (system default - none of WELCOME_VOICES is installed)"
+      local_voice="$(resolve_voice)"
+      echo "Voice:   ${local_voice:-system default}"
+    fi
+    echo "Saying:  $line"
+    if [ "$backend" = "elevenlabs" ]; then
+      eleven_speak "$line" || { echo "ElevenLabs failed - falling back to say. See $WELCOME_STATE_DIR/agent.log or run with the log visible." >&2; say_speak "$line"; }
+    else
+      say_speak "$line"
+    fi
+    exit 0
+    ;;
+  voices)
+    echo "Backend in use: $(tts_backend)"
+    echo
+    if eleven_available; then
+      echo "ElevenLabs is configured."
+      echo "  voice: $WELCOME_ELEVEN_VOICE_NAME"
+      echo "  id:    $(eleven_voice_id 2>/dev/null || echo '(not resolved - is the voice in your account?)')"
+    else
+      echo "ElevenLabs is not set up (no API key, or curl/afplay missing)."
+      echo "  Add one with: daily-welcome --set-key"
     fi
     echo
+    voice="$(resolve_voice)"
+    echo "Local fallback voice: ${voice:-system default}"
     echo "Installed US English voices:"
     say -v '?' 2>/dev/null | grep -E '[[:space:]]en_US[[:space:]]' | sed 's/^/  /'
-    echo
-    echo "For the realistic ones, add Ava or Zoe (Premium) in System Settings >"
-    echo "Accessibility > Spoken Content > System Voice > Manage Voices."
     exit 0
     ;;
   status)
@@ -105,7 +156,10 @@ case "$MODE" in
     echo "muted today:   $([ -f "$MUTE_FILE" ] && [ "$(cat "$MUTE_FILE")" = "$TODAY" ] && echo yes || echo no)"
     echo "present:       $WELCOME_PRESENT"
     voice="$(resolve_voice)"
-    echo "speak:         $WELCOME_SPEAK (${voice:-system default voice})"
+    echo "speak:         $WELCOME_SPEAK"
+    echo "voice backend: $(tts_backend)"
+    echo "hosted voice:  $WELCOME_ELEVEN_VOICE_NAME"
+    echo "local voice:   ${voice:-system default}"
     echo "sections:      $WELCOME_SECTIONS"
     echo "tasks file:    $WELCOME_TASKS_FILE$([ -f "$WELCOME_TASKS_FILE" ] || echo '  (not present)')"
     echo "state dir:     $WELCOME_STATE_DIR"
@@ -184,6 +238,12 @@ esac
 
 if [ "$PREVIEW" -ne 1 ]; then
   printf '%s' "$TODAY" > "$STATE_FILE"
+fi
+
+# Don't exit mid-sentence: if the dialog was dismissed early, the voice
+# still gets to finish.
+if [ -n "${WELCOME_SPEAK_PID:-}" ]; then
+  wait "$WELCOME_SPEAK_PID" 2>/dev/null
 fi
 
 welcome_log "greeted ($WELCOME_PRESENT, speak=$WELCOME_SPEAK)"

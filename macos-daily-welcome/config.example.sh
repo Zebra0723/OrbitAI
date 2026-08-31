@@ -10,16 +10,33 @@
 # --- voice -----------------------------------------------------------------
 
 # WELCOME_SPEAK=1                # 0 turns the voice off entirely
-# WELCOME_SPEAK_RATE=168         # words per minute; 150 is slower and calmer
 # WELCOME_SPEAK_MAX_ITEMS=3      # how many items get read aloud
+# WELCOME_CLOSER="Standing by."  # the sign-off
+# WELCOME_VOLUME=1.0             # playback volume, 0.0-1.0
 
-# Force one specific voice (see: daily-welcome --voices).
+# Which engine: auto (ElevenLabs when a key is set), elevenlabs, or say.
+# WELCOME_TTS="auto"
+
+# The ElevenLabs voice, looked up by name in your account. Set the id
+# directly to skip the lookup.
+# WELCOME_ELEVEN_VOICE_NAME="Veda Sky"
+# WELCOME_ELEVEN_VOICE_ID=""
+
+# Delivery. Lower stability is more expressive, higher is steadier and
+# more measured. These match the sample the voice was chosen from.
+# WELCOME_ELEVEN_STABILITY=0.5
+# WELCOME_ELEVEN_SIMILARITY=0.75
+# WELCOME_ELEVEN_STYLE=0
+# WELCOME_ELEVEN_SPEED=1.0
+# WELCOME_ELEVEN_MODEL="eleven_multilingual_v2"
+
+# The API key belongs in the Keychain (daily-welcome --set-key). This file
+# is honored too if you would rather keep it on disk.
+# WELCOME_ELEVEN_KEY_FILE="$HOME/.config/daily-welcome/elevenlabs-key"
+
+# Fallback macOS voice, used when ElevenLabs can't be reached.
+# WELCOME_SPEAK_RATE=170
 # WELCOME_VOICE="Ava (Premium)"
-
-# Or leave WELCOME_VOICE empty and let it pick the first of these that's
-# installed. Premium voices are the realistic ones - add them under System
-# Settings > Accessibility > Spoken Content > System Voice > Manage Voices.
-# WELCOME_VOICES="Ava (Premium)|Zoe (Premium)|Samantha (Enhanced)|Samantha"
 
 # --- what you see ----------------------------------------------------------
 

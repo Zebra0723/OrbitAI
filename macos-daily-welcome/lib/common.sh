@@ -76,4 +76,27 @@ applescript_quote() {
 # _plural COUNT SINGULAR PLURAL
 _plural() { [ "$1" -eq 1 ] && printf '%s' "$2" || printf '%s' "$3"; }
 
+# Escapes a string for use as a JSON string value.
+json_escape() {
+  printf '%s' "$1" \
+    | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\t/ /g' \
+    | awk 'BEGIN { ORS = "" } NR > 1 { print "\\n" } { print }'
+}
+
+# "9:30:00 AM" -> "9:30 AM" in the first field. AppleScript's time string
+# carries seconds that nobody wants to read. Interval expressions like
+# {2} aren't portable across awks, so this spells the digits out.
+tidy_time_field() {
+  awk -F'\t' 'BEGIN { OFS = "\t" }
+    {
+      if (match($1, /^[0-9][0-9]?:[0-9][0-9]:[0-9][0-9]/)) {
+        head = substr($1, 1, RLENGTH)
+        rest = substr($1, RLENGTH + 1)
+        sub(/:[0-9][0-9]$/, "", head)
+        $1 = head rest
+      }
+      print
+    }'
+}
+
 have_cmd() { command -v "$1" >/dev/null 2>&1; }

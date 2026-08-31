@@ -134,10 +134,14 @@ else
   echo "  Running in the background; it checks every ${INTERVAL}s."
 fi
 echo
-echo "  Hear it now:     $BIN_LINK --force"
+echo "  Add your voice:  $BIN_LINK --set-key      (ElevenLabs API key)"
+echo "  Check the voice: $BIN_LINK --test-voice"
+echo "  Hear it all:     $BIN_LINK --force"
 echo "  See settings:    $BIN_LINK --status"
-echo "  Pick a voice:    $BIN_LINK --voices"
 echo "  Edit settings:   $CONFIG"
 echo "  Uninstall:       $ROOT/uninstall.sh"
 echo
 echo "  The first run asks for Reminders and Calendar access - say yes once."
+echo
+echo "  Until an ElevenLabs key is set it speaks with the best built-in macOS"
+echo "  voice. Set the key and it switches to the ElevenLabs voice instead."

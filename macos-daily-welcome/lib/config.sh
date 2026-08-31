@@ -4,35 +4,11 @@
 
 : "${WELCOME_NAME:=Arjun}"
 
-# Where state (last-run stamp) and logs live.
+# Where state, the voice cache, and logs live.
 : "${WELCOME_STATE_DIR:=$HOME/.local/state/daily-welcome}"
 
 # How the greeting is shown: dialog | notification | both | stdout
 : "${WELCOME_PRESENT:=dialog}"
-
-# Speak the briefing out loud with `say`.
-: "${WELCOME_SPEAK:=1}"
-
-# Voice, in preference order: the first one actually installed wins.
-# American female, aiming for the composed synthetic-assistant register.
-# Ava and Zoe Premium are the Siri-grade neural voices and sound markedly
-# more real than plain Samantha - install them under System Settings >
-# Accessibility > Spoken Content > System Voice > Manage Voices.
-: "${WELCOME_VOICES:=Ava (Premium)|Zoe (Premium)|Allison (Premium)|Samantha (Enhanced)|Ava (Enhanced)|Zoe|Allison|Samantha|Susan}"
-
-# Explicit voice; set this and WELCOME_VOICES is ignored.
-: "${WELCOME_VOICE:=}"
-
-# Words per minute. Slightly under the 175 default reads as composed
-# rather than chirpy.
-: "${WELCOME_SPEAK_RATE:=168}"
-
-# How the spoken briefing addresses you. "sir" gets you the full Jarvis;
-# set to empty for just your name.
-: "${WELCOME_HONORIFIC:=sir}"
-
-# Cap on how many items get read aloud (the screen shows all of them).
-: "${WELCOME_SPEAK_MAX_ITEMS:=3}"
 
 # Auto-dismiss the dialog after N seconds (0 = wait for a click).
 : "${WELCOME_DIALOG_TIMEOUT:=90}"
@@ -48,10 +24,10 @@
 # Sections to include, in order. Any of: reminders calendar tasks
 : "${WELCOME_SECTIONS:=reminders calendar tasks}"
 
-# Max items shown per section.
+# Max items shown per section on screen.
 : "${WELCOME_MAX_ITEMS:=8}"
 
-# Include reminders that have no due date but are flagged/high priority.
+# Include reminders that have no due date but are flagged.
 : "${WELCOME_REMINDERS_INCLUDE_UNDATED:=0}"
 
 # Plain-text task list. Markdown checkboxes ("- [ ] thing") or bare lines.
@@ -63,6 +39,54 @@
 
 # Seconds any single data source gets before it's abandoned.
 : "${WELCOME_SOURCE_TIMEOUT:=15}"
+
+# --------------------------------------------------------------- speech
+
+: "${WELCOME_SPEAK:=1}"
+
+# elevenlabs | say | auto  (auto = ElevenLabs when a key is set, else say)
+: "${WELCOME_TTS:=auto}"
+
+# How the spoken briefing addresses you. "sir" gets you the full Jarvis;
+# set to empty for just your name.
+: "${WELCOME_HONORIFIC:=sir}"
+
+# How it signs off.
+: "${WELCOME_CLOSER:=Standing by.}"
+
+# How many items get read aloud (the screen still shows all of them).
+: "${WELCOME_SPEAK_MAX_ITEMS:=3}"
+
+# Playback volume for the hosted voice, 0.0-1.0.
+: "${WELCOME_VOLUME:=1.0}"
+
+# --- ElevenLabs ---
+# The voice is looked up by name in your account, so add it to your voices
+# in the ElevenLabs library first. Set an id directly to skip the lookup.
+: "${WELCOME_ELEVEN_VOICE_NAME:=Veda Sky}"
+: "${WELCOME_ELEVEN_VOICE_ID:=}"
+: "${WELCOME_ELEVEN_MODEL:=eleven_multilingual_v2}"
+
+# Matches the settings the sample was rendered with: speed 1.00,
+# stability 0.50, similarity 0.75, style 0, speaker boost on.
+: "${WELCOME_ELEVEN_SPEED:=1.0}"
+: "${WELCOME_ELEVEN_STABILITY:=0.5}"
+: "${WELCOME_ELEVEN_SIMILARITY:=0.75}"
+: "${WELCOME_ELEVEN_STYLE:=0}"
+: "${WELCOME_ELEVEN_SPEAKER_BOOST:=true}"
+
+: "${WELCOME_ELEVEN_FORMAT:=mp3_44100_128}"
+: "${WELCOME_ELEVEN_TIMEOUT:=25}"
+
+# The API key lives in the login Keychain (daily-welcome --set-key).
+# A plain file is honored too, for anyone who prefers it.
+: "${WELCOME_KEYCHAIN_SERVICE:=daily-welcome-elevenlabs}"
+: "${WELCOME_ELEVEN_KEY_FILE:=$HOME/.config/daily-welcome/elevenlabs-key}"
+
+# --- Apple `say`, used when ElevenLabs isn't reachable ---
+: "${WELCOME_SPEAK_RATE:=170}"
+: "${WELCOME_VOICE:=}"
+: "${WELCOME_VOICES:=Ava (Premium)|Zoe (Premium)|Allison (Premium)|Samantha (Enhanced)|Ava (Enhanced)|Zoe|Allison|Samantha|Susan}"
 
 welcome_load_user_config() {
   local cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
