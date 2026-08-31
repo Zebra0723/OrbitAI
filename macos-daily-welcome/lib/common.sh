@@ -11,7 +11,9 @@ welcome_log() {
 run_with_timeout() {
   local secs="$1"; shift
   local out rc pid waited
-  out="$(mktemp -t daily-welcome)" || return 1
+  # The template needs the X's spelled out: BSD mktemp is happy with a bare
+  # prefix, GNU is not, and this script also gets run under test on Linux.
+  out="$(mktemp -t daily-welcome.XXXXXX)" || return 1
 
   "$@" >"$out" 2>/dev/null &
   pid=$!

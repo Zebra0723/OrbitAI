@@ -1,0 +1,331 @@
+#!/bin/bash
+# orbit - the voice command side of daily-welcome.
+#
+# Everything runs in two phases. `orbit plan "<transcript>"` works out what
+# you meant and says it back; `orbit run <token>` is the only thing that
+# actually sends, dispatches, or changes anything. The listener in the menu
+# bar app puts your spoken yes or no between the two.
+#
+# Read-only commands ("what's on my calendar") skip the second phase, since
+# there's nothing to confirm.
+
+set -uo pipefail
+
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do SELF="$(readlink "$SELF")"; done
+ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
+
+. "$ROOT/lib/config.sh"
+welcome_load_user_config
+. "$ROOT/lib/common.sh"
+. "$ROOT/lib/sources.sh"
+. "$ROOT/lib/messages.sh"
+. "$ROOT/lib/mail.sh"
+. "$ROOT/lib/contacts.sh"
+. "$ROOT/lib/claude_jobs.sh"
+. "$ROOT/lib/system.sh"
+. "$ROOT/lib/freeform.sh"
+. "$ROOT/lib/present.sh"
+. "$ROOT/lib/speech_text.sh"
+. "$ROOT/lib/tts_eleven.sh"
+. "$ROOT/lib/voice.sh"
+. "$ROOT/lib/intents.sh"
+
+PLAN_DIR="$WELCOME_STATE_DIR/plans"
+mkdir -p "$PLAN_DIR" 2>/dev/null
+
+usage() {
+  cat <<'USAGE'
+orbit - voice commands for daily-welcome
+
+  orbit plan "<what you said>"   work out the action, say it back, return a token
+  orbit run <token>              carry out a planned action
+  orbit cancel <token>           drop it
+  orbit say "<text>"             speak something in the Orbit voice
+  orbit examples                 phrasings it understands
+
+Plan and run print one line of JSON: {"speak":"...","confirm":true,"token":"..."}
+USAGE
+}
+
+# --- output helpers --------------------------------------------------------
+
+emit() {
+  # emit SPEAK CONFIRM TOKEN
+  printf '{"speak":"%s","confirm":%s,"token":"%s"}\n' \
+    "$(json_escape "$1")" "$2" "$3"
+}
+
+new_token() {
+  printf '%s%s' "$(date '+%H%M%S')" "$(od -An -N2 -tu2 /dev/urandom 2>/dev/null | tr -d ' \n')"
+}
+
+plan_file() { printf '%s/%s.plan' "$PLAN_DIR" "$1"; }
+
+# Plans are single-use and short-lived: an old yes shouldn't fire a
+# command you gave twenty minutes ago.
+prune_plans() {
+  find "$PLAN_DIR" -name '*.plan' -mmin "+$ORBIT_PLAN_TTL_MINUTES" -delete 2>/dev/null
+}
+
+save_plan() {
+  local token="$1"; shift
+  printf '%s\n' "$@" > "$(plan_file "$token")"
+}
+
+# --- planning --------------------------------------------------------------
+
+plan_message() {
+  local who="$1" body="$2" handle token
+
+  if ! handle="$(contact_handle "$who")"; then
+    emit "I couldn't find $who in your contacts. Add a nickname to your contacts file and try again." false ""
+    return 0
+  fi
+
+  token="$(new_token)"
+  save_plan "$token" "INTENT=message" \
+    "HANDLE=$(printf '%s' "$handle")" \
+    "WHO=$(printf '%s' "$who")" \
+    "BODY=$(printf '%s' "$body")"
+  emit "Message $who: $body. Send it?" true "$token"
+}
+
+plan_claude() {
+  local repo_name="$1" task="$2" dir token
+
+  if ! dir="$(resolve_repo "$repo_name")"; then
+    emit "I couldn't find a repo called $repo_name under your project folders." false ""
+    return 0
+  fi
+  if ! have_cmd claude; then
+    emit "Claude Code isn't installed on this Mac, so I can't hand that off." false ""
+    return 0
+  fi
+
+  token="$(new_token)"
+  save_plan "$token" "INTENT=claude" "DIR=$dir" "TASK=$task" "REPO=$(basename "$dir")"
+  emit "Send Claude into $(basename "$dir") to $task. Go ahead?" true "$token"
+}
+
+plan_mail_reply() {
+  local body="$1" token candidates count drafted=0 failed=0 line id name address subject
+
+  candidates="$(mail_awaiting_reply)"
+  count="$(printf '%s' "$candidates" | grep -c . )"
+  if [ "$count" -eq 0 ]; then
+    emit "Nothing in your inbox is waiting on a reply." false ""
+    return 0
+  fi
+
+  token="$(new_token)"
+  : > "$(plan_file "$token")"
+  printf '%s\n' "INTENT=mail_reply" >> "$(plan_file "$token")"
+
+  # Drafts are written now, so you can read or delete them before the send.
+  while IFS="$(printf '\t')" read -r id name address subject; do
+    [ -z "$address" ] && continue
+    if mail_draft_reply "$id" "$body"; then
+      drafted=$((drafted + 1))
+      printf 'DRAFT\t%s\t%s\t%s\n' "$subject" "$address" "$name" >> "$(plan_file "$token")"
+    else
+      failed=$((failed + 1))
+    fi
+  done <<EOT
+$candidates
+EOT
+
+  if [ "$drafted" -eq 0 ]; then
+    rm -f "$(plan_file "$token")"
+    emit "I found $(num_word "$count") waiting on a reply, but couldn't draft any of them." false ""
+    return 0
+  fi
+
+  local extra=""
+  [ "$failed" -gt 0 ] && extra=" $(num_word "$failed") couldn't be drafted."
+  emit "$(num_word "$drafted") $(_plural "$drafted" reply replies) drafted and waiting in Mail.$extra Send $(_plural "$drafted" it them)?" true "$token"
+}
+
+plan_system() {
+  local action="$1" arg="${2:-}" summary="${3:-}" token
+
+  if system_needs_confirm "$action"; then
+    token="$(new_token)"
+    save_plan "$token" "INTENT=system" "ACTION=$action" "ARG=$arg"
+    emit "$(system_describe "$action" "${summary:-$arg}")" true "$token"
+    return 0
+  fi
+
+  # Reversible things just happen - confirming "volume up" out loud is
+  # slower than pressing the key would have been.
+  emit "$(system_run "$action" "$arg")" false ""
+}
+
+# Read-only answers happen immediately; there's nothing to confirm.
+plan_readback() {
+  local what="$1" text=""
+  case "$what" in
+    briefing)
+      "$ROOT/bin/daily-welcome" --preview --present notification >/dev/null 2>&1 &
+      emit "Here's your briefing." false ""
+      return 0
+      ;;
+    messages)
+      text="$(_speak_section "$(src_messages)" "unread message" "unread messages" "Nothing unread in Messages.")"
+      ;;
+    mail)
+      text="$(_speak_section "$(src_mail)" "unread email" "unread emails" "Your inbox is clear.")"
+      ;;
+    calendar)
+      text="$(_speak_section "$(src_calendar)" "event today" "events today" "Nothing on the calendar today.")"
+      ;;
+    reminders)
+      text="$(_speak_section "$(src_reminders)" "reminder due today" "reminders due today" "No reminders due today.")"
+      ;;
+    claude)
+      text="$(_speak_section "$(src_claude)" "update from Claude" "updates from Claude" "Claude has nothing new for you.")"
+      ;;
+  esac
+  emit "$text" false ""
+}
+
+# records, singular, plural, empty-case -> a spoken sentence plus the top items
+_speak_section() {
+  local records="$1" one="$2" many="$3" empty="$4"
+  local n line out
+  n="$(count_records "$records")"
+  if [ "$n" -eq 0 ]; then printf '%s' "$empty"; return 0; fi
+
+  out="$(num_word "$n") $(_plural "$n" "$one" "$many")."
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    out="$out $line"
+  done <<EOT
+$(_spoken_items "$records" "$ORBIT_READBACK_ITEMS")
+EOT
+  printf '%s' "$out" | capitalize_sentences
+}
+
+# --- running ---------------------------------------------------------------
+
+run_plan() {
+  local token="$1" file
+  file="$(plan_file "$token")"
+  if [ ! -f "$file" ]; then
+    emit "That request has expired. Say it again." false ""
+    return 0
+  fi
+
+  local INTENT="" HANDLE="" WHO="" BODY="" DIR="" TASK="" REPO="" ACTION="" ARG=""
+  while IFS= read -r line; do
+    case "$line" in
+      INTENT=*) INTENT="${line#INTENT=}" ;;
+      HANDLE=*) HANDLE="${line#HANDLE=}" ;;
+      WHO=*)    WHO="${line#WHO=}" ;;
+      BODY=*)   BODY="${line#BODY=}" ;;
+      DIR=*)    DIR="${line#DIR=}" ;;
+      TASK=*)   TASK="${line#TASK=}" ;;
+      REPO=*)   REPO="${line#REPO=}" ;;
+      ACTION=*) ACTION="${line#ACTION=}" ;;
+      ARG=*)    ARG="${line#ARG=}" ;;
+    esac
+  done < "$file"
+
+  case "$INTENT" in
+    message)
+      if messages_send "$HANDLE" "$BODY"; then
+        rm -f "$file"
+        emit "Sent to $WHO." false ""
+      else
+        emit "Messages wouldn't send that. It may not be an iMessage address." false ""
+      fi
+      ;;
+    claude)
+      claude_dispatch "$DIR" "$TASK" >/dev/null
+      rm -f "$file"
+      emit "Claude is on it. I'll tell you what happened in your next briefing." false ""
+      ;;
+    mail_reply)
+      local sent=0 missing=0 result subject address
+      while IFS="$(printf '\t')" read -r tag subject address _; do
+        [ "$tag" = "DRAFT" ] || continue
+        result="$(mail_send_draft "$subject" "$address")"
+        if [ "$result" = "sent" ]; then sent=$((sent + 1)); else missing=$((missing + 1)); fi
+      done < "$file"
+      rm -f "$file"
+      if [ "$missing" -gt 0 ]; then
+        emit "Sent $(num_word "$sent"). $(num_word "$missing") were gone from Drafts, so I left those alone." false ""
+      else
+        emit "Sent $(num_word "$sent") $(_plural "$sent" reply replies)." false ""
+      fi
+      ;;
+    system)
+      rm -f "$file"
+      emit "$(system_run "$ACTION" "$ARG")" false ""
+      ;;
+    *)
+      emit "I've lost track of that one. Say it again." false ""
+      ;;
+  esac
+}
+
+# --- entry point -----------------------------------------------------------
+
+case "${1:-}" in
+  plan)
+    shift
+    transcript="${1:-}"
+    [ -z "$transcript" ] && { emit "I didn't catch that." false ""; exit 0; }
+    prune_plans
+
+    parsed="$(parse_intent "$transcript")"
+    intent="$(printf '%s' "$parsed" | cut -f1)"
+    arg1="$(printf '%s' "$parsed" | cut -f2)"
+    arg2="$(printf '%s' "$parsed" | cut -f3)"
+    arg3="$(printf '%s' "$parsed" | cut -f4)"
+
+    case "$intent" in
+      message)    plan_message "$arg1" "$arg2" ;;
+      claude)     plan_claude "$arg1" "$arg2" ;;
+      mail_reply) plan_mail_reply "$arg1" ;;
+      system)     plan_system "$arg1" "$arg2" "$arg3" ;;
+      readback)   plan_readback "$arg1" ;;
+      *)          emit "I didn't catch that. Try: message Mom saying I'm running late." false "" ;;
+    esac
+    ;;
+  run)
+    shift
+    run_plan "${1:-}"
+    ;;
+  cancel)
+    shift
+    rm -f "$(plan_file "${1:-none}")"
+    emit "Cancelled." false ""
+    ;;
+  say)
+    shift
+    speak_async "${1:-}"
+    [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
+    ;;
+  config)
+    # One source of truth for settings: the menu bar app asks for these
+    # rather than keeping its own copy that drifts from your config file.
+    shift
+    case "${1:-}" in
+      wake_word) printf '%s\n' "$ORBIT_WAKE_WORD" ;;
+      listen)    printf '%s\n' "$ORBIT_LISTEN" ;;
+      *)         printf 'orbit config: wake_word | listen\n' >&2; exit 2 ;;
+    esac
+    ;;
+  examples)
+    intent_examples
+    ;;
+  -h|--help|"")
+    usage
+    ;;
+  *)
+    printf 'orbit: unknown command %s\n\n' "$1" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

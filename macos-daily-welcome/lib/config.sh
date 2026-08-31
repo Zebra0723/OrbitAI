@@ -21,8 +21,9 @@
 # lock screen. It fires on the next check after you unlock.
 : "${WELCOME_REQUIRE_UNLOCKED:=1}"
 
-# Sections to include, in order. Any of: reminders calendar tasks
-: "${WELCOME_SECTIONS:=reminders calendar tasks}"
+# Sections to include, in order.
+# Any of: reminders calendar messages mail claude tasks
+: "${WELCOME_SECTIONS:=reminders calendar messages mail claude tasks}"
 
 # Max items shown per section on screen.
 : "${WELCOME_MAX_ITEMS:=8}"
@@ -32,6 +33,10 @@
 
 # Plain-text task list. Markdown checkboxes ("- [ ] thing") or bare lines.
 : "${WELCOME_TASKS_FILE:=$HOME/todo.md}"
+
+# How far back unread Messages count as news, and how much of each to show.
+: "${WELCOME_MESSAGES_SINCE_DAYS:=2}"
+: "${WELCOME_MESSAGE_PREVIEW:=60}"
 
 # Calendar via AppleScript is slow and can hang; off unless you ask for it.
 # Install icalBuddy (`brew install ical-buddy`) for the fast path.
@@ -87,6 +92,55 @@
 : "${WELCOME_SPEAK_RATE:=170}"
 : "${WELCOME_VOICE:=}"
 : "${WELCOME_VOICES:=Ava (Premium)|Zoe (Premium)|Allison (Premium)|Samantha (Enhanced)|Ava (Enhanced)|Zoe|Allison|Samantha|Susan}"
+
+# ------------------------------------------------------- voice commands
+
+# Listening for "Hey Orbit". 0 keeps the daily briefing but never opens
+# the microphone.
+: "${ORBIT_LISTEN:=1}"
+: "${ORBIT_WAKE_WORD:=hey orbit}"
+
+# Nicknames -> people. Lines like:  mama = +15551234567
+: "${ORBIT_CONTACTS_FILE:=$HOME/.config/daily-welcome/contacts.conf}"
+
+# Where your repos live, for "tell Claude to ... in the <name> repo".
+: "${ORBIT_REPO_ROOTS:=$HOME/projects $HOME/code $HOME/dev $HOME/src $HOME/Developer $HOME/repos}"
+: "${ORBIT_REPO_DEPTH:=3}"
+: "${ORBIT_DEFAULT_REPO:=}"
+
+# Claude Code runs headless here, so it can't answer a permission prompt.
+# Narrow this if you'd rather it only ever read.
+: "${ORBIT_CLAUDE_FLAGS:=--permission-mode acceptEdits}"
+
+# Which inbox mail counts as "awaiting reply", and how many one command may
+# touch. The cap is a blast radius, not a performance setting.
+: "${ORBIT_MAIL_AWAITING_DAYS:=7}"
+: "${ORBIT_MAIL_MAX_BATCH:=25}"
+: "${ORBIT_MAIL_TIMEOUT:=45}"
+
+# A confirmed action expires; a "yes" twenty minutes late shouldn't send.
+: "${ORBIT_PLAN_TTL_MINUTES:=10}"
+
+# How many items get read back for "what's on my calendar".
+: "${ORBIT_READBACK_ITEMS:=3}"
+
+# Hand phrasings the rules miss to Claude Code to classify.
+: "${ORBIT_NLU_FALLBACK:=1}"
+: "${ORBIT_NLU_TIMEOUT:=25}"
+
+# Where "search for..." goes.
+: "${ORBIT_SEARCH_URL:=https://duckduckgo.com/?q=}"
+
+# The catch-all: for anything the action catalog doesn't cover, Claude
+# writes a one-line command, Orbit reads it back, and it runs only on your
+# yes. Whole categories (sudo, disk tools, piping the network to a shell)
+# are refused outright regardless. Set to 0 to allow only the catalog.
+: "${ORBIT_FREEFORM:=1}"
+: "${ORBIT_FREEFORM_TIMEOUT:=20}"
+
+# Absolute path to the orbit command, for actions that outlive the run
+# that started them (timers).
+: "${ORBIT_BIN:=$HOME/.local/bin/orbit}"
 
 welcome_load_user_config() {
   local cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"

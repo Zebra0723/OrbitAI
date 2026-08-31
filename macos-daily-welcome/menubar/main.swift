@@ -16,7 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var statusItem: NSStatusItem!
     private var lastRunItem: NSMenuItem!
+    private var listeningItem: NSMenuItem!
     private var backstopTimer: Timer?
+    private let listener = OrbitListener()
 
     // MARK: - Paths
 
@@ -41,6 +43,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private var logPath: String { stateDir + "/agent.log" }
+
+    private var orbitPath: String {
+        let env = ProcessInfo.processInfo.environment["ORBIT_BIN"] ?? ""
+        if !env.isEmpty { return env }
+        if let p = Bundle.main.object(forInfoDictionaryKey: "DWOrbitPath") as? String, !p.isEmpty {
+            return (p as NSString).expandingTildeInPath
+        }
+        return ("~/.local/bin/orbit" as NSString).expandingTildeInPath
+    }
+
+    /// Settings live in the shell config; asking for them keeps this app
+    /// from holding a second copy that drifts out of date.
+    private func shellConfig(_ key: String) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [orbitPath, "config", key]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        let value = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return value.isEmpty ? nil : value
+    }
+
+    private lazy var wakeWord: String = {
+        (shellConfig("wake_word") ?? "hey orbit").lowercased()
+    }()
+
+    private lazy var listeningWanted: Bool = {
+        (shellConfig("listen") ?? "1") != "0"
+    }()
 
     // MARK: - Lifecycle
 
@@ -78,6 +114,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
             self?.run(["--agent"])
         }
+
+        listener.orbitPath = orbitPath
+        listener.wakeWord = wakeWord
+        listener.onStateChange = { [weak self] state in
+            self?.reflect(state)
+        }
+        if listeningWanted {
+            listener.start()
+        }
+    }
+
+    /// The icon says what Orbit is doing, so an open microphone is never
+    /// something you have to take on trust.
+    private func reflect(_ state: ListenState) {
+        let symbol: String
+        switch state {
+        case .idle:       symbol = "sun.horizon"
+        case .capturing:  symbol = "waveform"
+        case .confirming: symbol = "questionmark.circle"
+        case .working:    symbol = "gearshape"
+        }
+        if let button = statusItem.button,
+           let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Daily Welcome") {
+            image.isTemplate = true
+            button.image = image
+        }
+        listeningItem?.state = listener.isRunning ? .on : .off
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -107,6 +170,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         lastRunItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         lastRunItem.isEnabled = false
         menu.addItem(lastRunItem)
+        menu.addItem(.separator())
+
+        menu.addItem(item("Listen Now", #selector(listenNow), "l"))
+        listeningItem = item("Listening for \u{201C}\(wakeWord)\u{201D}", #selector(toggleListening), "")
+        listeningItem.state = listeningWanted ? .on : .off
+        menu.addItem(listeningItem)
         menu.addItem(.separator())
 
         menu.addItem(item("Play Today's Briefing", #selector(playBriefing), "p"))
@@ -159,6 +228,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func showBriefing()  { run(["--preview", "--quiet"]) }
     @objc private func speakBriefing() { run(["--preview", "--present", "stdout"]) }
     @objc private func hush()          { run(["--hush"]) }
+
+    @objc private func listenNow() { listener.listenNow() }
+
+    @objc private func toggleListening() {
+        if listener.isRunning {
+            listener.stop()
+            listeningItem.state = .off
+        } else {
+            listener.start()
+            listeningItem.state = .on
+        }
+    }
+
     @objc private func muteToday()     { run(["--mute-today"]) }
     @objc private func resetToday()    { run(["--reset"]) }
 

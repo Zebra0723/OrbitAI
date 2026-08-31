@@ -31,14 +31,17 @@ section_title() {
   case "$1" in
     reminders) printf 'REMINDERS' ;;
     calendar)  printf "TODAY'S SCHEDULE" ;;
+    messages)  printf 'MESSAGES' ;;
+    mail)      printf 'MAIL' ;;
+    claude)    printf 'CLAUDE' ;;
     tasks)     printf 'TASKS' ;;
     *)         printf '%s' "$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')" ;;
   esac
 }
 
-# build_screen_text REMINDERS CALENDAR TASKS
+# build_screen_text REMINDERS CALENDAR TASKS MESSAGES MAIL CLAUDE
 build_screen_text() {
-  local rem="$1" cal="$2" tsk="$3"
+  local rem="$1" cal="$2" tsk="$3" msg="${4:-}" mail="${5:-}" cld="${6:-}"
   local out body section records shown=0
 
   out="$(date '+%A, %B %-d')  ·  $(date '+%-I:%M %p')"$'\n'
@@ -47,6 +50,9 @@ build_screen_text() {
     case "$section" in
       reminders) records="$rem" ;;
       calendar)  records="$cal" ;;
+      messages)  records="$msg" ;;
+      mail)      records="$mail" ;;
+      claude)    records="$cld" ;;
       tasks)     records="$tsk" ;;
       *)         records="" ;;
     esac
@@ -98,14 +104,20 @@ APPLESCRIPT
 
 # One-line summary for the notification body.
 build_notification_line() {
-  local rem="$1" cal="$2" tsk="$3"
-  local n_rem n_cal n_tsk parts=""
+  local rem="$1" cal="$2" tsk="$3" msg="${4:-}" mail="${5:-}" cld="${6:-}"
+  local n_rem n_cal n_tsk n_msg n_mail n_cld parts=""
   n_rem="$(count_records "$rem")"
   n_cal="$(count_records "$cal")"
   n_tsk="$(count_records "$tsk")"
+  n_msg="$(count_records "$msg")"
+  n_mail="$(count_records "$mail")"
+  n_cld="$(count_records "$cld")"
 
   [ "$n_rem" -gt 0 ] && parts="$n_rem $(_plural "$n_rem" reminder reminders)"
   [ "$n_cal" -gt 0 ] && parts="${parts:+$parts · }$n_cal $(_plural "$n_cal" event events)"
+  [ "$n_msg" -gt 0 ] && parts="${parts:+$parts · }$n_msg $(_plural "$n_msg" message messages)"
+  [ "$n_mail" -gt 0 ] && parts="${parts:+$parts · }$n_mail $(_plural "$n_mail" email emails)"
+  [ "$n_cld" -gt 0 ] && parts="${parts:+$parts · }$n_cld from Claude"
   [ "$n_tsk" -gt 0 ] && parts="${parts:+$parts · }$n_tsk $(_plural "$n_tsk" task tasks)"
   [ -z "$parts" ] && parts="Nothing due today"
   printf '%s' "$parts"

@@ -78,24 +78,28 @@ _spoken_items() {
     [ "$count" -gt "$max" ] && break
     title="$(speech_clean "$title")"
     case "$when" in
-      OVERDUE) printf '%s. That one is overdue.\n' "$title" ;;
-      flagged) printf '%s. Flagged.\n' "$title" ;;
-      "")      printf '%s.\n' "$title" ;;
-      *)       printf '%s, at %s.\n' "$title" "$(time_words_relative "$when")" ;;
+      OVERDUE)      printf '%s. That one is overdue.\n' "$title" ;;
+      flagged)      printf '%s. Flagged.\n' "$title" ;;
+      done|failed)  printf '%s\n' "$title" ;;   # already a full sentence
+      "")           printf '%s.\n' "$title" ;;
+      *)            printf '%s, at %s.\n' "$title" "$(time_words_relative "$when")" ;;
     esac
   done <<EOT
 $records
 EOT
 }
 
-# build_spoken_briefing REMINDERS CALENDAR TASKS
+# build_spoken_briefing REMINDERS CALENDAR TASKS MESSAGES MAIL CLAUDE
 build_spoken_briefing() {
-  local rem="$1" cal="$2" tsk="$3"
-  local n_rem n_cal n_tsk n_overdue text parts=""
+  local rem="$1" cal="$2" tsk="$3" msg="${4:-}" mail="${5:-}" cld="${6:-}"
+  local n_rem n_cal n_tsk n_msg n_mail n_cld n_overdue text parts=""
 
   n_rem="$(count_records "$rem")"
   n_cal="$(count_records "$cal")"
   n_tsk="$(count_records "$tsk")"
+  n_msg="$(count_records "$msg")"
+  n_mail="$(count_records "$mail")"
+  n_cld="$(count_records "$cld")"
   n_overdue="$(printf '%s\n' "$rem" | awk -F'\t' '$1 == "OVERDUE" { n++ } END { print n + 0 }')"
 
   local honorific=""
@@ -117,13 +121,19 @@ build_spoken_briefing() {
   if [ "$n_cal" -gt 0 ]; then
     parts="$parts$(num_word "$n_cal") $(_plural "$n_cal" event events) on the calendar. "
   fi
-  if [ "$n_tsk" -gt 0 ] && [ "$n_rem" -eq 0 ] && [ "$n_cal" -eq 0 ]; then
+  if [ "$n_msg" -gt 0 ]; then
+    parts="$parts$(num_word "$n_msg") unread $(_plural "$n_msg" message messages). "
+  fi
+  if [ "$n_mail" -gt 0 ]; then
+    parts="$parts$(num_word "$n_mail") unread $(_plural "$n_mail" email emails). "
+  fi
+  if [ "$n_tsk" -gt 0 ] && [ -z "$parts" ]; then
     parts="$(num_word "$n_tsk") open $(_plural "$n_tsk" task tasks). "
   elif [ "$n_tsk" -gt 0 ]; then
     parts="$parts$(num_word "$n_tsk") open $(_plural "$n_tsk" task tasks). "
   fi
 
-  if [ -z "$parts" ]; then
+  if [ -z "$parts" ] && [ "$n_cld" -eq 0 ]; then
     text="${text}The day is clear. Nothing due, nothing scheduled. "
   else
     text="${text}${parts}"
@@ -137,9 +147,13 @@ build_spoken_briefing() {
         *) text="${text}After that: $line " ;;
       esac
     done <<EOT
-$( { _spoken_items "$rem" "$WELCOME_SPEAK_MAX_ITEMS"
+$( { # What Claude did overnight is news; the rest you already half know.
+     _spoken_items "$cld" "$WELCOME_SPEAK_MAX_ITEMS"
+     _spoken_items "$rem" "$WELCOME_SPEAK_MAX_ITEMS"
      _spoken_items "$cal" "$WELCOME_SPEAK_MAX_ITEMS"
-     [ "$n_rem" -eq 0 ] && [ "$n_cal" -eq 0 ] && _spoken_items "$tsk" "$WELCOME_SPEAK_MAX_ITEMS"
+     if [ "$n_rem" -eq 0 ] && [ "$n_cal" -eq 0 ]; then
+       _spoken_items "$tsk" "$WELCOME_SPEAK_MAX_ITEMS"
+     fi
      true; } | head -n "$WELCOME_SPEAK_MAX_ITEMS")
 EOT
   fi

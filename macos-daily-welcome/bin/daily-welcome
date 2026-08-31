@@ -17,6 +17,12 @@ welcome_load_user_config
 . "$ROOT/lib/common.sh"
 # shellcheck source=../lib/sources.sh
 . "$ROOT/lib/sources.sh"
+# shellcheck source=../lib/messages.sh
+. "$ROOT/lib/messages.sh"
+# shellcheck source=../lib/mail.sh
+. "$ROOT/lib/mail.sh"
+# shellcheck source=../lib/claude_jobs.sh
+. "$ROOT/lib/claude_jobs.sh"
 # shellcheck source=../lib/present.sh
 . "$ROOT/lib/present.sh"
 # shellcheck source=../lib/speech_text.sh
@@ -200,35 +206,38 @@ trap 'rmdir "$LOCK_DIR" 2>/dev/null' EXIT INT TERM
 
 # --- gather ----------------------------------------------------------------
 
-REM=""; CAL=""; TSK=""
+REM=""; CAL=""; TSK=""; MSG=""; MAIL=""; CLD=""
 for section in $WELCOME_SECTIONS; do
   case "$section" in
     reminders) REM="$(src_reminders)" ;;
     calendar)  CAL="$(src_calendar)" ;;
+    messages)  MSG="$(src_messages)" ;;
+    mail)      MAIL="$(src_mail)" ;;
+    claude)    CLD="$(src_claude)" ;;
     tasks)     TSK="$(src_tasks)" ;;
   esac
 done
 
-SCREEN_TEXT="$(build_screen_text "$REM" "$CAL" "$TSK")"
+SCREEN_TEXT="$(build_screen_text "$REM" "$CAL" "$TSK" "$MSG" "$MAIL" "$CLD")"
 TITLE="Welcome $WELCOME_NAME"
 
 # --- deliver ---------------------------------------------------------------
 
 if [ "$WELCOME_SPEAK" = "1" ]; then
-  speak_async "$(build_spoken_briefing "$REM" "$CAL" "$TSK")"
+  speak_async "$(build_spoken_briefing "$REM" "$CAL" "$TSK" "$MSG" "$MAIL" "$CLD")"
 fi
+
+NOTIFY_LINE="$(build_notification_line "$REM" "$CAL" "$TSK" "$MSG" "$MAIL" "$CLD")"
 
 case "$WELCOME_PRESENT" in
   dialog)
     present_dialog "$TITLE" "$SCREEN_TEXT" "$WELCOME_DIALOG_TIMEOUT"
     ;;
   notification)
-    present_notification "$TITLE" "$(date '+%A, %B %-d')" \
-      "$(build_notification_line "$REM" "$CAL" "$TSK")"
+    present_notification "$TITLE" "$(date '+%A, %B %-d')" "$NOTIFY_LINE"
     ;;
   both)
-    present_notification "$TITLE" "$(date '+%A, %B %-d')" \
-      "$(build_notification_line "$REM" "$CAL" "$TSK")"
+    present_notification "$TITLE" "$(date '+%A, %B %-d')" "$NOTIFY_LINE"
     present_dialog "$TITLE" "$SCREEN_TEXT" "$WELCOME_DIALOG_TIMEOUT"
     ;;
   stdout|*)
@@ -238,6 +247,8 @@ esac
 
 if [ "$PREVIEW" -ne 1 ]; then
   printf '%s' "$TODAY" > "$STATE_FILE"
+  # Claude's results have now been delivered; don't repeat them tomorrow.
+  claude_jobs_mark_reported
 fi
 
 # Don't exit mid-sentence: if the dialog was dismissed early, the voice

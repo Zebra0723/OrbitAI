@@ -55,6 +55,35 @@
 # Without it, set this to 1 to ask Calendar.app directly - correct but slow.
 # WELCOME_CALENDAR_APPLESCRIPT=0
 
+# --- Orbit, the voice assistant --------------------------------------------
+
+# ORBIT_LISTEN=1                 # 0 never opens the microphone
+# ORBIT_WAKE_WORD="hey orbit"
+
+# Nicknames for people you message by voice live in contacts.conf next to
+# this file:   mama = +15551234567
+# ORBIT_CONTACTS_FILE="$HOME/.config/daily-welcome/contacts.conf"
+
+# Where "tell Claude to ... in the <name> repo" goes looking.
+# ORBIT_REPO_ROOTS="$HOME/projects $HOME/code $HOME/dev"
+# ORBIT_DEFAULT_REPO=""          # used when you don't name one
+
+# Claude runs headless, so it can't answer a permission prompt. Narrow this
+# if you'd rather it only ever read.
+# ORBIT_CLAUDE_FLAGS="--permission-mode acceptEdits"
+
+# Mail: what counts as awaiting a reply, and how many one command may touch.
+# ORBIT_MAIL_AWAITING_DAYS=7
+# ORBIT_MAIL_MAX_BATCH=25
+
+# For anything the action catalog doesn't cover, Claude writes a one-line
+# command, Orbit reads it back, and it runs only on your yes. 0 allows only
+# the catalog.
+# ORBIT_FREEFORM=1
+
+# How long a spoken "yes" stays valid after the question.
+# ORBIT_PLAN_TTL_MINUTES=10
+
 # --- when it fires ---------------------------------------------------------
 
 # WELCOME_EARLIEST_HOUR=5        # a 1am session doesn't count as a new day

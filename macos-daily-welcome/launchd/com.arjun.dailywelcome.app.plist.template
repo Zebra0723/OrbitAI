@@ -22,6 +22,8 @@
     <dict>
         <key>DAILY_WELCOME_BIN</key>
         <string>@@BIN@@</string>
+        <key>ORBIT_BIN</key>
+        <string>@@ORBIT@@</string>
         <key>PATH</key>
         <string>@@PATH@@</string>
     </dict>

@@ -8,11 +8,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LABEL="${DAILY_WELCOME_LABEL:-com.arjun.dailywelcome}"
 APP_DIR="$HOME/Applications/DailyWelcome.app"
 BIN_LINK="$HOME/.local/bin/daily-welcome"
+ORBIT_LINK="$HOME/.local/bin/orbit"
+CONTACTS="$HOME/.config/daily-welcome/contacts.conf"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 STATE_DIR="$HOME/.local/state/daily-welcome"
 LOG="$STATE_DIR/agent.log"
 CONFIG="$HOME/.config/daily-welcome/config.sh"
 INTERVAL="${DAILY_WELCOME_INTERVAL:-120}"
+WAKE_WORD="${ORBIT_WAKE_WORD:-hey Orbit}"
 AGENT_PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 WANT_APP=1
 
@@ -48,7 +51,19 @@ if [ ! -f "$CONFIG" ]; then
 fi
 
 ln -sfn "$ROOT/bin/daily-welcome" "$BIN_LINK"
-chmod +x "$ROOT/bin/daily-welcome"
+ln -sfn "$ROOT/bin/orbit" "$ORBIT_LINK"
+chmod +x "$ROOT/bin/daily-welcome" "$ROOT/bin/orbit"
+
+if [ ! -f "$CONTACTS" ]; then
+  cat > "$CONTACTS" <<'CONTACTS_EOF'
+# Nicknames for the people you message by voice.
+# Anything not listed here is looked up in Contacts by name.
+#
+#   mama = +15551234567
+#   priya = priya@example.com
+#   boss = Alex Chen
+CONTACTS_EOF
+fi
 
 # --- 2. stop anything already running --------------------------------------
 
@@ -64,7 +79,8 @@ if [ "$WANT_APP" -eq 1 ]; then
     rm -rf "$APP_DIR"
     mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 
-    swiftc -O -o "$APP_DIR/Contents/MacOS/DailyWelcome" "$ROOT/menubar/main.swift"
+    swiftc -O -o "$APP_DIR/Contents/MacOS/DailyWelcome" \
+      "$ROOT/menubar/main.swift" "$ROOT/menubar/listener.swift"
 
     cat > "$APP_DIR/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -82,6 +98,13 @@ if [ "$WANT_APP" -eq 1 ]; then
     <!-- menu bar only: no Dock icon, no windows -->
     <key>LSUIElement</key><true/>
     <key>DWScriptPath</key><string>$BIN_LINK</string>
+    <key>DWOrbitPath</key><string>$ORBIT_LINK</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Orbit listens for "$WAKE_WORD" so you can give it commands out loud.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Orbit turns what you say into commands. Recognition runs on this Mac.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Orbit controls apps like Mail, Messages and Music on your behalf.</string>
 </dict>
 </plist>
 PLIST
@@ -108,6 +131,7 @@ if [ "$BUILT_APP" -eq 1 ]; then
   sed -e "s|@@LABEL@@|$LABEL|g" \
       -e "s|@@PROGRAM@@|$APP_DIR/Contents/MacOS/DailyWelcome|g" \
       -e "s|@@BIN@@|$BIN_LINK|g" \
+      -e "s|@@ORBIT@@|$ORBIT_LINK|g" \
       -e "s|@@LOG@@|$LOG|g" \
       -e "s|@@PATH@@|$AGENT_PATH|g" \
       "$ROOT/launchd/com.arjun.dailywelcome.app.plist.template" > "$PLIST"
@@ -141,7 +165,18 @@ echo "  See settings:    $BIN_LINK --status"
 echo "  Edit settings:   $CONFIG"
 echo "  Uninstall:       $ROOT/uninstall.sh"
 echo
-echo "  The first run asks for Reminders and Calendar access - say yes once."
+echo "  Say hello:       \"$WAKE_WORD, what time is it\""
+echo "  What it knows:   $ORBIT_LINK examples"
+echo
+echo "  Permissions it will ask for, once each:"
+echo "    Microphone + Speech Recognition   listening for \"$WAKE_WORD\""
+echo "    Reminders, Calendar, Mail,        reading and acting on your things"
+echo "    Messages, Contacts, Notes"
+echo "    Accessibility                     typing and window commands"
+echo
+echo "  One it can't ask for: reading Messages needs Full Disk Access, which"
+echo "  you add by hand - System Settings > Privacy & Security > Full Disk"
+echo "  Access > + > $APP_DIR"
 echo
 echo "  Until an ElevenLabs key is set it speaks with the best built-in macOS"
 echo "  voice. Set the key and it switches to the ElevenLabs voice instead."

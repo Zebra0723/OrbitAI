@@ -1,188 +1,271 @@
-# Daily Welcome
+# Daily Welcome + Orbit
 
-A menu bar agent for macOS that greets you **once a day**, the first time you
-open your Mac. It says *"Welcome Arjun"* in an American female synthetic voice
-and reads you a short briefing — reminders due today, what's on the calendar,
-open tasks — while showing the same thing on screen.
+A menu bar assistant for macOS, in two halves.
 
-It runs in the background from the menu bar. Nothing has to be open, no
-Terminal window, no Dock icon. Close the lid, open it tomorrow morning, and it
-speaks.
+**Daily Welcome** greets you once a day, the first time you open your Mac. It
+says *"Welcome Arjun"* in your ElevenLabs voice and reads a short briefing —
+reminders due, today's calendar, unread messages and mail, and anything Claude
+finished overnight.
 
-This is self-contained and unrelated to the rest of the repo; it just lives
-here.
+**Orbit** is the same voice, listening. Say *"Hey Orbit"* and give it a
+command: message someone, hand a job to Claude in one of your repos, reply to
+a pile of email, or drive the Mac itself.
+
+It lives in the menu bar. No Terminal, no Dock icon, no windows.
+
+This is self-contained and unrelated to the rest of the repo; it just lives here.
 
 ## Install
 
 ```bash
 cd macos-daily-welcome
 ./install.sh
+daily-welcome --set-key      # your ElevenLabs API key, into the Keychain
+daily-welcome --force        # hear the briefing now
 ```
 
-Then, to hear it immediately:
-
-```bash
-~/.local/bin/daily-welcome --force
-```
-
-The first run asks for a few permissions — Reminders, Calendar, and
-controlling System Events so it can put the panel on screen. Allow them once
-and it won't ask again.
+Then say **"Hey Orbit, what time is it"** to check the ears work.
 
 If `swiftc` isn't installed (`xcode-select --install` gets it), the installer
 skips the menu bar app and falls back to a background check every two minutes.
-Same greeting, no icon.
+The briefing still works; voice commands need the app.
 
 ## The voice
 
-It speaks with your ElevenLabs voice — **Veda Sky** by default, at the same
-settings your sample was rendered with (speed 1.00, stability 0.50, similarity
-0.75, style 0, speaker boost on).
+**Veda Sky** by default, via ElevenLabs, at the settings your sample was
+rendered with (speed 1.00, stability 0.50, similarity 0.75, style 0, speaker
+boost on). It's a hosted professional clone, so it needs your API key —
+`--set-key` stores it in the login Keychain. The voice is looked up by name in
+your account, so add it to your ElevenLabs voices first, or set
+`WELCOME_ELEVEN_VOICE_ID` to skip the lookup.
 
-That voice is a hosted professional clone, so it needs your API key. Store it
-once in the login Keychain:
+**Without a key it still works.** It falls back to the best built-in macOS
+voice, so a missing key, dead network, or API error costs you the voice, never
+the briefing. Replies are cached, so replaying today's costs nothing.
 
 ```bash
-daily-welcome --set-key      # paste the key; input is hidden
-daily-welcome --test-voice   # confirms which voice actually spoke
+daily-welcome --voices       # which backend and voice are actually in use
+daily-welcome --test-voice   # say one line now
 ```
-
-The voice is looked up by name in your account, so add Veda Sky to your voices
-in ElevenLabs first. To skip the lookup, put the id straight in your settings
-as `WELCOME_ELEVEN_VOICE_ID`.
-
-**Without a key it still works** — it falls back to the best built-in macOS
-voice, so a missing key, dead network, or API error costs you the voice, never
-the briefing. Each briefing is one short request, cached in
-`~/.local/state/daily-welcome/cache`, so replaying today's costs nothing.
 
 ### Saying things correctly
 
 Speech engines mangle raw data in their own ways — `9:00 AM` as "nine
-hundred", `August 31` as "August thirty one" — so nothing reaches the engine
-as digits. The briefing is written out in words first: times become "nine
-thirty in the morning", dates "Monday the thirty-first of August", counts
-"three reminders". Titles get cleaned too: markdown stripped, URLs collapsed
-to "a link", `w/` to "with", `3pm` to "3 PM".
+hundred", `August 31` as "August thirty one" — so nothing reaches the engine as
+digits. Times become "nine thirty in the morning", dates "Monday the
+thirty-first of August", counts "three reminders". Titles are stripped of
+markdown, URLs collapse to "a link", `3pm` becomes `3 PM`.
 
-Pause markup like `[[slnc 400]]` is deliberately not used. Older Apple voices
-obey it; the newer neural ones read it out loud. Pacing comes from sentence
-structure instead, which every engine handles.
+Pause markup like `[[slnc 400]]` is deliberately unused: older Apple voices
+obey it, newer neural ones read it out loud. Pacing comes from sentence
+structure, which every engine handles.
 
-### What it actually says
+### What the briefing sounds like
 
-> *Welcome back, Arjun. Good morning, sir. It's eight forty-two in the
-> morning, Monday the thirty-first of August. Three reminders due today, one
-> overdue. Two events on the calendar. Top of the list: Call the bank. That one
-> is overdue. Next: Design review, at nine o'clock. Standing by.*
+> *Welcome back, Arjun. Good morning, sir. It's eight forty-two in the morning,
+> Monday the thirty-first of August. Three reminders due today, one overdue.
+> Two events on the calendar. Four unread messages. Top of the list: Call the
+> bank. That one is overdue. Next: Design review, at nine o'clock. Standing by.*
 
-Short declaratives, no hedging. Times drop the "in the morning" tail when
-it's already obvious from the current hour.
+Short declaratives, no hedging. `WELCOME_HONORIFIC=""` drops the "sir",
+`WELCOME_CLOSER` changes the sign-off, `WELCOME_SPEAK_MAX_ITEMS` sets how many
+items get read.
 
-Tune the wording without touching code: `WELCOME_HONORIFIC=""` drops the
-"sir", `WELCOME_CLOSER="Let's get to it."` changes the sign-off, and
-`WELCOME_SPEAK_MAX_ITEMS` sets how many items get read.
+## Talking to Orbit
+
+Say the wake word, then the command. It chimes when it starts listening, and
+the menu bar icon changes so an open microphone is never something you take on
+trust. Recognition runs **on-device** — audio doesn't leave the Mac.
+
+### Messages, Claude, Mail
+
+```
+Hey Orbit, message Mama saying I'm running late
+Hey Orbit, text Priya saying dinner at eight
+
+Hey Orbit, tell Claude to debug the flaky test in the dailyos repo
+Hey Orbit, tell Claude on the dailyos mvp chat to fix the login flow
+
+Hey Orbit, send an automated reply to all emails awaiting reply
+             saying that I'm on vacation
+```
+
+Nicknames live in `~/.config/daily-welcome/contacts.conf` (`mama =
++15551234567`); anything not listed is looked up in Contacts by name. A name
+that resolves to nobody stops the command — guessing who you meant is the one
+failure worth refusing.
+
+Claude jobs run detached in the repo you named, matched loosely, so "the
+dailyos mvp development chat" finds `~/projects/dailyos-mvp`. The result waits
+for you in the next briefing: *"Claude finished fixing the login flow in
+dailyos."*
+
+Email replies are **drafted first**. Orbit writes them into Mail, tells you how
+many, and sends only on your yes. Delete a draft before answering and that one
+stays unsent.
+
+### Driving the Mac
+
+| | |
+|---|---|
+| Sound | volume up / down / set volume to 40 / mute / louder |
+| Display | brighter, dimmer, dark mode, light mode |
+| Music | play, pause, next song, previous track |
+| Apps | open Spotify, quit Slack, switch to Safari |
+| Windows | minimise, full screen, close this window, hide everything |
+| System | lock my Mac, go to sleep, turn off the display, restart, shut down |
+| Network | turn wifi on / off, bluetooth on / off (needs `blueutil`) |
+| Files | take a screenshot, empty the trash, find the file taxes 2025 |
+| Web | search for flights to Delhi, open https://… |
+| Bits | what time is it, how much battery, read my clipboard, type hello |
+| Making things | remind me to call the dentist, make a note saying buy milk, set a timer for 10 minutes |
+| Reading back | brief me, what's on my calendar, read my messages, any new email, what did Claude do |
+
+`orbit examples` prints this list on the machine.
+
+### Anything else
+
+If none of the above matches, Claude Code writes a one-line command for it,
+Orbit reads back what it would do, and it runs only on your yes.
+
+Two things bound that. Whole categories are refused outright no matter how the
+sentence was phrased — `sudo`, disk utilities, `rm -rf`, piping the network
+into a shell, keychain dumps — and nothing without a catalog entry ever runs
+unconfirmed. Set `ORBIT_FREEFORM=0` to allow only the catalog.
+
+### What gets confirmed
+
+Reversible things happen on the word: volume, brightness, opening an app,
+screenshots, timers. Confirming "volume up" out loud is slower than the key
+would have been.
+
+These are said back and wait for a yes: **sending a message**, **sending
+email**, **dispatching Claude**, quitting an app, emptying the trash, turning
+Wi-Fi off, sleep, restart, shut down, typing into whatever's focused, and every
+freeform command. Say *no*, *cancel*, or *never mind* to drop it; say nothing
+for twelve seconds and it drops itself. A confirmation also expires after ten
+minutes, so a late "yes" can't fire an old command.
 
 ## The menu bar item
 
-| Item | What it does |
+| Item | |
 |---|---|
-| Play Today's Briefing | Replay the whole thing, voice and all |
-| Show Briefing Only | The panel, silently |
-| Speak Briefing Only | Just the voice |
+| Listen Now | Skip the wake word, talk immediately |
+| Listening for "hey orbit" | Toggle the microphone off entirely |
+| Play Today's Briefing | Replay it, voice and all |
+| Show / Speak Briefing Only | One half or the other |
 | Stop Talking | Cuts playback immediately |
 | Mute for Today | Nothing more until tomorrow |
 | Greet Me Again Today | Forget that today's greeting happened |
-| Edit Settings… | Opens `~/.config/daily-welcome/config.sh` |
-| Open Log | The agent log |
+| Edit Settings… / Open Log | `~/.config/daily-welcome/config.sh`, agent log |
+
+## Permissions
+
+macOS asks for each of these once, the first time it's needed:
+
+| | For |
+|---|---|
+| Microphone, Speech Recognition | hearing "Hey Orbit" |
+| Reminders, Calendar, Contacts | reading them, and adding to them |
+| Mail, Messages, Notes, Music | reading and acting on your behalf |
+| Accessibility | typing, window commands, media keys |
+
+One it can't ask for: **reading Messages needs Full Disk Access**, added by
+hand under System Settings → Privacy & Security → Full Disk Access → +
+→ `~/Applications/DailyWelcome.app`. Without it, everything else still works
+and the Messages section says so.
 
 ## Settings
 
-Everything lives in `~/.config/daily-welcome/config.sh` (plain bash, created on
-install from `config.example.sh`). The ones worth knowing:
+`~/.config/daily-welcome/config.sh`, plain bash, created on install from
+`config.example.sh`.
 
 | Setting | Default | |
 |---|---|---|
 | `WELCOME_NAME` | `Arjun` | what it calls you |
-| `WELCOME_HONORIFIC` | `sir` | how the voice addresses you |
-| `WELCOME_SPEAK` | `1` | `0` for silent |
-| `WELCOME_CLOSER` | `Standing by.` | the sign-off |
-| `WELCOME_TTS` | `auto` | `elevenlabs`, `say`, or `auto` |
-| `WELCOME_ELEVEN_VOICE_NAME` | `Veda Sky` | looked up in your account |
-| `WELCOME_ELEVEN_STABILITY` | `0.5` | lower is more expressive, higher steadier |
-| `WELCOME_VOICE` | *(auto)* | pin the fallback macOS voice |
+| `WELCOME_SECTIONS` | reminders calendar messages mail claude tasks | which sections, in order |
 | `WELCOME_PRESENT` | `dialog` | `dialog`, `notification`, `both`, `stdout` |
-| `WELCOME_SECTIONS` | `reminders calendar tasks` | which sections, in order |
-| `WELCOME_TASKS_FILE` | `~/todo.md` | markdown checkboxes; unchecked ones show up |
-| `WELCOME_EARLIEST_HOUR` | `5` | a 1am session doesn't count as a new day |
-
-Calendar events come from [`icalBuddy`](https://hasseg.org/icalBuddy/) when
-it's installed (`brew install ical-buddy`) — it's much faster than asking
-Calendar.app. Without it, that section is quietly skipped unless you set
-`WELCOME_CALENDAR_APPLESCRIPT=1`.
-
-## How "first time of the day" works
-
-The menu bar app watches three signals: system wake, screen unlock, and a
-five-minute backstop timer for anything it misses. Each one asks the script
-whether today's greeting is still owed. The script keeps a date stamp in
-`~/.local/state/daily-welcome/last-run` and refuses to greet twice, so the
-triple coverage never means a double greeting.
-
-Two guards keep it from firing at the wrong moment: it waits until you've
-actually unlocked the screen, so the greeting isn't spent on the lock screen,
-and it won't treat a session before 5am as a new day.
+| `WELCOME_EARLIEST_HOUR` | `5` | a 1am session isn't a new day |
+| `WELCOME_ELEVEN_VOICE_NAME` | `Veda Sky` | looked up in your account |
+| `ORBIT_LISTEN` | `1` | `0` never opens the microphone |
+| `ORBIT_WAKE_WORD` | `hey orbit` | what wakes it |
+| `ORBIT_REPO_ROOTS` | `~/projects ~/code …` | where Claude jobs look for repos |
+| `ORBIT_CLAUDE_FLAGS` | `--permission-mode acceptEdits` | Claude runs headless, so it can't answer a prompt |
+| `ORBIT_MAIL_AWAITING_DAYS` | `7` | how far back "awaiting reply" reaches |
+| `ORBIT_MAIL_MAX_BATCH` | `25` | blast radius for one mail command |
+| `ORBIT_FREEFORM` | `1` | `0` allows only the catalog |
 
 ## Commands
 
 ```
-daily-welcome              run the daily check (greets only once a day)
+daily-welcome              the daily check (greets only once a day)
 daily-welcome --force      greet now regardless
-daily-welcome --preview    greet now without using up today's greeting
-daily-welcome --print      print the briefing as text, no voice, no dialog
+daily-welcome --print      the briefing as text, no voice
 daily-welcome --status     what it thinks, and when it last ran
-daily-welcome --set-key    store your ElevenLabs key in the Keychain
-daily-welcome --test-voice speak one line and report which voice said it
-daily-welcome --voices     available voices and the chosen one
+daily-welcome --set-key    ElevenLabs key into the Keychain
+daily-welcome --test-voice speak one line, report which voice said it
 daily-welcome --hush       stop talking right now
-daily-welcome --mute-today skip the rest of today
-daily-welcome --reset      forget today's greeting
+
+orbit plan "<command>"     what it would do, as JSON
+orbit run <token>          carry out a planned action
+orbit say "<text>"         speak something in the Orbit voice
+orbit examples             every phrasing it knows
 ```
+
+## How "first time of the day" works
+
+The app watches system wake, screen unlock, and a five-minute backstop timer.
+Each asks the script whether today's greeting is still owed; a date stamp and a
+lock file mean the three overlapping triggers still greet exactly once. It
+waits until you've actually unlocked, so the greeting isn't spent on the lock
+screen.
 
 ## Troubleshooting
 
 **Nothing happened this morning.** `daily-welcome --status` shows the last
-greeting date. Check the agent is loaded with
-`launchctl list | grep dailywelcome`, and read `~/.local/state/daily-welcome/agent.log`.
+greeting date; `launchctl list | grep dailywelcome` shows the agent;
+`~/.local/state/daily-welcome/agent.log` has the rest.
 
-**It used the wrong voice.** `daily-welcome --voices` shows the backend in
-use. If it says `say`, the key isn't readable or the voice name isn't in your
-account — `--test-voice` prints the reason, and the agent log has the HTTP
-status from ElevenLabs.
+**It used the wrong voice.** `daily-welcome --voices` names the backend in use.
+If it says `say`, the key isn't readable or the voice name isn't in your
+account — `--test-voice` prints the reason.
 
-**"No access to Reminders yet."** macOS asked and got a no. Re-allow under
-System Settings → Privacy & Security → Reminders (and Calendars), enabling
-`DailyWelcome`.
+**It isn't hearing me.** Check the menu bar item says Listening, and that
+Privacy & Security → Microphone and Speech Recognition both list DailyWelcome.
+"Listen Now" skips the wake word, which separates a hearing problem from a
+wake-word problem.
+
+**It heard me but did the wrong thing.** `orbit plan "what you said"` prints
+the interpretation without running it.
 
 ## Uninstall
 
 ```bash
-./uninstall.sh           # removes the app, agent, and command
-./uninstall.sh --purge   # also removes settings and state
+./uninstall.sh           # app, agent, commands
+./uninstall.sh --purge   # also settings and state
 ```
 
 ## Layout
 
 ```
-bin/daily-welcome       the briefing itself: gather, speak, show
+bin/daily-welcome       the briefing: gather, speak, show
+bin/orbit               voice commands: plan, confirm, run
 lib/config.sh           defaults, then your ~/.config override
 lib/common.sh           timeouts, lock-screen check, small helpers
-lib/sources.sh          reminders, calendar, tasks -> tab-separated records
-lib/present.sh          records -> screen text, dialog, notification
-lib/speech_text.sh      numbers, times and dates -> words a voice reads right
-lib/tts_eleven.sh       ElevenLabs synthesis, caching, and soft failure
+lib/sources.sh          reminders, calendar, tasks -> records
+lib/messages.sh         unread iMessages (chat.db), and sending one
+lib/mail.sh             unread mail, awaiting-reply, drafting, sending
+lib/claude_jobs.sh      repo lookup, dispatching Claude, reporting back
+lib/contacts.sh         nicknames and Contacts lookup
+lib/system.sh           the Mac control catalog, graded by reversibility
+lib/freeform.sh         Claude-written commands, denylist, confirmation
+lib/intents.sh          sentence -> intent
+lib/speech_text.sh      numbers, times, dates -> words a voice reads right
+lib/tts_eleven.sh       ElevenLabs synthesis, caching, soft failure
 lib/voice.sh            records -> spoken sentences, backend choice
-menubar/main.swift      the menu bar agent (wake/unlock triggers)
+lib/present.sh          records -> screen text, dialog, notification
+menubar/main.swift      the menu bar app, wake and unlock triggers
+menubar/listener.swift  wake word, command capture, yes/no loop
 launchd/*.template      login agent, one per install mode
 install.sh              build, install, load
 ```
