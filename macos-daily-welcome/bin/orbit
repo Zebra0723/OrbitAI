@@ -37,6 +37,7 @@ welcome_load_user_config
 . "$ROOT/lib/watch.sh"
 . "$ROOT/lib/nlu_openai.sh"
 . "$ROOT/lib/emoji.sh"
+. "$ROOT/lib/memory.sh"
 
 PLAN_DIR="$WELCOME_STATE_DIR/plans"
 mkdir -p "$PLAN_DIR" 2>/dev/null
@@ -59,6 +60,7 @@ orbit - voice commands for daily-welcome
   orbit warm                     pre-render the lines it says most
   orbit greeting                 the line for a wake word with no command
   orbit console                  open the OrbitAI console in a browser
+  orbit memory [show|add|forget|clear]   what it remembers about you
   orbit log                      what it heard, how it read it, how long it took
   orbit selftest                 check every feature in the place it runs
   orbit examples                 phrasings it understands
@@ -447,12 +449,10 @@ case "${1:-}" in
       chat)
         # The classifier already wrote the answer, so this costs nothing
         # extra - one request understood the sentence and replied to it.
-        chat_remember "$transcript" "$arg1"
-        # A checklist is unbearable read aloud and useful on screen, so the
-        # long version goes to a panel while the voice keeps it to a line.
-        if [ -n "$arg2" ]; then
-          ( present_dialog "Orbit" "$(printf '%s' "$arg2" | sed 's/\\n/\n/g')" 120 & ) 2>/dev/null
-        fi
+        memory_log_turn "$transcript" "$arg1"
+        # Anything durable it noticed goes to the facts file, written by
+        # the same request that answered - remembering costs nothing extra.
+        [ -n "$arg2" ] && memory_add_fact "$arg2"
         emit "$(tone_shape "$ORBIT_TONE" "$arg1")" false "" ;;
       social)     plan_social "$arg1" ;;
       ask)        plan_ask "$arg1" ;;
@@ -617,6 +617,33 @@ case "${1:-}" in
     speak_async "$line"
     [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
     printf '%s\n' "$line"
+    ;;
+  memory)
+    shift
+    case "${1:-show}" in
+      show)
+        facts="$(memory_facts)"
+        if [ -n "$facts" ]; then
+          echo "What it remembers about you:"
+          printf '%s\n' "$facts" | awk -F'\t' '{ printf "  %s  %s\n", $1, $2 }'
+        else
+          echo "It hasn't noted anything durable yet."
+        fi
+        echo
+        echo "Recent conversation:"
+        memory_recent | awk -F'\t' '{ printf "  %-9s %s\n", $1, substr($2, 1, 68) }' | tail -12
+        ;;
+      forget)
+        shift
+        [ -z "${1:-}" ] && { echo 'orbit memory forget "<words>"' >&2; exit 2; }
+        memory_forget "$1"; echo "Forgotten anything mentioning \"$1\"." ;;
+      clear)  memory_clear; echo "Memory cleared - facts and conversation both." ;;
+      add)
+        shift
+        [ -z "${1:-}" ] && { echo 'orbit memory add "<a fact>"' >&2; exit 2; }
+        memory_add_fact "$1"; echo "Noted." ;;
+      *) echo 'orbit memory [show|add "..."|forget "..."|clear]' >&2; exit 2 ;;
+    esac
     ;;
   log)
     # What it heard, how it read it, and how long each turn took.

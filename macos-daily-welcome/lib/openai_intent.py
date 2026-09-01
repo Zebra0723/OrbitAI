@@ -24,21 +24,21 @@ SYSTEM = """You convert spoken commands for a Mac voice assistant into one inten
 
 Answer with JSON only: {"intent": ..., "arg1": ..., "arg2": ..., "reply": ...}
 
-"reply" is only used for intent "chat". It is SPOKEN ALOUD, so it must be
-sayable: one or two sentences, no markup, no bullet points, no emoji, no
-headings, numbers written as words, no preamble.
+"reply" is only used for intent "chat". It is SPOKEN ALOUD: one sentence.
+Two only if the second is a short question. No markup, no bullet points,
+no emoji, no headings, no preamble, numbers written as words.
 
-Being brief is not the same as being flat. Talk like a friend who happens
-to know things: react to what they actually said, then ask the one
-question that moves it forward or offer the one thing that would help.
-"I got a new MacBook" deserves "Congratulations. Air or Pro? I can walk
-you through setting it up" - not a definition of MacBooks, and not
-silence.
+Short is not the same as flat. React to what they actually said, then ask
+the one question that moves it forward. "I got a new MacBook" deserves
+"Congratulations. Air or Pro?" - not a definition, not a list of things
+you could help with, and not silence.
 
-"detail" is optional and OPTIONAL ONLY when a list would genuinely help -
-a setup checklist, steps to follow, options to choose from. It is shown on
-screen, never spoken, so it can be as long and as structured as it needs
-to be. Leave it out for ordinary conversation.
+Never offer a menu of options. Ask one question instead.
+
+"remember" is optional: one short line, only when they have said something
+durable about themselves worth knowing next week - what they own, who
+people are to them, what they are working on, what they prefer. Not
+pleasantries, not questions, not things that will be stale tomorrow.
 
 Intents and their arguments:
   message     arg1 = person, arg2 = what to say
@@ -156,7 +156,12 @@ def main():
     macros = os.environ.get("ORBIT_MACRO_PHRASES", "").strip()
     user = text if not macros else f"{text}\n\nThe user's macro phrases: {macros}"
 
-    messages = [{"role": "system", "content": SYSTEM}]
+    system = SYSTEM
+    facts = os.environ.get("ORBIT_MEMORY_FACTS", "").strip()
+    if facts:
+        system += "\n\nWhat you already know about them:\n" + facts
+
+    messages = [{"role": "system", "content": system}]
     for line in os.environ.get("ORBIT_CHAT_HISTORY", "").splitlines():
         if "\t" in line:
             role, content = line.split("\t", 1)
@@ -207,9 +212,9 @@ def main():
     if intent in ("chat", "none"):
         reply = str(parsed.get("reply") or parsed.get("arg1") or "").strip()
         if reply:
-            # arg2 carries the long version, if there is one. The voice
-            # says the short thing; the screen gets the checklist.
-            answer("chat", reply, parsed.get("detail", ""))
+            # arg2 carries anything worth remembering, which the shell
+            # appends to the facts file.
+            answer("chat", reply, parsed.get("remember", ""))
         answer("none")
 
     answer(intent, parsed.get("arg1", ""), parsed.get("arg2", ""))

@@ -226,7 +226,13 @@
 : "${ORBIT_EMOJI:=1}"
 
 # How many previous exchanges the chat replies can see.
-: "${ORBIT_CHAT_TURNS:=6}"
+: "${ORBIT_CHAT_TURNS:=8}"
+
+# Memory. The transcript is everything ever said, trimmed only when it gets
+# genuinely large; facts are the durable things worth carrying into next
+# week, written by the same request that answers you.
+: "${ORBIT_MEMORY_MAX_LINES:=4000}"
+: "${ORBIT_MEMORY_FACTS_MAX:=60}"
 
 # Hand phrasings the rules miss to Claude Code to classify.
 : "${ORBIT_NLU_FALLBACK:=1}"

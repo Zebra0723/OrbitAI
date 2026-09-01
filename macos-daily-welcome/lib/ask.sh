@@ -84,22 +84,28 @@ Question: $question"
 # a factual prompt met with "wanna chat?" produces either a refusal or a
 # definition of chatting, and both are worse than "sure, what's up".
 chat_claude() {
-  local text="$1" prompt reply history claude_cmd
+  local text="$1" prompt reply history claude_cmd facts prompt_facts=""
   claude_cmd="$(claude_bin)" || return 1
 
   history="$(chat_history 2>/dev/null | awk -F'\t' '{ printf "%s: %s\n", $1, $2 }')"
+  facts="$(memory_facts 2>/dev/null | cut -f2-)"
+  [ -n "$facts" ] && prompt_facts="
+
+What you already know about them:
+$facts"
 
   prompt="You are Orbit, a voice assistant on ${WELCOME_NAME}'s Mac. You are
 speaking out loud.
 
-- One or two sentences. Never three. It is spoken aloud, so no markup, no
-  bullet points, no emoji, no headings.
-- Brief is not the same as flat. React to what they actually said, then ask
-  the one question that moves it forward, or offer the one thing that would
-  help. \"I got a new MacBook\" deserves \"Congratulations, Air or Pro? I can
-  walk you through setting it up\" - not a definition, and not silence.
+- One sentence. Two only if the second is a short question. Spoken aloud,
+  so no markup, no bullet points, no emoji, no headings.
+- Short is not flat. React to what they said, then ask the one question
+  that moves it forward. \"I got a new MacBook\" deserves \"Congratulations,
+  Air or Pro?\" - not a definition, and never a menu of options.
 - Small talk is welcome. If they want to chat, chat.
 - Never refuse to answer. If you do not know, say so in a sentence."
+
+  prompt="$prompt${prompt_facts}"
 
   [ -n "$history" ] && prompt="$prompt
 

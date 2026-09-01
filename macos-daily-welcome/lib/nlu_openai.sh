@@ -41,6 +41,7 @@ openai_intent() {
 
   out="$(OPENAI_API_KEY="$key" ORBIT_MACRO_PHRASES="$phrases" \
     ORBIT_CHAT_HISTORY="$(chat_history)" \
+    ORBIT_MEMORY_FACTS="$(memory_facts | cut -f2-)" \
     run_with_timeout "$ORBIT_OPENAI_TIMEOUT" \
     python3 "$ROOT/lib/openai_intent.py" "$text")"
   rc=$?
@@ -77,24 +78,3 @@ openai_chat() {
   printf '%s' "$out"
 }
 
-# The last few turns, oldest first, as "role<TAB>text" lines.
-_chat_file() { printf '%s/chat-history' "$WELCOME_STATE_DIR"; }
-
-chat_history() {
-  [ -f "$(_chat_file)" ] || return 0
-  # Anything older than the conversation window is not context, it is noise.
-  if [ -z "$(find "$(_chat_file)" -mmin "-$((ORBIT_CONVERSATION_SECONDS / 60 + 5))" 2>/dev/null)" ]; then
-    rm -f "$(_chat_file)"
-    return 0
-  fi
-  tail -n "$((ORBIT_CHAT_TURNS * 2))" "$(_chat_file)"
-}
-
-chat_remember() {
-  mkdir -p "$WELCOME_STATE_DIR" 2>/dev/null
-  {
-    printf 'user\t%s\n' "$(printf '%s' "$1" | tr '\n' ' ')"
-    printf 'assistant\t%s\n' "$(printf '%s' "$2" | tr '\n' ' ')"
-  } >> "$(_chat_file)"
-  tail -n 40 "$(_chat_file)" > "$(_chat_file).tmp" && mv "$(_chat_file).tmp" "$(_chat_file)"
-}
