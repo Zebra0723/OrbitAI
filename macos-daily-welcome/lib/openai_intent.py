@@ -22,7 +22,11 @@ TIMEOUT = float(os.environ.get("ORBIT_OPENAI_TIMEOUT", "12"))
 
 SYSTEM = """You convert spoken commands for a Mac voice assistant into one intent.
 
-Answer with JSON only: {"intent": ..., "arg1": ..., "arg2": ...}
+Answer with JSON only: {"intent": ..., "arg1": ..., "arg2": ..., "reply": ...}
+
+"reply" is only used for intent "chat". It is spoken out loud, so: one or
+two sentences, no markup, no lists, no emoji, numbers written as words, no
+preamble. Answer the person directly.
 
 Intents and their arguments:
   message     arg1 = person, arg2 = what to say
@@ -35,7 +39,7 @@ Intents and their arguments:
   ask         arg1 = the question, asked as the person asked it
   screen      arg1 = the question about what is on screen
   macro       arg1 = the phrase, only if it matches one of the user's macros
-  none        when it is not a command at all
+  chat        not a command - put your spoken answer in "reply"
 
 system actions:
   volume_set(0-100) volume_up volume_down mute unmute brightness_up brightness_down
@@ -54,8 +58,10 @@ Rules:
   readback, not ask - they are answered locally.
 - Anything about the screen in front of them is "screen".
 - Thanks, goodbye and greetings are "social".
-- Prefer "none" over a wrong guess. A misheard command that acts is worse
-  than one that asks again."""
+- Anything that is not a command - a question, a remark, small talk,
+  something half-heard - is "chat", and you answer it in "reply". Never
+  refuse to respond.
+- When a command is clear, act on it: do not chat about it instead."""
 
 
 def answer(intent, arg1="", arg2=""):
@@ -138,12 +144,17 @@ def main():
     macros = os.environ.get("ORBIT_MACRO_PHRASES", "").strip()
     user = text if not macros else f"{text}\n\nThe user's macro phrases: {macros}"
 
+    messages = [{"role": "system", "content": SYSTEM}]
+    for line in os.environ.get("ORBIT_CHAT_HISTORY", "").splitlines():
+        if "\t" in line:
+            role, content = line.split("\t", 1)
+            if role in ("user", "assistant") and content.strip():
+                messages.append({"role": role, "content": content.strip()})
+    messages.append({"role": "user", "content": user})
+
     body = json.dumps({
         "model": MODEL,
-        "messages": [
-            {"role": "system", "content": SYSTEM},
-            {"role": "user", "content": user},
-        ],
+        "messages": messages,
         "response_format": {"type": "json_object"},
         "temperature": 0,
         "max_tokens": 200,
@@ -173,10 +184,18 @@ def main():
     except (KeyError, IndexError, json.JSONDecodeError):
         answer("none")
 
-    intent = str(parsed.get("intent", "none")).strip().lower()
+    intent = str(parsed.get("intent", "chat")).strip().lower()
     allowed = {"message", "call", "claude", "mail_reply", "system",
-               "readback", "social", "ask", "screen", "macro", "none"}
+               "readback", "social", "ask", "screen", "macro", "chat", "none"}
     if intent not in allowed:
+        intent = "chat"
+
+    # One request, not two. Classifying and then asking again for something
+    # to say doubled the wait on every sentence that wasn't a command.
+    if intent in ("chat", "none"):
+        reply = str(parsed.get("reply") or parsed.get("arg1") or "").strip()
+        if reply:
+            answer("chat", reply)
         answer("none")
 
     answer(intent, parsed.get("arg1", ""), parsed.get("arg2", ""))

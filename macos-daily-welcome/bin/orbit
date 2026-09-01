@@ -59,6 +59,7 @@ orbit - voice commands for daily-welcome
   orbit warm                     pre-render the lines it says most
   orbit greeting                 the line for a wake word with no command
   orbit console                  open the OrbitAI console in a browser
+  orbit log                      what it heard, how it read it, how long it took
   orbit selftest                 check every feature in the place it runs
   orbit examples                 phrasings it understands
 
@@ -433,6 +434,7 @@ case "${1:-}" in
     ORBIT_TONE="$(tone_of "$transcript")"
     tone_apply "$ORBIT_TONE"
 
+    plan_started="$(date '+%s')"
     parsed="$(parse_intent "$transcript")"
     intent="$(printf '%s' "$parsed" | cut -f1)"
     arg1="$(printf '%s' "$parsed" | cut -f2)"
@@ -441,6 +443,11 @@ case "${1:-}" in
 
     case "$intent" in
       macro)      plan_macro "$arg1" || emit "That macro has no steps." false "" ;;
+      chat)
+        # The classifier already wrote the answer, so this costs nothing
+        # extra - one request understood the sentence and replied to it.
+        chat_remember "$transcript" "$arg1"
+        emit "$(tone_shape "$ORBIT_TONE" "$arg1")" false "" ;;
       social)     plan_social "$arg1" ;;
       ask)        plan_ask "$arg1" ;;
       screen)     plan_screen "$arg1" ;;
@@ -468,6 +475,16 @@ case "${1:-}" in
           emit "I heard you, but I have no model to answer with. Add a key with daily-welcome, set openai key." false ""
         fi ;;
     esac
+
+    # A record of what was heard and what was made of it. Without this,
+    # "it isn't replying correctly" is a guess; with it, it is a diff.
+    {
+      printf '%s\t%ss\t%s\t%s\n' \
+        "$(date '+%H:%M:%S')" "$(( $(date '+%s') - plan_started ))" \
+        "$intent" "$(printf '%s' "$transcript" | cut -c1-70)"
+    } >> "$WELCOME_STATE_DIR/turns.log" 2>/dev/null
+    tail -n 60 "$WELCOME_STATE_DIR/turns.log" > "$WELCOME_STATE_DIR/turns.tmp" 2>/dev/null &&
+      mv "$WELCOME_STATE_DIR/turns.tmp" "$WELCOME_STATE_DIR/turns.log"
     ;;
   run)
     shift
@@ -594,6 +611,17 @@ case "${1:-}" in
     speak_async "$line"
     [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
     printf '%s\n' "$line"
+    ;;
+  log)
+    # What it heard, how it read it, and how long each turn took.
+    if [ -f "$WELCOME_STATE_DIR/turns.log" ]; then
+      printf 'time      took  intent      what you said\n'
+      awk -F'\t' '{ printf "%-9s %-5s %-11s %s\n", $1, $2, $3, $4 }' \
+        "$WELCOME_STATE_DIR/turns.log" | tail -n "${2:-20}"
+      printf '\nintent "chat" is conversation; "none" is nothing understood.\n'
+    else
+      echo "Nothing yet. Say something to it first."
+    fi
     ;;
   selftest)
     # Every upgrade, checked in the environment it actually runs in.

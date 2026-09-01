@@ -204,10 +204,19 @@
 : "${ORBIT_CONTEXT_TTL_SECONDS:=120}"
 
 # How commands are understood.
-#   rules  - only the built-in patterns, no network, no key
+#   rules  - only the built-in patterns, no network, no key, instant
 #   auto   - rules first, then OpenAI for anything they miss (default)
-#   openai - OpenAI first, for when the rules keep getting it wrong
+#   openai - OpenAI first, which understands more and costs a round trip
+#
+# In auto, a command the rules know answers without touching the network;
+# only the sentences they miss pay for a model. That one request now both
+# reads the sentence and writes the reply, rather than classifying and then
+# asking again.
 : "${ORBIT_NLU:=auto}"
+
+# gpt-4o-mini is the fast one. A larger model understands more and takes
+# noticeably longer to start talking, which on a voice assistant is the
+# thing you feel.
 : "${ORBIT_OPENAI_MODEL:=gpt-4o-mini}"
 : "${ORBIT_OPENAI_TIMEOUT:=12}"
 : "${ORBIT_OPENAI_KEYCHAIN:=daily-welcome-openai}"

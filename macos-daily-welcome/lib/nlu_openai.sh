@@ -40,6 +40,7 @@ openai_intent() {
   phrases="$(macros_list 2>/dev/null | cut -f1 | tr '\n' ',' | sed 's/,$//')"
 
   out="$(OPENAI_API_KEY="$key" ORBIT_MACRO_PHRASES="$phrases" \
+    ORBIT_CHAT_HISTORY="$(chat_history)" \
     run_with_timeout "$ORBIT_OPENAI_TIMEOUT" \
     python3 "$ROOT/lib/openai_intent.py" "$text")"
   rc=$?
