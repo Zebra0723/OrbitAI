@@ -79,6 +79,18 @@ while [ $# -gt 0 ]; do
     --doctor)     exec "$ROOT/bin/doctor" ;;
     --set-key)    MODE=setkey ;;
     --set-openai-key) MODE=setopenai ;;
+    sk-*|sk_*)
+      # A key given as an argument is written to ~/.zsh_history, shows up
+      # in ps output, and gets pasted into chat logs by accident. Refuse it
+      # and say why, rather than accepting it and leaving it lying around.
+      echo "daily-welcome: don't pass the key as an argument - it is saved" >&2
+      echo "in your shell history and visible to every process on the Mac." >&2
+      echo >&2
+      echo "Run the command on its own and paste at the prompt:" >&2
+      echo "  daily-welcome --set-openai-key" >&2
+      echo >&2
+      echo "That key is now in your history. Revoke it and make a new one." >&2
+      exit 2 ;;
     --check-key)  MODE=checkkey ;;
     --test-voice) MODE=testvoice ;;
     --hush)       MODE=hush ;;
