@@ -144,6 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .capturing:  symbol = "waveform"
         case .confirming: symbol = "questionmark.circle"
         case .working:    symbol = "gearshape"
+        case .speaking:   symbol = "speaker.wave.2"
         }
         if let button = statusItem.button,
            let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Daily Welcome") {

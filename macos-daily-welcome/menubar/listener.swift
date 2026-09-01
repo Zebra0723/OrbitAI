@@ -19,6 +19,7 @@ enum ListenState {
     case capturing     // collecting the command
     case confirming    // waiting for yes or no
     case working       // running something; not listening
+    case speaking      // talking, listening only for "stop"
 }
 
 final class OrbitListener: NSObject {
@@ -29,8 +30,14 @@ final class OrbitListener: NSObject {
     private var task: SFSpeechRecognitionTask?
 
     private var state: ListenState = .idle
+    private var stateSince = Date()
     private var heard = ""
     private var lastHeardAt = Date()
+    /// The wake word as it was actually heard, so it can be stripped off
+    /// the front of the command that follows it in the same breath.
+    private var wakePrefix = ""
+    /// What Orbit is currently saying, so its own words can't interrupt it.
+    private var speakingText = ""
     private var silenceTimer: Timer?
     private var restartTimer: Timer?
     private var pendingToken = ""
@@ -74,6 +81,10 @@ final class OrbitListener: NSObject {
     private let commandSilence: TimeInterval = 0.9
     private let confirmTimeout: TimeInterval = 12
     private var confirmStartedAt = Date()
+    /// How long a working or speaking state may last before it's treated
+    /// as hung. Long enough for a slow Mail query, short enough that you
+    /// don't stand there wondering.
+    private let stuckLimit: TimeInterval = 45
 
     /// Seconds to keep listening after answering a bare wake word.
     var followUpWindow: TimeInterval = 9
@@ -260,8 +271,14 @@ final class OrbitListener: NSObject {
             if let result = result {
                 self.handle(transcript: result.bestTranscription.formattedString)
             }
-            if error != nil, self.state == .idle {
-                DispatchQueue.main.async { self.restartRecognition() }
+            // A task that dies mid-command used to leave the ears deaf
+            // until the next wake word that never got heard. Restart it
+            // whatever state we're in.
+            if error != nil || result?.isFinal == true {
+                DispatchQueue.main.async {
+                    guard self.state != .working else { return }
+                    self.restartRecognition()
+                }
             }
         }
     }
@@ -287,20 +304,55 @@ final class OrbitListener: NSObject {
             let tail = String(text[range.upperBound...])
                 .trimmingCharacters(in: CharacterSet(charactersIn: " ,.!?"))
             status("woken", "heard the wake word", heard: lower)
-            heard = tail
             greeted = false
             lastHeardAt = Date()
             setState(.capturing)
             chime("Tink")
 
+            if tail.isEmpty {
+                // Nothing said in the same breath: start a clean task so the
+                // command isn't reported back with the wake word glued to
+                // the front of it.
+                heard = ""
+                restartRecognition()
+            } else {
+                heard = tail
+                wakePrefix = String(text[..<range.upperBound])
+            }
+
         case .capturing:
-            heard = text
+            // The recogniser reports the whole utterance each time, wake
+            // word included when it was said in one breath. Strip it, or
+            // the command handed on starts with "hey orbit".
+            if !wakePrefix.isEmpty, lower.hasPrefix(wakePrefix) {
+                heard = String(text.dropFirst(wakePrefix.count))
+                    .trimmingCharacters(in: CharacterSet(charactersIn: " ,.!?"))
+            } else {
+                heard = text
+            }
             lastHeardAt = Date()
 
         case .confirming:
             if let answer = yesOrNo(in: lower) {
                 setState(.working)
                 answer ? runPending() : cancelPending()
+                return
+            }
+            // Not a yes or a no, but clearly something. Treat a new command
+            // as abandoning the question rather than ignoring you for the
+            // next twelve seconds.
+            if text.split(separator: " ").count >= 2 {
+                let replacement = text
+                pendingToken.isEmpty ? () : dropPending()
+                heard = replacement
+                lastHeardAt = Date()
+                setState(.capturing)
+            }
+
+        case .speaking:
+            // Only listening for an interruption while it talks.
+            if stopWord(in: lower) {
+                interrupt()
             }
 
         case .working:
@@ -338,6 +390,44 @@ final class OrbitListener: NSObject {
         return nil
     }
 
+    /// Words that mean "be quiet", but only when Orbit isn't saying them
+    /// itself - it announces "Cancelled." and would otherwise cut itself off.
+    private func stopWord(in text: String) -> Bool {
+        let stops = ["stop", "shut up", "be quiet", "enough", "cancel that", "never mind"]
+        let mine = speakingText.lowercased()
+        for word in stops where text.contains(word) && !mine.contains(word) {
+            return true
+        }
+        return false
+    }
+
+    private func interrupt() {
+        speakingText = ""
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [orbitPath, "hush"]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+        status("interrupted", "stopped talking on request")
+        setState(.idle)
+        restartRecognition()
+    }
+
+    /// Drops a pending confirmation without announcing it - used when you
+    /// answer a question with a different command instead of yes or no.
+    private func dropPending() {
+        let token = pendingToken
+        pendingToken = ""
+        guard !token.isEmpty else { return }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [orbitPath, "cancel", token]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+    }
+
     private func checkSilence() {
         let quietFor = Date().timeIntervalSince(lastHeardAt)
 
@@ -367,6 +457,22 @@ final class OrbitListener: NSObject {
 
         if state == .confirming, Date().timeIntervalSince(confirmStartedAt) > confirmTimeout {
             cancelPending(silent: true)
+        }
+
+        // The one thing worse than a wrong answer is no answer. Any state
+        // that isn't "waiting for you" is supposed to be brief; if one of
+        // them outlasts its work - a shell command that never returns, a
+        // callback that never fires - the ears are dead and nothing says
+        // so. Time it out and start listening again.
+        let stuckFor = Date().timeIntervalSince(stateSince)
+        if (state == .working || state == .speaking), stuckFor > stuckLimit {
+            status("recovered", "\(state) lasted \(Int(stuckFor))s; starting over")
+            pendingToken = ""
+            speakingText = ""
+            heard = ""
+            greeted = false
+            setState(.idle)
+            restartRecognition()
         }
     }
 
@@ -472,7 +578,12 @@ final class OrbitListener: NSObject {
     private func say(_ text: String, then: @escaping () -> Void) {
         guard !text.isEmpty else { then(); return }
 
-        endRecognition()
+        // The microphone stays open while it talks, so "stop" works. Its
+        // own words come back through the mic, which is why stopWord()
+        // ignores anything Orbit is in the middle of saying.
+        speakingText = text
+        setState(.speaking)
+
         DispatchQueue.global(qos: .userInitiated).async {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/bin/bash")
@@ -481,7 +592,12 @@ final class OrbitListener: NSObject {
             process.standardError = FileHandle.nullDevice
             try? process.run()
             process.waitUntilExit()
-            DispatchQueue.main.async { then() }
+            DispatchQueue.main.async {
+                self.speakingText = ""
+                // An interruption already moved us on; don't undo it.
+                guard self.state == .speaking else { return }
+                then()
+            }
         }
     }
 
@@ -491,6 +607,7 @@ final class OrbitListener: NSObject {
 
     private func setState(_ next: ListenState) {
         state = next
+        stateSince = Date()
         onStateChange?(next)
     }
 }
