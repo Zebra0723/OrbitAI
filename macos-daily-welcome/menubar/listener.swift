@@ -38,6 +38,18 @@ final class OrbitListener: NSObject {
     /// Path to the `orbit` script; set by the app delegate.
     var orbitPath: String = ""
     var wakeWord: String = "hey orbit"
+    /// Where to leave a note about what the ears are doing. A menu bar app
+    /// has nowhere to show an error, so `doctor` reads this instead.
+    var statusPath: String = ""
+
+    /// The distinctive part of the wake phrase. Recognisers drop the "hey"
+    /// far more often than they drop the name.
+    private var wakeKey: String {
+        wakeWord.split(separator: " ").last.map(String.init) ?? wakeWord
+    }
+
+    private var lastStatus = ""
+    private var lastStatusWrite = Date.distantPast
 
     /// Called with the current state so the menu bar icon can reflect it.
     var onStateChange: ((ListenState) -> Void)?
@@ -55,19 +67,45 @@ final class OrbitListener: NSObject {
     // MARK: - Permissions and lifecycle
 
     func start() {
-        SFSpeechRecognizer.requestAuthorization { [weak self] status in
-            guard status == .authorized else {
-                NSLog("orbit: speech recognition not authorised (\(status.rawValue))")
+        guard recognizer != nil else {
+            status("no-recognizer", "Speech recognition isn't available for en-US on this Mac")
+            return
+        }
+        status("asking", "waiting for permission")
+
+        SFSpeechRecognizer.requestAuthorization { [weak self] auth in
+            guard let self = self else { return }
+            guard auth == .authorized else {
+                self.status("speech-denied",
+                            "Speech Recognition is off for this app (Privacy & Security > Speech Recognition)")
                 return
             }
             AVCaptureDevice.requestAccess(for: .audio) { granted in
                 guard granted else {
-                    NSLog("orbit: microphone access denied")
+                    self.status("mic-denied",
+                                "Microphone is off for this app (Privacy & Security > Microphone)")
                     return
                 }
-                DispatchQueue.main.async { self?.beginSession() }
+                DispatchQueue.main.async { self.beginSession() }
             }
         }
+    }
+
+    /// Leaves a one-line note about the ears where `doctor` can find it.
+    private func status(_ state: String, _ detail: String = "", heard: String? = nil) {
+        guard !statusPath.isEmpty else { return }
+        // Partial transcripts arrive several times a second; the file is a
+        // diagnostic, not a log, so it's rewritten at most every two seconds
+        // unless the state itself changed.
+        if state == lastStatus, heard != nil, Date().timeIntervalSince(lastStatusWrite) < 2 { return }
+        lastStatus = state
+        lastStatusWrite = Date()
+
+        let stamp = ISO8601DateFormatter().string(from: Date())
+        var text = "state\t\(state)\nupdated\t\(stamp)\nwake\t\(wakeWord)\n"
+        if !detail.isEmpty { text += "detail\t\(detail)\n" }
+        if let heard = heard, !heard.isEmpty { text += "heard\t\(heard)\n" }
+        try? text.write(toFile: statusPath, atomically: true, encoding: .utf8)
     }
 
     func stop() {
@@ -110,9 +148,10 @@ final class OrbitListener: NSObject {
         do {
             try engine.start()
         } catch {
-            NSLog("orbit: audio engine wouldn't start: \(error.localizedDescription)")
+            status("audio-failed", error.localizedDescription)
             return
         }
+        status("listening", "waiting for \"\(wakeWord)\"")
 
         restartRecognition()
 
@@ -169,11 +208,18 @@ final class OrbitListener: NSObject {
 
         switch state {
         case .idle:
-            guard let range = lower.range(of: wakeWord) else { return }
+            guard let range = wakeRange(in: lower) else {
+                // Not the wake word - but worth recording, because "it isn't
+                // hearing me" and "it hears me as something else" look
+                // identical from the outside and need different fixes.
+                status("listening", "waiting for \"\(wakeWord)\"", heard: lower)
+                return
+            }
             // Anything said after the wake word in the same breath counts
             // as the command, so "Hey Orbit, mute" works in one go.
             let tail = String(text[range.upperBound...])
                 .trimmingCharacters(in: CharacterSet(charactersIn: " ,.!?"))
+            status("woken", "heard the wake word", heard: lower)
             heard = tail
             greeted = false
             lastHeardAt = Date()
@@ -193,6 +239,24 @@ final class OrbitListener: NSObject {
         case .working:
             break
         }
+    }
+
+    /// Finds the wake word, forgivingly. Recognisers routinely drop the
+    /// "hey", split a name across words ("hey or bit"), or tack on a plural,
+    /// and none of those mean you didn't say it. The range returned is where
+    /// the command starts; an empty range at the end means "woken, but I
+    /// can't tell where the wake word ended".
+    private func wakeRange(in text: String) -> Range<String.Index>? {
+        if let r = text.range(of: wakeWord) { return r }
+        if let r = text.range(of: wakeKey) { return r }
+        if let r = text.range(of: wakeKey + "s") { return r }
+
+        // "hey or bit" - squash the spaces and look again.
+        let squashed = text.replacingOccurrences(of: " ", with: "")
+        if squashed.contains(wakeKey) || squashed.contains(wakeWord.replacingOccurrences(of: " ", with: "")) {
+            return text.endIndex..<text.endIndex
+        }
+        return nil
     }
 
     private func yesOrNo(in text: String) -> Bool? {

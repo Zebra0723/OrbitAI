@@ -59,7 +59,11 @@ src_reminders() {
     _note "Reminders took too long to answer"; return 0
   fi
   if [ "$rc" -ne 0 ]; then
-    _note "No access to Reminders yet - allow it once when macOS asks"; return 0
+    # Say what actually went wrong. "Allow access" is one possible cause of
+    # a failure here, not the only one, and claiming it when the real error
+    # is something else sends you to a switch that was never the problem.
+    _note "Reminders: $(last_error) (daily-welcome --doctor)"
+    return 0
   fi
 
   # Overdue first, then chronological, then undated.
@@ -130,7 +134,7 @@ src_calendar() {
   raw="$(run_with_timeout "$WELCOME_SOURCE_TIMEOUT" _calendar_applescript)"
   rc=$?
   [ "$rc" -eq 124 ] && { _note "Calendar took too long to answer"; return 0; }
-  [ "$rc" -ne 0 ] && { _note "No access to Calendar yet - allow it once when macOS asks"; return 0; }
+  [ "$rc" -ne 0 ] && { _note "Calendar: $(last_error) (daily-welcome --doctor)"; return 0; }
   printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != "" { print }' | sort | tidy_time_field
 }
 

@@ -39,7 +39,7 @@ src_mail() {
 
   if [ "$rc" -eq 124 ]; then _note "Mail took too long to answer"; return 0; fi
   if [ "$rc" -ne 0 ]; then
-    _note "No access to Mail yet - allow it once when macOS asks"; return 0
+    _note "Mail: $(last_error) (daily-welcome --doctor)"; return 0
   fi
   printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != "" { print }' | tidy_time_field
 }

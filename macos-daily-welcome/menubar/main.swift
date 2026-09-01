@@ -117,6 +117,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         listener.orbitPath = orbitPath
         listener.wakeWord = wakeWord
+        listener.statusPath = stateDir + "/listener-status"
+        try? FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirectories: true)
         if let seconds = Double(shellConfig("followup") ?? ""), seconds > 0 {
             listener.followUpWindow = seconds
         }

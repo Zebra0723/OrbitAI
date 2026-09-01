@@ -148,15 +148,43 @@ ASKER="$(ps -o comm= -p "$PPID" 2>/dev/null | sed 's#.*/##')"
 printf '  Asking as: %s (grants below belong to it, not to DailyWelcome)\n\n' "${ASKER:-this shell}"
 
 probe() {
-  local name="$1" script="$2"
-  if run_with_timeout 12 osascript -e "$script" >/dev/null 2>&1; then
+  local name="$1" script="$2" rc
+  run_with_timeout 15 osascript -e "$script" >/dev/null
+  rc=$?
+
+  if [ "$rc" -eq 0 ]; then
     ok "$name"
-  else
-    bad "$name is blocked, or was refused once and remembered."
-    fix "System Settings > Privacy & Security > Automation > ${ASKER:-your terminal} > turn on $name"
-    fix "If $name isn't listed there at all, the answer was cached. Clear it:"
-    fix "  daily-welcome --reset-permissions      (then run this again)"
+    return
   fi
+
+  if [ "$rc" -eq 124 ]; then
+    bad "$name didn't answer in fifteen seconds."
+    fix "Open $name once by hand - a first launch can take longer than that."
+    return
+  fi
+
+  local reason; reason="$(last_error)"
+  bad "$name failed: ${reason:-no reason given}"
+
+  # The error text says which problem this actually is, so the advice can
+  # be specific instead of a list of things to try.
+  case "$reason" in
+    *"Not authorized"*|*"not allowed"*|*"-1743"*)
+      fix "This is the Automation permission."
+      fix "Privacy & Security > Automation > ${ASKER:-your terminal} > turn on $name"
+      fix "Not listed there? A past refusal is cached: daily-welcome --reset-permissions" ;;
+    *"isn't running"*|*"is not running"*|*"-600"*)
+      fix "$name isn't running. Open it once, then run this again." ;;
+    *"-1728"*|*"Can't get"*)
+      fix "$name answered but the query didn't fit this macOS version."
+      fix "Worth reporting - the exact text above is the useful part." ;;
+    *"-10004"*)
+      fix "A privilege violation, which usually means this shell has no UI session."
+      fix "Run it from Terminal.app rather than over ssh or from a script." ;;
+    *)
+      fix "Privacy & Security > Automation > ${ASKER:-your terminal} > turn on $name"
+      fix "If that's already on, the text above is the real reason." ;;
+  esac
 }
 
 probe "Reminders" 'tell application "Reminders" to count lists'
@@ -172,8 +200,57 @@ else
   fix "Add your terminal too if you want 'orbit' to work from the command line."
 fi
 
-printf '\n  Microphone and Speech Recognition can only be checked by using them:\n'
-printf '  say "%s, what time is it" and see if it answers.\n' "$ORBIT_WAKE_WORD"
+# ------------------------------------------------------------- the ears
+
+head_ "Listening"
+
+STATUS_FILE="$WELCOME_STATE_DIR/listener-status"
+if [ -f "$STATUS_FILE" ]; then
+  l_state="$(awk -F'\t' '$1 == "state" { print $2 }' "$STATUS_FILE")"
+  l_detail="$(awk -F'\t' '$1 == "detail" { print $2 }' "$STATUS_FILE")"
+  l_heard="$(awk -F'\t' '$1 == "heard" { print $2 }' "$STATUS_FILE")"
+  l_when="$(awk -F'\t' '$1 == "updated" { print $2 }' "$STATUS_FILE")"
+
+  case "$l_state" in
+    listening|woken|"")
+      ok "Listening for \"$ORBIT_WAKE_WORD\" (last active $l_when)" ;;
+    speech-denied)
+      bad "Speech Recognition is off for the app."
+      fix "Privacy & Security > Speech Recognition > turn on DailyWelcome" ;;
+    mic-denied)
+      bad "The microphone is off for the app."
+      fix "Privacy & Security > Microphone > turn on DailyWelcome" ;;
+    audio-failed)
+      bad "The audio engine wouldn't start: $l_detail"
+      fix "Check an input device is selected in System Settings > Sound > Input" ;;
+    no-recognizer)
+      bad "$l_detail"
+      fix "System Settings > Keyboard > Dictation - turn it on once to install the model" ;;
+    asking)
+      warn "It asked for permission and is still waiting for an answer."
+      fix "Look for the prompt, or: daily-welcome --reset-permissions" ;;
+    *)
+      ok "Listener state: $l_state" ;;
+  esac
+
+  if [ -n "$l_heard" ]; then
+    printf '\n  Last thing it heard: "%s"\n' "$l_heard"
+    printf '  If that is what you said but it did not wake, the wake word is\n'
+    printf '  being misheard. Set ORBIT_WAKE_WORD to what it actually hears.\n'
+  fi
+else
+  if pgrep -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" >/dev/null 2>&1; then
+    warn "The app is running but has never written a listening status."
+    fix "Older build, or listening is off. Re-run ./install.sh, then check"
+    fix "the menu: the \"Listening for...\" item should have a tick."
+  else
+    bad "Nothing is listening - the app isn't running."
+    fix "See the Menu bar app section above."
+  fi
+fi
+
+printf '\n  Try it: click "Listen Now" in the menu and just talk. That skips\n'
+printf '  the wake word, so it separates a hearing problem from a wake-word one.\n'
 
 # --------------------------------------------------------------- optional
 

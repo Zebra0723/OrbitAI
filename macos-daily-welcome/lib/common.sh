@@ -6,16 +6,31 @@ welcome_log() {
   printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2
 }
 
+# Where the last failure's stderr is kept. It goes in a file rather than a
+# variable because callers wrap this in $( ), and a subshell can't hand a
+# variable back to its parent - "it didn't work" is not a diagnosis, and
+# AppleScript is usually quite specific about why it refused.
+run_error_file() {
+  printf '%s/last-error' "${WELCOME_STATE_DIR:-${TMPDIR:-/tmp}}"
+}
+
+last_error() {
+  tr '\n' ' ' < "$(run_error_file)" 2>/dev/null | cut -c1-300
+}
+
 # run_with_timeout SECONDS CMD... - macOS has no coreutils `timeout`.
 # Returns 124 if the command had to be killed.
+
 run_with_timeout() {
   local secs="$1"; shift
-  local out rc pid waited
+  local out err rc pid waited
   # The template needs the X's spelled out: BSD mktemp is happy with a bare
   # prefix, GNU is not, and this script also gets run under test on Linux.
   out="$(mktemp -t daily-welcome.XXXXXX)" || return 1
+  err="$(mktemp -t daily-welcome-err.XXXXXX)" || { rm -f "$out"; return 1; }
+  mkdir -p "$(dirname "$(run_error_file)")" 2>/dev/null
 
-  "$@" >"$out" 2>/dev/null &
+  "$@" >"$out" 2>"$err" &
   pid=$!
 
   waited=0
@@ -26,7 +41,8 @@ run_with_timeout() {
       kill -KILL "$pid" 2>/dev/null
       wait "$pid" 2>/dev/null
       cat "$out"
-      rm -f "$out"
+      cp "$err" "$(run_error_file)" 2>/dev/null
+      rm -f "$out" "$err"
       return 124
     fi
     sleep 1
@@ -36,7 +52,8 @@ run_with_timeout() {
   wait "$pid"
   rc=$?
   cat "$out"
-  rm -f "$out"
+  cp "$err" "$(run_error_file)" 2>/dev/null
+  rm -f "$out" "$err"
   return "$rc"
 }
 
