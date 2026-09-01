@@ -56,7 +56,7 @@ orbit - voice commands for daily-welcome
   orbit cancel <token>           drop it
   orbit say "<text>"             speak something in the Orbit voice
   orbit hush                     stop talking right now
-  orbit listen [status|on|off|restart]   check or control the microphone
+  orbit listen [status|on|off|pause|resume|restart]   the microphone
   orbit warm                     pre-render the lines it says most
   orbit greeting                 the line for a wake word with no command
   orbit console                  open the OrbitAI console in a browser
@@ -79,7 +79,11 @@ emit() {
   # that re-read every config file and then started afplay - on a one-word
   # answer that overhead was most of the delay.
   local audio=""
-  audio="$(speak_to_file "$1" 2>/dev/null)" || audio=""
+  # An action can deliberately have nothing to say - "stop talking" being
+  # the obvious one. Rendering silence would cost a network round trip.
+  if [ -n "$1" ]; then
+    audio="$(speak_to_file "$1" 2>/dev/null)" || audio=""
+  fi
   printf '{"speak":"%s","audio":"%s","confirm":%s,"token":"%s","end":%s}\n' \
     "$(json_escape "$1")" "$(json_escape "$audio")" "$2" "$3" "${4:-false}"
 }
@@ -534,6 +538,7 @@ case "${1:-}" in
 
     case "${1:-status}" in
       on)
+        rm -f "$WELCOME_STATE_DIR/paused"
         set_listen 1
         echo "Listening turned on and the app restarted."
         echo "Give it a couple of seconds, then say \"$ORBIT_WAKE_WORD\"."
@@ -542,7 +547,17 @@ case "${1:-}" in
         set_listen 0
         echo "Listening turned off. The microphone stays shut until you turn it back on."
         ;;
+      pause)
+        mkdir -p "$WELCOME_STATE_DIR"; : > "$WELCOME_STATE_DIR/paused"
+        echo "Microphone closed. It stays that way until you say otherwise:"
+        echo "  Option-Space, the menu bar item, or: orbit listen resume"
+        ;;
+      resume)
+        rm -f "$WELCOME_STATE_DIR/paused"
+        echo "Listening again."
+        ;;
       restart)
+        rm -f "$WELCOME_STATE_DIR/paused"
         launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1
         echo "Restarted. The ears come back a second or two after the app does."
         ;;
@@ -581,6 +596,11 @@ case "${1:-}" in
         echo "\"$1\" now counts as the wake word too."
         ;;
       status|*)
+        # Paused reads as "not listening" from the outside, so say which.
+        if [ -f "$WELCOME_STATE_DIR/paused" ]; then
+          echo "Ears:     PAUSED - you asked it to stop listening"
+          echo "          orbit listen resume, Option-Space, or say \"wake up\""
+        fi
         APP_BIN="$HOME/Applications/DailyWelcome.app/Contents/MacOS/DailyWelcome"
         if pgrep -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" >/dev/null 2>&1; then
           echo "App:      running"

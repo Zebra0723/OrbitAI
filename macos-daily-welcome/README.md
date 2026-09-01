@@ -134,6 +134,8 @@ stays unsent.
 | | |
 |---|---|
 | Sound | volume up / down / set volume to 40 / mute / louder |
+| Quiet | stop talking / be quiet / shut up - stops the voice, not the Mac's sound |
+| Ears | stop listening / leave me alone / go away, then wake up or listen again |
 | Display | brighter, dimmer, dark mode, light mode |
 | Music | play, pause, next song, previous track |
 | Calls | call Mama, facetime Priya, call Mom on facetime audio, hang up |
@@ -291,6 +293,8 @@ orbit listen status        what the ears are doing
 orbit listen heard         the last things it heard while waiting
 orbit listen wake "..."    change the wake word
 orbit listen alias "..."   accept another mishearing as the wake word
+orbit listen pause         close the microphone (same as saying "stop listening")
+orbit listen resume        open it again
 
 orbit plan "<command>"     what it would do, as JSON
 orbit run <token>          carry out a planned action

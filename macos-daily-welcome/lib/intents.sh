@@ -209,7 +209,23 @@ _try_system() {
   case "$lower" in
     *"volume up"*|*louder*|*"turn it up"*|*"turn up the volume"*) printf 'system\tvolume_up\t\n'; return 0 ;;
     *"volume down"*|*quieter*|*"turn it down"*|*"turn down the volume"*) printf 'system\tvolume_down\t\n'; return 0 ;;
-    "mute"*|*"mute the"*|*"be quiet"*|*"shut up"*) printf 'system\tmute\t\n'; return 0 ;;
+    "mute"*|*"mute the mac"*|*"mute the volume"*|*"mute the sound"*)
+      printf 'system\tmute\t\n'; return 0 ;;
+
+    # Told to be quiet, stop talking - the voice, not the speakers.
+    *"be quiet"*|*"shut up"*|*"stop talking"*|*"stop speaking"*|"quiet"|"hush"*|\
+    *"that's enough"*|*"thats enough"*|*"shush"*)
+      printf 'system\tstop_talking\t\n'; return 0 ;;
+
+    # Told to stop listening - the microphone, until you ask for it back.
+    *"stop listening"*|*"stop listening to me"*|*"don't listen"*|*"dont listen"*|\
+    *"turn off your ears"*|*"close the mic"*|*"close the microphone"*|\
+    *"leave me alone"*|*"go away"*|*"stop recording"*|*"mute yourself"*|\
+    *"turn yourself off"*|*"stand down"*)
+      printf 'system\tstop_listening\t\n'; return 0 ;;
+
+    *"start listening"*|*"listen again"*|*"wake up"*|*"come back"*|*"you can listen"*)
+      printf 'system\tstart_listening\t\n'; return 0 ;;
     *unmute*|*"sound back"*) printf 'system\tunmute\t\n'; return 0 ;;
 
     *brighter*|*"brightness up"*|*"turn up the brightness"*) printf 'system\tbrightness_up\t\n'; return 0 ;;
@@ -338,7 +354,9 @@ _try_social() {
     "thank you"*|"thanks"*|"thankyou"*|"cheers"|"much appreciated"|"appreciate it"|\
     "that's all"|"thats all"|"that will be all"|"that is all"|"nothing else"|\
     "we're done"|"were done"|"i'm done"|"im done"|"goodbye"|"bye"|"bye bye"|"see you"|\
-    "go away"|"dismissed")
+    "dismissed")
+      # "go away" deliberately isn't here: it reads as "close the
+      # microphone", which ending the conversation only half does.
       printf 'social\tthanks\n' ;;
     "hello"|"hi"|"hey"|"good morning"|"morning"|"good afternoon"|"good evening"|"yo")
       printf 'social\thello\n' ;;
@@ -523,5 +541,10 @@ Things Orbit understands (after "Hey Orbit"):
     read my messages
     any new email
     what did Claude do
+
+  Making it stop
+    stop talking / be quiet / shut up      the voice, not the Mac's sound
+    stop listening / leave me alone        closes the microphone
+    wake up / listen again                 opens it again
 EXAMPLES
 }

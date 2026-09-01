@@ -32,6 +32,9 @@ const COMMANDS = [
   ["Screen", "what's this error", "Screenshots, reads it, explains it"],
   ["Talking", "thank you, that's all", "Ends the conversation"],
   ["Talking", "stop", "Cuts it off mid-sentence"],
+  ["Talking", "stop talking, be quiet, shut up", "Stops the voice - your Mac's own sound is left alone"],
+  ["Talking", "stop listening, leave me alone, go away", "Closes the microphone until you ask for it back"],
+  ["Talking", "wake up, listen again", "Opens it again - so do Option Space and the menu bar item"],
 ];
 
 function drawCommands(filter = "") {

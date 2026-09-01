@@ -46,6 +46,12 @@ final class OrbitListener: NSObject {
     /// Path to the `orbit` script; set by the app delegate.
     var orbitPath: String = ""
     var wakeWord: String = "hey orbit"
+    /// Told to stop listening, this file appears; the microphone closes
+    /// until the hot key, the menu or a command removes it again. Stopping
+    /// this way rather than killing the app means there is always a way
+    /// back in.
+    var pausePath: String = ""
+
     /// Where to leave a note about what the ears are doing. A menu bar app
     /// has nowhere to show an error, so `doctor` reads this instead.
     var statusPath: String = ""
@@ -125,6 +131,11 @@ final class OrbitListener: NSObject {
     // MARK: - Permissions and lifecycle
 
     func start() {
+        // Starting is always an explicit ask - the menu, the hot key, or
+        // the app launching - so it clears "stop listening" too. Otherwise
+        // a paused microphone would be a trap with no obvious way out.
+        if !pausePath.isEmpty { try? FileManager.default.removeItem(atPath: pausePath) }
+
         guard recognizer != nil else {
             status("no-recognizer", "Speech recognition isn't available for en-US on this Mac")
             return
@@ -167,6 +178,7 @@ final class OrbitListener: NSObject {
     }
 
     func stop() {
+        paused = false
         silenceTimer?.invalidate()
         restartTimer?.invalidate()
         endRecognition()
@@ -223,8 +235,18 @@ final class OrbitListener: NSObject {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in handler(event); return event }
     }
 
-    /// Skips the wake word - used by the menu item and the hot key.
+    /// True unless it has been switched off outright, as opposed to paused.
+    var wantsToListen = true
+
+    /// True only between being asked to stop listening and being asked
+    /// back. The resume check keys off this rather than "the engine isn't
+    /// running", which is also true for half a dozen ordinary reasons.
+    private var paused = false
+
+    /// Skips the wake word - used by the menu item and the hot key. Also
+    /// the way back from having been told to stop listening.
     func listenNow() {
+        if !pausePath.isEmpty { try? FileManager.default.removeItem(atPath: pausePath) }
         guard engine.isRunning else { start(); return }
         heard = ""
         greeted = false
@@ -411,8 +433,13 @@ final class OrbitListener: NSObject {
             }
 
         case .speaking:
-            // Only listening for an interruption while it talks.
-            if stopWord(in: lower) {
+            // Only listening for an interruption while it talks. "Stop
+            // listening" said over the top means both things: stop this
+            // sentence, and then close the microphone.
+            if pauseWord(in: lower) {
+                interrupt()
+                pauseListening()
+            } else if stopWord(in: lower) {
                 interrupt()
             }
 
@@ -529,6 +556,26 @@ final class OrbitListener: NSObject {
         return false
     }
 
+    /// Words that mean "close the microphone", as opposed to "stop this
+    /// sentence". Same self-hearing guard as stopWord().
+    private func pauseWord(in text: String) -> Bool {
+        let stops = ["stop listening", "leave me alone", "go away",
+                     "stand down", "mute yourself", "don't listen", "dont listen"]
+        let mine = speakingText.lowercased()
+        for word in stops where text.contains(word) && !mine.contains(word) {
+            return true
+        }
+        return false
+    }
+
+    /// Leaves the marker checkSilence() watches for, so the two ways of
+    /// asking - out loud and through orbit - end up in the same place.
+    private func pauseListening() {
+        guard !pausePath.isEmpty else { return }
+        FileManager.default.createFile(atPath: pausePath, contents: nil)
+        checkSilence()
+    }
+
     private func interrupt() {
         player?.stop()
         player = nil
@@ -559,6 +606,31 @@ final class OrbitListener: NSObject {
     }
 
     private func checkSilence() {
+        // Asked to go quiet: close the microphone, keep everything else.
+        if !pausePath.isEmpty, FileManager.default.fileExists(atPath: pausePath) {
+            if engine.isRunning || !paused {
+                paused = true
+                status("paused", "asked to stop listening")
+                silenceTimer?.invalidate()
+                restartTimer?.invalidate()
+                endRecognition()
+                engine.stop()
+                engine.inputNode.removeTap(onBus: 0)
+                setState(.idle)
+                // Keep one timer alive, purely to notice being asked back.
+                silenceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
+                    [weak self] _ in self?.checkSilence()
+                }
+            }
+            return
+        }
+        if paused, wantsToListen {
+            paused = false
+            status("resuming", "asked to listen again")
+            beginSession()
+            return
+        }
+
         let quietFor = Date().timeIntervalSince(lastHeardAt)
 
         if state == .capturing {

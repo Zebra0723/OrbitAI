@@ -136,6 +136,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             listener.wakeThreshold = threshold
         }
         listener.heardLogPath = stateDir + "/heard.log"
+        listener.pausePath = stateDir + "/paused"
+        listener.wantsToListen = listeningWanted
         listener.onStateChange = { [weak self] state in
             self?.reflect(state)
         }

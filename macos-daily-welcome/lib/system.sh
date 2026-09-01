@@ -231,6 +231,22 @@ APPLESCRIPT
       fi
       printf 'Calling.' ;;
 
+    stop_talking)
+      hush
+      printf '' ;;   # nothing to say; saying it would defeat the point
+
+    stop_listening)
+      # A file the listener watches, rather than killing the app: the
+      # menu, the hot key and the console all still work, so there is
+      # always a way back.
+      mkdir -p "$WELCOME_STATE_DIR" 2>/dev/null
+      : > "$WELCOME_STATE_DIR/paused"
+      printf 'Going quiet. Option Space when you want me.' ;;
+
+    start_listening)
+      rm -f "$WELCOME_STATE_DIR/paused"
+      printf 'Listening again.' ;;
+
     end_call)
       if pgrep -xq FaceTime 2>/dev/null; then
         _osa 'tell application "FaceTime" to quit'
