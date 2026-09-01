@@ -11,6 +11,15 @@
 
 _note() { printf '#note\t%s\t\n' "$1"; }
 
+# The menu bar app doubles as an EventKit reader. It's the preferred path
+# for reminders and events: AppleScript needs the target app running and
+# gets due dates wrong, EventKit needs neither.
+_eventkit_bin() {
+  printf '%s/Applications/DailyWelcome.app/Contents/MacOS/DailyWelcome' "$HOME"
+}
+
+_have_eventkit() { [ -x "$(_eventkit_bin)" ]; }
+
 # ---------------------------------------------------------------- reminders
 
 _reminders_applescript() {
@@ -24,9 +33,15 @@ on run
   tell application "Reminders"
     repeat with theList in lists
       set listName to name of theList
-      repeat with r in (reminders of theList whose completed is false and due date is not missing value)
-        set dd to due date of r
-        if dd < dayEnd then
+      repeat with r in (reminders of theList whose completed is false)
+        -- The "due date is not missing value" filter can't be trusted:
+        -- undated reminders come back from it anyway, and comparing one
+        -- to a date fails the whole script with -1700.
+        set dd to missing value
+        try
+          set dd to due date of r
+        end try
+        if dd is not missing value and dd < dayEnd then
           if dd < dayStart then
             set whenLabel to "OVERDUE"
           else
@@ -48,9 +63,20 @@ APPLESCRIPT
 }
 
 src_reminders() {
+  local raw rc
+
+  if _have_eventkit; then
+    raw="$(run_with_timeout 30 "$(_eventkit_bin)" --dump-reminders)"
+    rc=$?
+    case "$rc" in
+      0) _reminders_format "$raw"; return 0 ;;
+      3) _note "$(last_error)"; return 0 ;;
+      *) : ;;   # anything else: fall through and try AppleScript
+    esac
+  fi
+
   have_cmd osascript || return 0
 
-  local raw rc
   raw="$(run_with_timeout "$WELCOME_SOURCE_TIMEOUT" \
     _reminders_applescript "$WELCOME_REMINDERS_INCLUDE_UNDATED")"
   rc=$?
@@ -66,8 +92,12 @@ src_reminders() {
     return 0
   fi
 
-  # Overdue first, then chronological, then undated.
-  printf '%s\n' "$raw" | awk -F'\t' '
+  _reminders_format "$raw"
+}
+
+# Overdue first, then chronological, then undated.
+_reminders_format() {
+  printf '%s\n' "$1" | awk -F'\t' '
     NF >= 2 && $2 != "" {
       rank = ($1 == "OVERDUE") ? 0 : (($1 == "flagged") ? 2 : 1)
       printf "%d\t%s\t%s\t%s\n", rank, $1, $2, $3
@@ -106,6 +136,19 @@ APPLESCRIPT
 
 src_calendar() {
   local raw rc
+
+  # EventKit first: no icalBuddy to install, and no need for Calendar.app
+  # to be running.
+  if _have_eventkit; then
+    raw="$(run_with_timeout 30 "$(_eventkit_bin)" --dump-events)"
+    rc=$?
+    case "$rc" in
+      0) printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != ""' | tidy_time_field; return 0 ;;
+      3) _note "$(last_error)"; return 0 ;;
+      *) : ;;
+    esac
+  fi
+
   if have_cmd icalBuddy; then
     raw="$(run_with_timeout "$WELCOME_SOURCE_TIMEOUT" _calendar_icalbuddy)"
     rc=$?

@@ -221,6 +221,21 @@ case "$MODE" in
       echo "daily-welcome: --use-voice needs a name, e.g. --use-voice \"Veda Sky\"" >&2
       exit 2
     fi
+    # A raw voice id is accepted as-is: library voices that aren't in your
+    # account never show up in the listing, but they speak perfectly well.
+    case "$VOICE_ARG" in
+      *[!A-Za-z0-9]*) : ;;
+      ??????????*)
+        cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+        mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+        grep -v '^WELCOME_ELEVEN_VOICE_ID=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+        { cat "$cfg.tmp"; printf 'WELCOME_ELEVEN_VOICE_ID="%s"\n' "$VOICE_ARG"; } > "$cfg"
+        rm -f "$cfg.tmp" "$WELCOME_STATE_DIR/eleven-voice-id"
+        echo "Voice id set to $VOICE_ARG."
+        echo "Hear it: daily-welcome --test-voice"
+        exit 0 ;;
+    esac
+
     listing="$(eleven_list_voices 2>/dev/null)"
     match="$(printf '%s\n' "$listing" | awk -F'\t' -v want="$(printf '%s' "$VOICE_ARG" | tr '[:upper:]' '[:lower:]')" '
       tolower($1) == want { print; found = 1; exit }

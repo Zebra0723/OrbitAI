@@ -11,6 +11,7 @@
 //   - a 5-minute backstop timer    a wake we somehow missed
 
 import Cocoa
+import EventKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
@@ -118,6 +119,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         listener.orbitPath = orbitPath
         listener.wakeWord = wakeWord
         listener.statusPath = stateDir + "/listener-status"
+        listener.wakeAliases = (shellConfig("aliases") ?? "")
+            .split(separator: "|")
+            .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+            .filter { !$0.isEmpty }
         try? FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirectories: true)
         if let seconds = Double(shellConfig("followup") ?? ""), seconds > 0 {
             listener.followUpWindow = seconds
@@ -291,6 +296,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             NSLog("daily-welcome: could not run \(path): \(error.localizedDescription)")
         }
     }
+}
+
+// Data-dump modes run headless and exit: same binary, same code signature,
+// so the permissions belong to the app whichever way it was started.
+switch CommandLine.arguments.dropFirst().first {
+case "--dump-reminders": dumpReminders()
+case "--dump-events":    dumpEvents()
+default: break
 }
 
 let app = NSApplication.shared

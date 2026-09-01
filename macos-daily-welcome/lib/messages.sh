@@ -45,10 +45,19 @@ src_messages() {
     _note "Messages database is busy"; return 0
   fi
   if [ -z "$raw" ]; then
-    # Empty is ambiguous: no unread, or no permission. Only the second is
-    # worth saying out loud, and a probe tells them apart.
-    if ! sqlite3 -readonly "$MESSAGES_DB" 'SELECT 1 FROM message LIMIT 1;' >/dev/null 2>&1; then
-      _note "No access to Messages - give DailyWelcome Full Disk Access"
+    # Empty is ambiguous: no unread, or the database wouldn't open. A probe
+    # tells them apart, and its own words are more use than a guess -
+    # "unable to open database file" is Full Disk Access, but a locked WAL
+    # or a missing table is not, and they were all reported the same way.
+    local probe
+    probe="$(sqlite3 -readonly "$MESSAGES_DB" 'SELECT 1 FROM message LIMIT 1;' 2>&1 >/dev/null)"
+    if [ -n "$probe" ]; then
+      case "$probe" in
+        *"unable to open"*|*"authorization denied"*|*"not permitted"*)
+          _note "Messages needs Full Disk Access for whatever is running this ($probe)" ;;
+        *)
+          _note "Messages: $probe" ;;
+      esac
     fi
     return 0
   fi

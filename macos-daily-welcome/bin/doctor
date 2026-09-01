@@ -187,10 +187,30 @@ probe() {
   esac
 }
 
-probe "Reminders" 'tell application "Reminders" to count lists'
-probe "Calendar"  'tell application "Calendar" to count calendars'
-probe "Contacts"  'tell application "Contacts" to count people'
-probe "Mail"      'tell application "Mail" to count accounts'
+# Reminders and Calendar go through the app's EventKit reader, not
+# AppleScript, so they're checked the way they're actually used.
+EVENTKIT_BIN="$APP_DIR/Contents/MacOS/DailyWelcome"
+eventkit_probe() {
+  local name="$1" flag="$2" rc
+  if [ ! -x "$EVENTKIT_BIN" ]; then
+    warn "$name: no app to read it with (see Menu bar app above)"
+    return
+  fi
+  run_with_timeout 30 "$EVENTKIT_BIN" "$flag" >/dev/null
+  rc=$?
+  case "$rc" in
+    0) ok "$name (via EventKit)" ;;
+    3) bad "$name: $(last_error)"
+       fix "System Settings > Privacy & Security > $name > turn on DailyWelcome" ;;
+    *) bad "$name reader failed: $(last_error)" ;;
+  esac
+}
+
+eventkit_probe "Reminders" --dump-reminders
+eventkit_probe "Calendars" --dump-events
+
+probe "Contacts" 'tell application "Contacts" to launch'
+probe "Mail"     'tell application "Mail" to count accounts'
 
 if sqlite3 -readonly "$HOME/Library/Messages/chat.db" 'SELECT 1 FROM message LIMIT 1;' >/dev/null 2>&1; then
   ok "Messages database is readable (Full Disk Access is on)"

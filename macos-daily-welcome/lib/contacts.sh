@@ -27,6 +27,9 @@ _contacts_lookup_applescript() {
 on run argv
   set wantName to item 1 of argv
   tell application "Contacts"
+    -- Contacts answers nothing at all (-600) unless it's running, and it
+    -- won't start itself just to be queried.
+    launch
     set matches to (every person whose name contains wantName)
     if (count of matches) is 0 then return ""
     set thePerson to item 1 of matches

@@ -51,6 +51,20 @@ final class OrbitListener: NSObject {
     private var lastStatus = ""
     private var lastStatusWrite = Date.distantPast
 
+    /// Words the commands are built from. Given to the recogniser as
+    /// context so short instructions aren't reinterpreted as prose.
+    private let commandVocabulary = [
+        "brief me", "mute", "unmute", "volume up", "volume down",
+        "take a screenshot", "lock my Mac", "what time is it",
+        "read my messages", "what's on my calendar", "hang up",
+        "set a timer", "remind me to", "message", "FaceTime", "Claude",
+    ]
+
+    /// Extra spellings that count as the wake word. Recognisers hear a
+    /// made-up name as whatever real words it resembles, and those
+    /// mishearings are consistent enough to just accept.
+    var wakeAliases: [String] = []
+
     /// Called with the current state so the menu bar icon can reflect it.
     var onStateChange: ((ListenState) -> Void)?
 
@@ -186,6 +200,12 @@ final class OrbitListener: NSObject {
         if #available(macOS 13.0, *), recognizer?.supportsOnDeviceRecognition == true {
             req.requiresOnDeviceRecognition = true
         }
+        // A made-up name is not in any language model, so it comes back as
+        // whatever real words it sounded like. Contextual strings tell the
+        // recogniser these are words worth expecting.
+        req.contextualStrings = [wakeWord, wakeKey, wakeKey.capitalized,
+                                 "Hey \(wakeKey.capitalized)"] + commandVocabulary
+        req.taskHint = .dictation
         request = req
 
         task = recognizer?.recognitionTask(with: req) { [weak self] result, error in
@@ -250,6 +270,10 @@ final class OrbitListener: NSObject {
         if let r = text.range(of: wakeWord) { return r }
         if let r = text.range(of: wakeKey) { return r }
         if let r = text.range(of: wakeKey + "s") { return r }
+
+        for alias in wakeAliases where !alias.isEmpty {
+            if let r = text.range(of: alias) { return r }
+        }
 
         // "hey or bit" - squash the spaces and look again.
         let squashed = text.replacingOccurrences(of: " ", with: "")

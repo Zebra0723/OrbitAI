@@ -15,7 +15,9 @@ _repo_match() {
   for root in $ORBIT_REPO_ROOTS; do
     root="${root/#\~/$HOME}"
     [ -d "$root" ] || continue
-    match="$(find "$root" -maxdepth "$ORBIT_REPO_DEPTH" -type d -not -path '*/.*' 2>/dev/null \
+    match="$(find "$root" -maxdepth "$ORBIT_REPO_DEPTH" \
+      \( -name Library -o -name Applications -o -name node_modules -o -name '.*' \) -prune -o \
+      -type d -print 2>/dev/null \
       | while IFS= read -r dir; do
           base="$(basename "$dir" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+//g')"
           if [ "$base" = "$normalized" ]; then printf '0\t%s\n' "$dir"

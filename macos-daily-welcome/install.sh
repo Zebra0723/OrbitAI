@@ -102,7 +102,8 @@ if [ "$WANT_APP" -eq 1 ]; then
     mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 
     swiftc -O -o "$APP_DIR/Contents/MacOS/DailyWelcome" \
-      "$ROOT/menubar/main.swift" "$ROOT/menubar/listener.swift"
+      "$ROOT/menubar/main.swift" "$ROOT/menubar/listener.swift" \
+      "$ROOT/menubar/eventkit.swift"
 
     cat > "$APP_DIR/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -127,6 +128,16 @@ if [ "$WANT_APP" -eq 1 ]; then
     <string>Orbit turns what you say into commands. Recognition runs on this Mac.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>Orbit controls apps like Mail, Messages and Music on your behalf.</string>
+    <key>NSRemindersFullAccessUsageDescription</key>
+    <string>Your briefing reads what's due today, and "remind me to..." adds to it.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Your briefing reads today's events.</string>
+    <key>NSRemindersUsageDescription</key>
+    <string>Your briefing reads what's due today.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Your briefing reads today's events.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>Looking up who you mean by "message Mama" or "call Priya".</string>
 </dict>
 </plist>
 PLIST

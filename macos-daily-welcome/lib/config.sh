@@ -68,8 +68,11 @@
 # --- ElevenLabs ---
 # The voice is looked up by name in your account, so add it to your voices
 # in the ElevenLabs library first. Set an id directly to skip the lookup.
+# A voice from the ElevenLabs library isn't in your account until you add
+# it there, and the name lookup only sees your account - so the id is set
+# directly, which works either way.
 : "${WELCOME_ELEVEN_VOICE_NAME:=Veda Sky}"
-: "${WELCOME_ELEVEN_VOICE_ID:=}"
+: "${WELCOME_ELEVEN_VOICE_ID:=GWparLcEBJuQc36gyF2J}"
 : "${WELCOME_ELEVEN_MODEL:=eleven_multilingual_v2}"
 
 # Matches the settings the sample was rendered with: speed 1.00,
@@ -100,6 +103,12 @@
 : "${ORBIT_LISTEN:=1}"
 : "${ORBIT_WAKE_WORD:=hey orbit}"
 
+# Other things the recogniser hears when you say the wake word. A made-up
+# name isn't in any language model, so it comes back as whatever real words
+# it resembled; these are the usual ones, separated by |. If doctor shows
+# it hearing something else consistently, add that here.
+: "${ORBIT_WAKE_ALIASES:=orbit|or bit|orbid|orbits|arbit|hey robot|okay orbit}"
+
 # What it says when you use the wake word on its own, with no command
 # after it. $WELCOME_NAME is filled in.
 : "${ORBIT_GREETING:=Hi $WELCOME_NAME. What can I do for you today?}"
@@ -111,8 +120,11 @@
 : "${ORBIT_CONTACTS_FILE:=$HOME/.config/daily-welcome/contacts.conf}"
 
 # Where your repos live, for "tell Claude to ... in the <name> repo".
-: "${ORBIT_REPO_ROOTS:=$HOME/projects $HOME/code $HOME/dev $HOME/src $HOME/Developer $HOME/repos}"
-: "${ORBIT_REPO_DEPTH:=3}"
+# $HOME is included because plenty of people just clone into their home
+# directory; Library, Applications and dotfolders are pruned during the
+# search so that stays quick.
+: "${ORBIT_REPO_ROOTS:=$HOME/projects $HOME/code $HOME/dev $HOME/src $HOME/Developer $HOME/repos $HOME}"
+: "${ORBIT_REPO_DEPTH:=2}"
 : "${ORBIT_DEFAULT_REPO:=}"
 
 # Claude Code runs headless here, so it can't answer a permission prompt.

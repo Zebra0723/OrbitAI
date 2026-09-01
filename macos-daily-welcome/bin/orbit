@@ -338,7 +338,8 @@ case "${1:-}" in
       wake_word) printf '%s\n' "$ORBIT_WAKE_WORD" ;;
       listen)    printf '%s\n' "$ORBIT_LISTEN" ;;
       followup)  printf '%s\n' "$ORBIT_FOLLOWUP_SECONDS" ;;
-      *)         printf 'orbit config: wake_word | listen | followup\n' >&2; exit 2 ;;
+      aliases)   printf '%s\n' "$ORBIT_WAKE_ALIASES" ;;
+      *)         printf 'orbit config: wake_word | listen | followup | aliases\n' >&2; exit 2 ;;
     esac
     ;;
   examples)
