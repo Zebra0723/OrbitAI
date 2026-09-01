@@ -18,7 +18,9 @@ import urllib.error
 import urllib.request
 
 MODEL = os.environ.get("ORBIT_OPENAI_MODEL", "gpt-4o-mini")
-TIMEOUT = float(os.environ.get("ORBIT_OPENAI_TIMEOUT", "12"))
+# A second inside the shell's own timeout, so a slow reply is reported as
+# a slow reply rather than as a killed process.
+TIMEOUT = max(3.0, float(os.environ.get("ORBIT_OPENAI_TIMEOUT", "7")) - 1)
 
 SYSTEM = """You convert spoken commands for a Mac voice assistant into one intent.
 

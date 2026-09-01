@@ -441,6 +441,22 @@ final class OrbitListener: NSObject {
             return text.endIndex..<text.endIndex
         }
 
+        // The recogniser often reports a partial mid-word: the log fills
+        // up with "hey", "hey or", "or". Anything that is a prefix of the
+        // wake phrase, and long enough not to be a coincidence, counts.
+        let flat = text.replacingOccurrences(of: " ", with: "")
+        let target = wakeWord.replacingOccurrences(of: " ", with: "")
+        if flat.count >= 5, target.hasPrefix(flat) {
+            return text.endIndex..<text.endIndex
+        }
+        // A trailing prefix of the name on its own: "...hey or".
+        for length in stride(from: min(wakeKey.count, flat.count), through: 3, by: -1) {
+            let piece = String(wakeKey.prefix(length))
+            if flat.hasSuffix(piece), length >= 3 {
+                return text.endIndex..<text.endIndex
+            }
+        }
+
         // Nothing matched literally. A made-up name isn't in the
         // recogniser's vocabulary, so it comes back as the nearest real
         // words it can find - and the nearest real word is usually close.

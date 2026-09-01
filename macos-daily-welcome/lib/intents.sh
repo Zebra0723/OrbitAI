@@ -390,17 +390,18 @@ _try_claude_nlu() {
   local claude_cmd
   claude_cmd="$(claude_bin)" || return 1
 
-  out="$(run_with_timeout "$ORBIT_NLU_TIMEOUT" "$claude_cmd" -p "$(cat <<PROMPT
-Classify this voice command into exactly one line, no explanation, no code fences.
-Allowed forms:
+  local prompt
+  prompt="Classify this voice command into exactly one line, no explanation,
+no code fences. Allowed forms, with real tabs between fields:
 message<TAB><person><TAB><what to say>
 claude<TAB><repo name><TAB><task>
 mail_reply<TAB><reply text>
 readback<TAB>one of: briefing messages mail calendar reminders claude
 none
-Use a real tab between fields. Command: $text
-PROMPT
-)" 2>/dev/null)" || return 1
+
+Command: $text"
+
+  out="$(run_with_timeout "$ORBIT_NLU_TIMEOUT" "$claude_cmd" -p "$prompt" 2>/dev/null)" || return 1
 
   out="$(printf '%s' "$out" | sed -E 's/<TAB>/\t/g' | grep -E '^(message|claude|mail_reply|readback)' | head -1)"
   [ -z "$out" ] && return 1

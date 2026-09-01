@@ -114,7 +114,7 @@
 # name isn't in any language model, so it comes back as whatever real words
 # it resembled; these are the usual ones, separated by |. If doctor shows
 # it hearing something else consistently, add that here.
-: "${ORBIT_WAKE_ALIASES:=orbit|or bit|orbid|orbits|arbit|hey robot|okay orbit}"
+: "${ORBIT_WAKE_ALIASES:=orbit|or bit|orbid|orbits|arbit|hey robot|okay orbit|hey or|hey orb|hey ork|hey orbits}"
 
 # What it says when you use the wake word on its own, with no command
 # after it. $WELCOME_NAME is filled in.
@@ -142,12 +142,12 @@
 # touch. The cap is a blast radius, not a performance setting.
 : "${ORBIT_MAIL_AWAITING_DAYS:=7}"
 : "${ORBIT_MAIL_MAX_BATCH:=25}"
-: "${ORBIT_MAIL_TIMEOUT:=45}"
+: "${ORBIT_MAIL_TIMEOUT:=25}"
 
 # How many of the newest messages to scan per mailbox. Filtering the whole
 # mailbox is what made every mail question answer "your inbox is clear":
 # the query outlived its timeout and came back empty.
-: "${ORBIT_MAIL_SCAN:=120}"
+: "${ORBIT_MAIL_SCAN:=60}"
 
 # Macros: one phrase, several commands.
 : "${ORBIT_MACROS_FILE:=$HOME/.config/daily-welcome/macros.conf}"
@@ -224,7 +224,11 @@
 # noticeably longer to start talking, which on a voice assistant is the
 # thing you feel.
 : "${ORBIT_OPENAI_MODEL:=gpt-4o-mini}"
-: "${ORBIT_OPENAI_TIMEOUT:=12}"
+# A model that has not answered in this long is not going to save the
+# conversation - falling through to Claude or to the rules is quicker than
+# waiting. The log showed every unrecognised sentence costing the full
+# twelve seconds before saying "none".
+: "${ORBIT_OPENAI_TIMEOUT:=7}"
 : "${ORBIT_OPENAI_KEYCHAIN:=daily-welcome-openai}"
 : "${ORBIT_OPENAI_KEY_FILE:=$HOME/.config/daily-welcome/openai-key}"
 

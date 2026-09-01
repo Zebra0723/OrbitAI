@@ -35,21 +35,24 @@ freeform_plan() {
   local claude_cmd
   claude_cmd="$(claude_bin)" || return 1
 
-  out="$(run_with_timeout "$ORBIT_NLU_TIMEOUT" "$claude_cmd" -p "$(cat <<PROMPT
-You control a Mac through a voice assistant. Turn the request below into ONE
-shell command that a macOS terminal can run, preferring \`osascript -e\` for
-anything an app or the system exposes to AppleScript.
+  # Deliberately not a heredoc inside $( ): bash 3.2, which is what macOS
+  # ships, mis-parses that when the text contains an apostrophe, and the
+  # whole file then fails to load.
+  local prompt
+  prompt="You control a Mac through a voice assistant. Turn the request below
+into ONE shell command that a macOS terminal can run, preferring osascript -e
+for anything an app or the system exposes to AppleScript.
 
 Answer in exactly two lines, nothing else, no code fences:
 SUMMARY: <what it does, plain English, present tense, at most twelve words>
 COMMAND: <the single-line command>
 
-If the request is unclear, destructive, or can't be done in one line, answer
+If the request is unclear, destructive, or cannot be done in one line, answer
 exactly: NONE
 
-Request: $text
-PROMPT
-)" 2>/dev/null)" || return 1
+Request: $text"
+
+  out="$(run_with_timeout "$ORBIT_NLU_TIMEOUT" "$claude_cmd" -p "$prompt" 2>/dev/null)" || return 1
 
   case "$out" in *NONE*) return 1 ;; esac
 
