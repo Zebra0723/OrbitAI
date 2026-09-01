@@ -69,6 +69,15 @@ final class OrbitListener: NSObject {
         "set a timer", "remind me to", "message", "FaceTime", "Claude",
     ]
 
+    /// Commands that can only be themselves, acted on the instant they
+    /// are heard rather than after a pause.
+    private static let instant: Set<String> = [
+        "mute", "unmute", "stop", "pause", "play", "volume up", "volume down",
+        "louder", "quieter", "brighter", "dimmer", "next", "next song",
+        "next track", "screenshot", "lock", "hang up", "dark mode",
+        "light mode", "brief me", "what time is it",
+    ]
+
     /// Extra spellings that count as the wake word. Recognisers hear a
     /// made-up name as whatever real words it resembles, and those
     /// mishearings are consistent enough to just accept.
@@ -197,7 +206,24 @@ final class OrbitListener: NSObject {
         restartSession(reason: "not running after wake")
     }
 
-    /// Skips the wake word - used by the menu item.
+    /// A key that starts listening at once. The wake word is the part
+    /// most likely to fail - a made-up name against a recogniser that has
+    /// never heard it - and this sidesteps it entirely.
+    func installHotKey(_ keyCode: UInt16, flags: NSEvent.ModifierFlags) {
+        let handler: (NSEvent) -> Void = { [weak self] event in
+            guard let self = self else { return }
+            guard event.keyCode == keyCode,
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask) == flags
+            else { return }
+            DispatchQueue.main.async { self.listenNow() }
+        }
+        // Global catches it while another app is in front; local catches it
+        // when the (invisible) app itself has focus.
+        NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: handler)
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in handler(event); return event }
+    }
+
+    /// Skips the wake word - used by the menu item and the hot key.
     func listenNow() {
         guard engine.isRunning else { start(); return }
         heard = ""
@@ -343,6 +369,19 @@ final class OrbitListener: NSObject {
             }
 
         case .capturing:
+            // A short unmistakable command does not need the silence
+            // window: "mute" is not the start of a longer sentence, and
+            // nine tenths of a second is a long time to stand there.
+            let candidate = wakePrefix.isEmpty ? lower
+                : String(lower.dropFirst(min(wakePrefix.count, lower.count)))
+            let trimmed = candidate.trimmingCharacters(in: CharacterSet(charactersIn: " ,.!?"))
+            if Self.instant.contains(trimmed) {
+                heard = trimmed
+                setState(.working)
+                plan(trimmed)
+                return
+            }
+
             // The recogniser reports the whole utterance each time, wake
             // word included when it was said in one breath. Strip it, or
             // the command handed on starts with "hey orbit".

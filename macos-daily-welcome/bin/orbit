@@ -779,6 +779,7 @@ case "${1:-}" in
       conversation_seconds) printf '%s\n' "$ORBIT_CONVERSATION_SECONDS" ;;
       wake_threshold) printf '%s\n' "$ORBIT_WAKE_THRESHOLD" ;;
       ondevice)  printf '%s\n' "$ORBIT_ONDEVICE" ;;
+      hotkey)    printf '%s\n' "$ORBIT_HOTKEY" ;;
       *)         printf 'orbit config: wake_word | listen | followup | aliases\n' >&2; exit 2 ;;
     esac
     ;;

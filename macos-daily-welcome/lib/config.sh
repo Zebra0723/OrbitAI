@@ -88,7 +88,9 @@
 : "${WELCOME_ELEVEN_STYLE:=0}"
 : "${WELCOME_ELEVEN_SPEAKER_BOOST:=true}"
 
-: "${WELCOME_ELEVEN_FORMAT:=mp3_44100_128}"
+# Speech at 44kHz/128kbps is four times the bytes of something that sounds
+# identical through a laptop speaker, and those bytes are part of the wait.
+: "${WELCOME_ELEVEN_FORMAT:=mp3_22050_32}"
 : "${WELCOME_ELEVEN_TIMEOUT:=25}"
 
 # The API key lives in the login Keychain (daily-welcome --set-key).
@@ -187,6 +189,10 @@
 # of fuzzy matching can rescue, so the default is Apple's server
 # recognition. Set to 1 to keep audio local and accept the misses.
 : "${ORBIT_ONDEVICE:=0}"
+
+# Option-Space starts listening without the wake word. The wake word is
+# the part most likely to fail; a key never mishears you.
+: "${ORBIT_HOTKEY:=1}"
 
 # Answering questions, and reading the screen.
 : "${ORBIT_ASK_TIMEOUT:=30}"

@@ -212,9 +212,9 @@ eleven_synthesize() {
 }
 
 _eleven_cache_key() {
-  printf '%s|%s|%s|%s|%s|%s|%s' "$1" "$WELCOME_ELEVEN_VOICE_NAME$WELCOME_ELEVEN_VOICE_ID" \
+  printf '%s|%s|%s|%s|%s|%s|%s|%s' "$1" "$WELCOME_ELEVEN_VOICE_NAME$WELCOME_ELEVEN_VOICE_ID" \
     "$WELCOME_ELEVEN_MODEL" "$WELCOME_ELEVEN_STABILITY" "$WELCOME_ELEVEN_SIMILARITY" \
-    "$WELCOME_ELEVEN_STYLE" "$WELCOME_ELEVEN_SPEED" \
+    "$WELCOME_ELEVEN_STYLE" "$WELCOME_ELEVEN_SPEED" "$WELCOME_ELEVEN_FORMAT" \
     | shasum -a 256 2>/dev/null | cut -c1-32
 }
 

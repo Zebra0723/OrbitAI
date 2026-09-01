@@ -142,6 +142,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if listeningWanted {
             listener.start()
         }
+
+        // Option-Space by default: near the space bar, not taken by much.
+        if (shellConfig("hotkey") ?? "1") != "0" {
+            listener.installHotKey(49, flags: .option)   // 49 is Space
+        }
     }
 
     /// The icon says what Orbit is doing, so an open microphone is never
@@ -205,7 +210,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(lastRunItem)
         menu.addItem(.separator())
 
-        menu.addItem(item("Listen Now", #selector(listenNow), "l"))
+        menu.addItem(item("Listen Now (\u{2325}Space)", #selector(listenNow), "l"))
         listeningItem = item("Listening for \u{201C}\(wakeWord)\u{201D}", #selector(toggleListening), "")
         listeningItem.state = listeningWanted ? .on : .off
         menu.addItem(listeningItem)
