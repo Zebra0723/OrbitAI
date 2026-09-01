@@ -117,6 +117,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         listener.orbitPath = orbitPath
         listener.wakeWord = wakeWord
+        if let seconds = Double(shellConfig("followup") ?? ""), seconds > 0 {
+            listener.followUpWindow = seconds
+        }
         listener.onStateChange = { [weak self] state in
             self?.reflect(state)
         }

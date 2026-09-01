@@ -100,6 +100,13 @@
 : "${ORBIT_LISTEN:=1}"
 : "${ORBIT_WAKE_WORD:=hey orbit}"
 
+# What it says when you use the wake word on its own, with no command
+# after it. $WELCOME_NAME is filled in.
+: "${ORBIT_GREETING:=Hi $WELCOME_NAME. What can I do for you today?}"
+
+# How long it keeps listening after that greeting before going quiet again.
+: "${ORBIT_FOLLOWUP_SECONDS:=9}"
+
 # Nicknames -> people. Lines like:  mama = +15551234567
 : "${ORBIT_CONTACTS_FILE:=$HOME/.config/daily-welcome/contacts.conf}"
 

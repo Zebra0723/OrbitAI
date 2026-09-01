@@ -42,6 +42,7 @@ orbit - voice commands for daily-welcome
   orbit run <token>              carry out a planned action
   orbit cancel <token>           drop it
   orbit say "<text>"             speak something in the Orbit voice
+  orbit greeting                 the line for a wake word with no command
   orbit examples                 phrasings it understands
 
 Plan and run print one line of JSON: {"speak":"...","confirm":true,"token":"..."}
@@ -325,6 +326,10 @@ case "${1:-}" in
     speak_async "${1:-}"
     [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
     ;;
+  greeting)
+    # The wake word on its own: acknowledge, then keep listening.
+    emit "$ORBIT_GREETING" false ""
+    ;;
   config)
     # One source of truth for settings: the menu bar app asks for these
     # rather than keeping its own copy that drifts from your config file.
@@ -332,7 +337,8 @@ case "${1:-}" in
     case "${1:-}" in
       wake_word) printf '%s\n' "$ORBIT_WAKE_WORD" ;;
       listen)    printf '%s\n' "$ORBIT_LISTEN" ;;
-      *)         printf 'orbit config: wake_word | listen\n' >&2; exit 2 ;;
+      followup)  printf '%s\n' "$ORBIT_FOLLOWUP_SECONDS" ;;
+      *)         printf 'orbit config: wake_word | listen | followup\n' >&2; exit 2 ;;
     esac
     ;;
   examples)

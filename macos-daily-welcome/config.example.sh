@@ -60,6 +60,11 @@
 # ORBIT_LISTEN=1                 # 0 never opens the microphone
 # ORBIT_WAKE_WORD="hey orbit"
 
+# The answer when you say the wake word on its own, and how long it keeps
+# listening afterwards for the actual command.
+# ORBIT_GREETING="Hi $WELCOME_NAME. What can I do for you today?"
+# ORBIT_FOLLOWUP_SECONDS=9
+
 # Nicknames for people you message by voice live in contacts.conf next to
 # this file:   mama = +15551234567
 # ORBIT_CONTACTS_FILE="$HOME/.config/daily-welcome/contacts.conf"

@@ -46,6 +46,12 @@ final class OrbitListener: NSObject {
     private let confirmTimeout: TimeInterval = 12
     private var confirmStartedAt = Date()
 
+    /// Seconds to keep listening after answering a bare wake word.
+    var followUpWindow: TimeInterval = 9
+    /// True once the wake word has been acknowledged on its own, so the
+    /// greeting happens at most once per wake rather than on a loop.
+    private var greeted = false
+
     // MARK: - Permissions and lifecycle
 
     func start() {
@@ -81,6 +87,7 @@ final class OrbitListener: NSObject {
     func listenNow() {
         guard engine.isRunning else { start(); return }
         heard = ""
+        greeted = false
         lastHeardAt = Date()
         setState(.capturing)
         restartRecognition()
@@ -168,6 +175,7 @@ final class OrbitListener: NSObject {
             let tail = String(text[range.upperBound...])
                 .trimmingCharacters(in: CharacterSet(charactersIn: " ,.!?"))
             heard = tail
+            greeted = false
             lastHeardAt = Date()
             setState(.capturing)
             chime("Tink")
@@ -198,16 +206,27 @@ final class OrbitListener: NSObject {
     private func checkSilence() {
         let quietFor = Date().timeIntervalSince(lastHeardAt)
 
-        if state == .capturing, quietFor > commandSilence {
+        if state == .capturing {
             let command = heard.trimmingCharacters(in: .whitespacesAndNewlines)
-            heard = ""
-            if command.isEmpty {
-                // Wake word with nothing after it: go back to waiting.
-                setState(.idle)
-                restartRecognition()
-            } else {
+
+            if !command.isEmpty, quietFor > commandSilence {
+                heard = ""
+                greeted = false
                 setState(.working)
                 plan(command)
+
+            } else if command.isEmpty, !greeted, quietFor > commandSilence {
+                // The wake word on its own. Answer it, then keep listening
+                // rather than making them say it a second time.
+                greeted = true
+                greet()
+
+            } else if command.isEmpty, greeted, quietFor > followUpWindow {
+                // Nothing followed the greeting. Go quiet without comment -
+                // an assistant that announces its own timeout is a nag.
+                greeted = false
+                setState(.idle)
+                restartRecognition()
             }
         }
 
@@ -217,6 +236,21 @@ final class OrbitListener: NSObject {
     }
 
     // MARK: - Acting
+
+    private func greet() {
+        setState(.working)
+        run(["greeting"]) { [weak self] json in
+            guard let self = self else { return }
+            self.say(json["speak"] as? String ?? "") {
+                // Straight back to listening, with the follow-up clock
+                // starting from the end of the greeting, not the wake word.
+                self.heard = ""
+                self.lastHeardAt = Date()
+                self.setState(.capturing)
+                self.restartRecognition()
+            }
+        }
+    }
 
     private func plan(_ command: String) {
         run(["plan", command]) { [weak self] json in

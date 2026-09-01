@@ -77,6 +77,12 @@ Say the wake word, then the command. It chimes when it starts listening, and
 the menu bar icon changes so an open microphone is never something you take on
 trust. Recognition runs **on-device** — audio doesn't leave the Mac.
 
+Say just **"Hey Orbit"** and it answers *"Hi Arjun. What can I do for you
+today?"*, then keeps listening for about nine seconds so you can carry on
+without saying the wake word again. Say nothing and it goes quiet without
+comment. `ORBIT_GREETING` changes the line, `ORBIT_FOLLOWUP_SECONDS` the
+window.
+
 ### Messages, Claude, Mail
 
 ```
