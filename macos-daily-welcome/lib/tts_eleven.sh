@@ -26,6 +26,34 @@ eleven_api_key() {
   return 1
 }
 
+# Which of the three places the key came from, for diagnostics.
+eleven_key_source() {
+  if [ -n "${WELCOME_ELEVEN_API_KEY:-}" ]; then printf 'the WELCOME_ELEVEN_API_KEY variable'; return 0; fi
+  if have_cmd security && security find-generic-password -s "$WELCOME_KEYCHAIN_SERVICE" -w >/dev/null 2>&1; then
+    printf 'the login Keychain'; return 0
+  fi
+  if [ -f "$WELCOME_ELEVEN_KEY_FILE" ]; then printf '%s' "$WELCOME_ELEVEN_KEY_FILE"; return 0; fi
+  return 1
+}
+
+# Asks ElevenLabs whether the key works. Echoes the HTTP status: 200 is
+# good, 401 means the key itself is refused, 000 means it never got there.
+eleven_check_key() {
+  local key
+  key="$(eleven_api_key)" || return 1
+  have_cmd curl || return 1
+  curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
+    -H "xi-api-key: $key" "$ELEVEN_API/v1/user" 2>/dev/null
+}
+
+# Writes the key to a file instead, for when the Keychain won't play along.
+eleven_store_key_file() {
+  local key="$1"
+  mkdir -p "$(dirname "$WELCOME_ELEVEN_KEY_FILE")" || return 1
+  printf '%s' "$key" > "$WELCOME_ELEVEN_KEY_FILE" || return 1
+  chmod 600 "$WELCOME_ELEVEN_KEY_FILE"
+}
+
 eleven_available() {
   have_cmd curl && have_cmd afplay && eleven_api_key >/dev/null 2>&1
 }

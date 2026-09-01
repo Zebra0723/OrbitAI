@@ -54,6 +54,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --doctor        check the whole install and say what to fix
   daily-welcome --reset-permissions   make macOS ask about access again
   daily-welcome --set-key       store your ElevenLabs API key in the Keychain
+  daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
   daily-welcome --test-voice    say one line now, and report which voice said it
   daily-welcome --voices        available voices, and which one it will use
   daily-welcome --hush          stop talking right now
@@ -76,6 +77,7 @@ while [ $# -gt 0 ]; do
     --status)     MODE=status ;;
     --doctor)     exec "$ROOT/bin/doctor" ;;
     --set-key)    MODE=setkey ;;
+    --check-key)  MODE=checkkey ;;
     --test-voice) MODE=testvoice ;;
     --hush)       MODE=hush ;;
     --reset-permissions) MODE=resetperms ;;
@@ -135,21 +137,89 @@ case "$MODE" in
     exit 0
     ;;
   setkey)
-    if ! have_cmd security; then
-      echo "daily-welcome: no Keychain here; put the key in $WELCOME_ELEVEN_KEY_FILE" >&2
-      exit 1
+    # Read the key. A pipe is honoured too, so a key can be handed over
+    # without typing it: printf '%s' "$KEY" | daily-welcome --set-key
+    if [ -t 0 ]; then
+      printf 'ElevenLabs API key (input hidden): '
+      stty -echo 2>/dev/null; IFS= read -r new_key; stty echo 2>/dev/null; printf '\n'
+    else
+      IFS= read -r new_key
     fi
-    printf 'ElevenLabs API key (input hidden): '
-    stty -echo 2>/dev/null; IFS= read -r new_key; stty echo 2>/dev/null; printf '\n'
+
+    # Trim whatever came along for the ride. A copied key often carries a
+    # trailing space or a stray quote, and the API rejects those without
+    # saying why.
+    new_key="$(printf '%s' "$new_key" | tr -d '\r\n\t ' | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//')"
     if [ -z "$new_key" ]; then echo "daily-welcome: nothing entered." >&2; exit 1; fi
-    security add-generic-password -a "$USER" -s "$WELCOME_KEYCHAIN_SERVICE" \
-      -w "$new_key" -U >/dev/null || { echo "daily-welcome: could not save to Keychain." >&2; exit 1; }
-    unset new_key
+
+    stored=""
+    if have_cmd security; then
+      if security add-generic-password -a "${USER:-$(id -un)}" -s "$WELCOME_KEYCHAIN_SERVICE" \
+           -w "$new_key" -U >/dev/null 2>&1; then
+        # Storing is not the same as being able to read it back: the
+        # Keychain can accept a write and then refuse the read.
+        if [ "$(security find-generic-password -s "$WELCOME_KEYCHAIN_SERVICE" -w 2>/dev/null)" = "$new_key" ]; then
+          stored="the login Keychain"
+        fi
+      fi
+    fi
+
+    if [ -z "$stored" ]; then
+      if eleven_store_key_file "$new_key"; then
+        stored="$WELCOME_ELEVEN_KEY_FILE"
+        echo "The Keychain wouldn't hand the key back, so it's in a file instead"
+        echo "(readable only by you)."
+      else
+        echo "daily-welcome: couldn't store the key anywhere." >&2
+        exit 1
+      fi
+    fi
+
     rm -f "$WELCOME_STATE_DIR/eleven-voice-id"   # re-resolve against the new account
-    echo "Saved to the login Keychain as \"$WELCOME_KEYCHAIN_SERVICE\"."
-    # With a key now available, render the common lines up front.
-    ("$ROOT/bin/orbit" warm >/dev/null 2>&1 &) 2>/dev/null
-    echo "Check it works:  daily-welcome --test-voice"
+    echo "Saved to $stored."
+
+    # Ask ElevenLabs whether it likes the key, rather than finding out at
+    # the first thing you say.
+    export WELCOME_ELEVEN_API_KEY="$new_key"
+    code="$(eleven_check_key)"
+    unset WELCOME_ELEVEN_API_KEY new_key
+    case "$code" in
+      200) echo "ElevenLabs accepted it."
+           ("$ROOT/bin/orbit" warm >/dev/null 2>&1 &) 2>/dev/null
+           echo "Hear it: daily-welcome --test-voice" ;;
+      401|403) echo "ElevenLabs refused it (HTTP $code). The key is stored, but it"
+               echo "won't work - check you copied the whole thing from"
+               echo "elevenlabs.io > profile > API Keys." ;;
+      000|"") echo "Couldn't reach ElevenLabs to check it. Stored anyway." ;;
+      *) echo "ElevenLabs answered HTTP $code. Stored; try --test-voice." ;;
+    esac
+    exit 0
+    ;;
+  checkkey)
+    source_name="$(eleven_key_source)" || {
+      echo "No key found in any of:"
+      echo "  the WELCOME_ELEVEN_API_KEY variable"
+      echo "  the login Keychain (service \"$WELCOME_KEYCHAIN_SERVICE\")"
+      echo "  $WELCOME_ELEVEN_KEY_FILE"
+      echo
+      echo "Set one with: daily-welcome --set-key"
+      exit 1
+    }
+    key="$(eleven_api_key)"
+    echo "Key found in:  $source_name"
+    # Never print the key; enough of it to recognise, no more.
+    echo "Looks like:    ${#key} characters, ending ...${key: -4}"
+    case "$key" in
+      sk_*) echo "Format:        starts with sk_, as expected" ;;
+      *)    echo "Format:        does NOT start with sk_ - is this the whole key?" ;;
+    esac
+    code="$(eleven_check_key)"
+    case "$code" in
+      200) echo "ElevenLabs:    accepted (HTTP 200)" ;;
+      401|403) echo "ElevenLabs:    REFUSED (HTTP $code) - the key is wrong, expired, or partial" ;;
+      000|"") echo "ElevenLabs:    no answer - network, or a proxy in the way" ;;
+      *) echo "ElevenLabs:    HTTP $code" ;;
+    esac
     exit 0
     ;;
   testvoice)
