@@ -148,6 +148,9 @@ stays unsent.
 | Bits | what time is it, how much battery, read my clipboard, type hello |
 | Making things | remind me to call the dentist, make a note saying buy milk, set a timer for 10 minutes |
 | Reading back | brief me, what's on my calendar, read my messages, any new email, what did Claude do |
+| Questions | how long do I boil an egg, what's the capital of Peru, explain this error |
+| The screen | what's on my screen, what does this say, what's this error |
+| Macros | whatever you name in macros.conf: "good night", "focus" |
 
 `orbit examples` prints this list on the machine.
 
@@ -183,6 +186,22 @@ Wi-Fi off, sleep, restart, shut down, typing into whatever's focused, and every
 freeform command. Say *no*, *cancel*, or *never mind* to drop it; say nothing
 for twelve seconds and it drops itself. A confirmation also expires after ten
 minutes, so a late "yes" can't fire an old command.
+
+## The console
+
+```bash
+orbit console
+```
+
+Opens **OrbitAI** at `127.0.0.1:7717`: status of the app and the ears, every
+setting worth changing, your people and macros, the ElevenLabs key and voice
+list, a box to make it say something, and a box to run a command as though you
+had said it out loud.
+
+It binds to localhost only, and it reads and writes the same files the
+assistant itself uses, so the console and the voice can never disagree about
+what the settings are. Settings the app only reads at launch restart it for
+you when changed.
 
 ## The menu bar item
 
@@ -264,6 +283,13 @@ daily-welcome --status     what it thinks, and when it last ran
 daily-welcome --set-key    ElevenLabs key into the Keychain
 daily-welcome --test-voice speak one line, report which voice said it
 daily-welcome --hush       stop talking right now
+
+orbit console              the management console in a browser
+orbit selftest             check every feature where it actually runs
+orbit listen status        what the ears are doing
+orbit listen heard         the last things it heard while waiting
+orbit listen wake "..."    change the wake word
+orbit listen alias "..."   accept another mishearing as the wake word
 
 orbit plan "<command>"     what it would do, as JSON
 orbit run <token>          carry out a planned action

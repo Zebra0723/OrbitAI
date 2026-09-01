@@ -56,6 +56,8 @@ orbit - voice commands for daily-welcome
   orbit listen [status|on|off|restart]   check or control the microphone
   orbit warm                     pre-render the lines it says most
   orbit greeting                 the line for a wake word with no command
+  orbit console                  open the OrbitAI console in a browser
+  orbit selftest                 check every feature in the place it runs
   orbit examples                 phrasings it understands
 
 Plan and run print one line of JSON: {"speak":"...","confirm":true,"token":"..."}
@@ -606,6 +608,15 @@ case "${1:-}" in
     else fail "Listener has never run" "orbit listen on"; fi
 
     printf '\n'
+    ;;
+  console)
+    # The management console: a local page, bound to localhost only.
+    shift
+    if ! have_cmd python3; then
+      echo "orbit: the console needs python3 (xcode-select --install)." >&2
+      exit 1
+    fi
+    exec python3 "$ROOT/web/server.py" "$@"
     ;;
   timer-fire)
     # Runs detached: sleep, then say so. Only ever started by nohup.
