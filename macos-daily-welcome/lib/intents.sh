@@ -62,7 +62,19 @@ _try_message() {
 
 _try_claude() {
   local text="$1" rest pair repo task
-  rest="$(_strip_prefix "$text" "^[[:space:]]*(please[[:space:]]+)?(tell|ask|have|get|send)[[:space:]]+claude[[:space:]]+")" || return 1
+  # People reach for a lot of different verbs here - "tell Claude", "go to
+  # Claude and", "in Claude", "with Claude" - and all of them mean the same
+  # thing, so all of them are accepted.
+  rest="$(_strip_prefix "$text" "^[[:space:]]*(please[[:space:]]+)?(go[[:space:]]+to|open|switch[[:space:]]+to|head[[:space:]]+(over[[:space:]]+)?to|in|with|using)[[:space:]]+claude([[:space:]]+(and|then))?[[:space:]]+(say|tell[[:space:]]+it|ask[[:space:]]+it)?[[:space:]]*")" \
+    || rest="$(_strip_prefix "$text" "^[[:space:]]*(please[[:space:]]+)?(tell|ask|have|get|send)[[:space:]]+claude[[:space:]]+")" \
+    || rest="$(_strip_prefix "$text" "^[[:space:]]*claude[,:]?[[:space:]]+")" \
+    || return 1
+
+  # "go to claude and say this: fix the parser" leaves a bare task with no
+  # "to", which the repo-and-task split below would otherwise reject.
+  case "$(printf '%s' "$rest" | tr '[:upper:]' '[:lower:]')" in
+    "this "*|"this:"*|"that "*) rest="$(printf '%s' "$rest" | sed -E 's/^(this|that)[:,]?[[:space:]]*//I')" ;;
+  esac
 
   # "on the dailyos chat to debug"  ->  repo first, task second
   if pair="$(_strip_prefix "$rest" "^(on|in|about|for)[[:space:]]+")"; then
@@ -426,6 +438,16 @@ parse_intent() {
   # Drop the wake word if the recognizer kept it.
   text="$(printf '%s' "$text" | sed -E 's/^(hey|hi|ok|okay)[[:space:]]+orbit[[:space:]]*[,.]?[[:space:]]*//I')"
 
+  # In "openai" mode the model gets first refusal on everything except the
+  # user's own macro phrases, which are theirs by definition.
+  if [ "$ORBIT_NLU" = "openai" ]; then
+    if macro_steps "$text" >/dev/null 2>&1; then
+      printf 'macro\t%s\t\n' "$text"
+      return 0
+    fi
+    openai_intent "$text" && return 0
+  fi
+
   # A macro phrase is user-defined, so it outranks every built-in reading.
   if macro_steps "$text" >/dev/null 2>&1; then
     printf 'macro\t%s\t\n' "$text"
@@ -438,6 +460,12 @@ parse_intent() {
   _try_mail_reply "$text"  && return 0
   _try_call "$text"        && return 0
   _try_system "$text"      && return 0
+  # The rules have had their go. Anything they could not place is handed
+  # to a model, which is far better at the phrasings nobody anticipated.
+  if [ "$ORBIT_NLU" != "rules" ] && openai_intent "$text"; then
+    return 0
+  fi
+
   _try_readback "$text"    && return 0
   _try_ask "$text"         && return 0
   _try_claude_nlu "$text"  && return 0

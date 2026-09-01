@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Macros - OrbitAI</title>
+<meta name="description" content="One phrase, several commands.">
+<link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+<div class="sky"></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="./"><span class="ring"></span><span>OrbitAI</span></a>
+  <a class="link" href="./console">Console</a>
+  <a class="link" href="./voice">Voice</a>
+  <a class="link" href="./commands">Commands</a>
+  <a class="link" href="./macros">Macros</a>
+  <a class="link" href="./setup">Setup</a>
+  <div class="spacer"></div>
+  <div class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></div>
+</div></nav>
+<main>
+<section id="pairing" hidden>
+  <h2>Connection</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:13.5px;margin:0 0 14px">
+      This page talks straight from your browser to the bridge on your Mac.
+      Nothing about your assistant is stored here, and no request passes
+      through this site.</p>
+    <div class="say">
+      <input type="text" id="bridgeUrl" placeholder="http://127.0.0.1:7717">
+      <input type="password" id="bridgeToken" placeholder="pairing token">
+      <button onclick="pair()">Connect</button>
+    </div>
+    <pre id="pairOut"></pre>
+    <div class="note">On the Mac: <code>orbit console --allow https://your-project.vercel.app</code>
+      then <code>orbit console --bridge</code>, which prints the token and stays running.</div>
+  </div>
+</section>
+<section>
+  <h1 style="font-size:28px">Macros and people</h1>
+  <p class="lede">A macro is a phrase standing in for several commands. People
+  are the nicknames you call them by, so "message mama" reaches the right
+  number without a search.</p>
+</section>
+
+<section>
+  <h2>Macros</h2>
+  <div class="panel">
+    <div class="pairs-head"><div style="width:32%">Phrase</div><div>Commands, separated by ;</div></div>
+    <table id="macros"></table>
+    <div class="bar">
+      <button class="quiet" onclick="addRow('macros')">Add</button>
+      <button onclick="savePairs('macros')">Save macros</button>
+    </div>
+    <div class="note">Example: <code>good night</code> then
+      <code>dark mode; turn off wifi; set a timer for 5 minutes</code>.
+      If every step is reversible the macro just runs; if any step would need
+      confirming, the whole macro is confirmed once.</div>
+  </div>
+</section>
+
+<section>
+  <h2>People</h2>
+  <div class="panel">
+    <div class="pairs-head"><div style="width:32%">Nickname</div><div>Number or address</div></div>
+    <table id="contacts"></table>
+    <div class="bar">
+      <button class="quiet" onclick="addRow('contacts')">Add</button>
+      <button onclick="savePairs('contacts')">Save people</button>
+    </div>
+    <div class="note">Anything not listed is looked up in Contacts by name. A
+    name that resolves to nobody stops the command rather than guessing.</div>
+  </div>
+  <pre id="pairsOut"></pre>
+</section>
+</main>
+<footer>OrbitAI runs on your Mac. This page only ever talks to it directly.</footer>
+<script src="./assets/app.js"></script>
+<script src="./assets/macros.js"></script>
+</body>
+</html>

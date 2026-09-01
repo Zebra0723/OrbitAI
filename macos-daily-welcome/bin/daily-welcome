@@ -55,6 +55,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --reset-permissions   make macOS ask about access again
   daily-welcome --set-key       store your ElevenLabs API key in the Keychain
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
+  daily-welcome --set-openai-key   store an OpenAI key, for understanding commands
   daily-welcome --test-voice    say one line now, and report which voice said it
   daily-welcome --voices        available voices, and which one it will use
   daily-welcome --hush          stop talking right now
@@ -77,6 +78,7 @@ while [ $# -gt 0 ]; do
     --status)     MODE=status ;;
     --doctor)     exec "$ROOT/bin/doctor" ;;
     --set-key)    MODE=setkey ;;
+    --set-openai-key) MODE=setopenai ;;
     --check-key)  MODE=checkkey ;;
     --test-voice) MODE=testvoice ;;
     --hush)       MODE=hush ;;
@@ -192,6 +194,42 @@ case "$MODE" in
                echo "elevenlabs.io > profile > API Keys." ;;
       000|"") echo "Couldn't reach ElevenLabs to check it. Stored anyway." ;;
       *) echo "ElevenLabs answered HTTP $code. Stored; try --test-voice." ;;
+    esac
+    exit 0
+    ;;
+  setopenai)
+    # The same storage as the ElevenLabs key: Keychain first, a file only
+    # if the Keychain will not hand it back.
+    if [ -t 0 ]; then
+      printf 'OpenAI API key (input hidden): '
+      stty -echo 2>/dev/null; IFS= read -r new_key; stty echo 2>/dev/null; printf '\n'
+    else
+      IFS= read -r new_key
+    fi
+    new_key="$(printf '%s' "$new_key" | tr -d '\r\n\t ' | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//')"
+    [ -z "$new_key" ] && { echo "daily-welcome: nothing entered." >&2; exit 1; }
+
+    stored=""
+    if have_cmd security &&
+       security add-generic-password -a "${USER:-$(id -un)}" -s "$ORBIT_OPENAI_KEYCHAIN" \
+         -w "$new_key" -U >/dev/null 2>&1 &&
+       [ "$(security find-generic-password -s "$ORBIT_OPENAI_KEYCHAIN" -w 2>/dev/null)" = "$new_key" ]; then
+      stored="the login Keychain"
+    else
+      mkdir -p "$(dirname "$ORBIT_OPENAI_KEY_FILE")"
+      printf '%s' "$new_key" > "$ORBIT_OPENAI_KEY_FILE" && chmod 600 "$ORBIT_OPENAI_KEY_FILE" &&
+        stored="$ORBIT_OPENAI_KEY_FILE"
+    fi
+    [ -z "$stored" ] && { echo "daily-welcome: couldn't store the key." >&2; exit 1; }
+    echo "Saved to $stored."
+
+    # Check it against a real request rather than leaving you to find out
+    # the first time you say something.
+    probe="$(OPENAI_API_KEY="$new_key" python3 "$ROOT/lib/openai_intent.py" "turn the volume up" 2>&1)"
+    unset new_key
+    case "$probe" in
+      system*) echo "OpenAI accepted it. Understanding is on." ;;
+      *) echo "It stored, but the test request failed:"; printf '  %s\n' "$probe" ;;
     esac
     exit 0
     ;;

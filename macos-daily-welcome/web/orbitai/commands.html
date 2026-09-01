@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commands - OrbitAI</title>
+<meta name="description" content="Everything OrbitAI understands.">
+<link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+<div class="sky"></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="./"><span class="ring"></span><span>OrbitAI</span></a>
+  <a class="link" href="./console">Console</a>
+  <a class="link" href="./voice">Voice</a>
+  <a class="link" href="./commands">Commands</a>
+  <a class="link" href="./macros">Macros</a>
+  <a class="link" href="./setup">Setup</a>
+  <div class="spacer"></div>
+  <div class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></div>
+</div></nav>
+<main>
+<section>
+  <h1 style="font-size:28px">Commands</h1>
+  <p class="lede">Everything it understands, and what happens when it does.
+  Anything not here goes to Claude, which writes a one-line command and reads it
+  back before running it.</p>
+  <div class="say" style="margin-top:22px">
+    <input type="text" id="filter" placeholder="Filter" oninput="filterCommands()">
+  </div>
+</section>
+<section>
+  <h2>Reference</h2>
+  <div class="cmd-list" id="commands"></div>
+</section>
+<section>
+  <h2>What waits for a yes</h2>
+  <div class="grid two">
+    <div class="card"><h3>Straight away</h3><p>Volume, brightness, dark mode,
+      music, screenshots, opening apps, timers, notes, reminders, questions,
+      anything that reads something out. Confirming "volume up" out loud takes
+      longer than the key would have.</p></div>
+    <div class="card"><h3>Read back first</h3><p>Sending a message, sending mail,
+      placing a call, dispatching Claude, quitting an app, emptying the trash,
+      turning Wi-Fi off, sleep, restart, shut down, typing into whatever is in
+      front, and every command Claude writes.</p></div>
+  </div>
+  <div class="note">Say no, cancel, or never mind to drop it. Say nothing for
+  twelve seconds and it drops itself. A confirmation expires after ten minutes,
+  so a late yes can't fire an old command.</div>
+</section>
+</main>
+<footer>OrbitAI runs on your Mac. This page only ever talks to it directly.</footer>
+<script src="./assets/app.js"></script>
+<script src="./assets/commands.js"></script>
+</body>
+</html>

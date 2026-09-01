@@ -12,6 +12,7 @@ Started with `orbit console`; stopped with ctrl-c.
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 HOME = Path.home()
 CONFIG = HOME / ".config" / "daily-welcome" / "config.sh"
+TOKEN_FILE = HOME / ".config" / "daily-welcome" / "console-token"
 CONTACTS = HOME / ".config" / "daily-welcome" / "contacts.conf"
 MACROS = HOME / ".config" / "daily-welcome" / "macros.conf"
 STATE = Path(os.environ.get("WELCOME_STATE_DIR", HOME / ".local/state/daily-welcome"))
@@ -55,6 +57,40 @@ SETTINGS = [
 ]
 
 TOGGLES = {name for name, kind, *_ in SETTINGS if kind == "toggle"}
+
+
+def token():
+    """The pairing token.
+
+    Without this, any web page open in any tab could drive this Mac: a
+    browser will happily let a site talk to localhost, and the assistant
+    can send mail and place calls. The deployed console asks for the token
+    once and keeps it; the local page is same-origin and doesn't need it.
+    """
+    if not TOKEN_FILE.exists():
+        TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+        TOKEN_FILE.write_text(secrets.token_urlsafe(24) + "\n")
+        TOKEN_FILE.chmod(0o600)
+    return TOKEN_FILE.read_text().strip()
+
+
+def origin_allowed(origin):
+    """Which sites may talk to the bridge."""
+    if not origin:
+        return False
+    if origin.startswith("http://127.0.0.1") or origin.startswith("http://localhost"):
+        return True
+    allowed = os.environ.get("ORBIT_CONSOLE_ORIGINS", "")
+    for candidate in allowed.split(","):
+        candidate = candidate.strip().rstrip("/")
+        if candidate and origin.rstrip("/") == candidate:
+            return True
+    # Vercel gives every deployment its own subdomain, so the project is
+    # matched rather than one exact host.
+    project = os.environ.get("ORBIT_CONSOLE_VERCEL", "").strip()
+    if project and re.fullmatch(rf"https://{re.escape(project)}[a-z0-9-]*\.vercel\.app", origin):
+        return True
+    return False
 
 
 def run(args, timeout=60):
@@ -155,9 +191,36 @@ class Console(BaseHTTPRequestHandler):
         pass
 
     # -- helpers ---------------------------------------------------------
+    def cors(self):
+        origin = self.headers.get("Origin", "")
+        if origin_allowed(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Orbit-Token")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            # Chrome's private network access check: a public page reaching
+            # a local address must be let in explicitly.
+            self.send_header("Access-Control-Allow-Private-Network", "true")
+
+    def authorised(self):
+        """Same-origin needs no token; anything else must present one."""
+        origin = self.headers.get("Origin", "")
+        if not origin or origin.startswith("http://127.0.0.1") or origin.startswith("http://localhost"):
+            return True
+        if not origin_allowed(origin):
+            return False
+        return secrets.compare_digest(self.headers.get("X-Orbit-Token", ""), token())
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.cors()
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def send(self, code, body, content_type="application/json"):
         raw = body.encode() if isinstance(body, str) else body
         self.send_response(code)
+        self.cors()
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(raw)))
         self.send_header("Cache-Control", "no-store")
@@ -177,9 +240,30 @@ class Console(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urllib.parse.urlparse(self.path).path
 
+        # The site is the same files Vercel serves, so the local copy and
+        # the deployed one can never drift apart.
+        site = ROOT / "web" / "orbitai"
         if path in ("/", "/index.html"):
-            page = (ROOT / "web" / "console.html").read_bytes()
-            return self.send(200, page, "text/html; charset=utf-8")
+            return self.send(200, (site / "index.html").read_bytes(), "text/html; charset=utf-8")
+
+        name = path.strip("/")
+        if name and ".." not in name:
+            for candidate, kind in ((site / name, None),
+                                    (site / f"{name}.html", "text/html; charset=utf-8")):
+                if candidate.is_file():
+                    kind = kind or {
+                        ".css": "text/css", ".js": "text/javascript",
+                        ".json": "application/json", ".html": "text/html; charset=utf-8",
+                    }.get(candidate.suffix, "application/octet-stream")
+                    return self.send(200, candidate.read_bytes(), kind)
+
+        # Lets the deployed console confirm it has reached the right Mac
+        # before it asks for anything.
+        if path == "/api/hello":
+            return self.send(200, json.dumps({"orbit": True, "name": os.uname().nodename}))
+
+        if not self.authorised():
+            return self.send(403, json.dumps({"error": "pair this site first"}))
 
         if path == "/api/state":
             return self.send(200, json.dumps({
@@ -210,6 +294,8 @@ class Console(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urllib.parse.urlparse(self.path).path
+        if not self.authorised():
+            return self.send(403, json.dumps({"error": "pair this site first"}))
         data = self.body()
 
         if path == "/api/setting":
@@ -277,7 +363,8 @@ def main():
     # business listening on a network interface.
     server = ThreadingHTTPServer(("127.0.0.1", port), Console)
     url = f"http://127.0.0.1:{port}"
-    print(f"OrbitAI console: {url}")
+    print(f"OrbitAI bridge on {url}")
+    print(f"Pairing token: {token()}")
     print("ctrl-c to stop")
     if shutil.which("open") and "--no-open" not in sys.argv:
         subprocess.run(["open", url], capture_output=True)

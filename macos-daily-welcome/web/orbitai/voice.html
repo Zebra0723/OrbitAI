@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice - OrbitAI</title>
+<meta name="description" content="Choose and tune the voice.">
+<link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+<div class="sky"></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="./"><span class="ring"></span><span>OrbitAI</span></a>
+  <a class="link" href="./console">Console</a>
+  <a class="link" href="./voice">Voice</a>
+  <a class="link" href="./commands">Commands</a>
+  <a class="link" href="./macros">Macros</a>
+  <a class="link" href="./setup">Setup</a>
+  <div class="spacer"></div>
+  <div class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></div>
+</div></nav>
+<main>
+<section id="pairing" hidden>
+  <h2>Connection</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:13.5px;margin:0 0 14px">
+      This page talks straight from your browser to the bridge on your Mac.
+      Nothing about your assistant is stored here, and no request passes
+      through this site.</p>
+    <div class="say">
+      <input type="text" id="bridgeUrl" placeholder="http://127.0.0.1:7717">
+      <input type="password" id="bridgeToken" placeholder="pairing token">
+      <button onclick="pair()">Connect</button>
+    </div>
+    <pre id="pairOut"></pre>
+    <div class="note">On the Mac: <code>orbit console --allow https://your-project.vercel.app</code>
+      then <code>orbit console --bridge</code>, which prints the token and stays running.</div>
+  </div>
+</section>
+<section>
+  <h1 style="font-size:28px">Voice</h1>
+  <p class="lede">The assistant speaks with an ElevenLabs voice. Without a key it
+  falls back to the best built-in macOS voice, so a missing key costs you the
+  voice, never the briefing.</p>
+</section>
+
+<section>
+  <h2>API key</h2>
+  <div class="panel">
+    <div class="say"><input type="password" id="apiKey" placeholder="sk_...">
+      <button onclick="setKey()">Save</button>
+      <button class="quiet" onclick="voices()">List my voices</button></div>
+    <div class="note">Stored in the login Keychain, or in a file readable only by
+    you if the Keychain refuses to hand it back.</div>
+    <pre id="voiceOut"></pre>
+  </div>
+</section>
+
+<section>
+  <h2>Which voice</h2>
+  <div class="panel" id="voiceSettings"></div>
+  <div class="bar">
+    <input type="text" id="preview" style="flex:1"
+           value="Welcome back. Three reminders due today, one overdue.">
+    <button onclick="previewVoice()">Preview</button>
+  </div>
+</section>
+
+<section>
+  <h2>Tone</h2>
+  <div class="panel" id="toneSettings"></div>
+  <div class="note">Emotion is read from your words, not your voice - prosody
+  analysis is not something this can do honestly. A clipped order gets a clipped
+  answer, a frustrated one loses the cheerfulness, and after ten at night
+  everything gets quieter.</div>
+</section>
+</main>
+<footer>OrbitAI runs on your Mac. This page only ever talks to it directly.</footer>
+<script src="./assets/app.js"></script>
+<script src="./assets/voice.js"></script>
+</body>
+</html>

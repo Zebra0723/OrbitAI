@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console - OrbitAI</title>
+<meta name="description" content="Status and control for the assistant on your Mac.">
+<link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+<div class="sky"></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="./"><span class="ring"></span><span>OrbitAI</span></a>
+  <a class="link" href="./console">Console</a>
+  <a class="link" href="./voice">Voice</a>
+  <a class="link" href="./commands">Commands</a>
+  <a class="link" href="./macros">Macros</a>
+  <a class="link" href="./setup">Setup</a>
+  <div class="spacer"></div>
+  <div class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></div>
+</div></nav>
+<main>
+<section id="pairing" hidden>
+  <h2>Connection</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:13.5px;margin:0 0 14px">
+      This page talks straight from your browser to the bridge on your Mac.
+      Nothing about your assistant is stored here, and no request passes
+      through this site.</p>
+    <div class="say">
+      <input type="text" id="bridgeUrl" placeholder="http://127.0.0.1:7717">
+      <input type="password" id="bridgeToken" placeholder="pairing token">
+      <button onclick="pair()">Connect</button>
+    </div>
+    <pre id="pairOut"></pre>
+    <div class="note">On the Mac: <code>orbit console --allow https://your-project.vercel.app</code>
+      then <code>orbit console --bridge</code>, which prints the token and stays running.</div>
+  </div>
+</section>
+<section>
+  <h2>Status</h2>
+  <div class="tiles" id="tiles"></div>
+  <div class="bar">
+    <button onclick="listen('on')">Start listening</button>
+    <button class="quiet" onclick="listen('off')">Stop</button>
+    <button class="quiet" onclick="listen('restart')">Restart app</button>
+    <button class="quiet" onclick="selftest()">Self-test</button>
+    <button class="quiet" onclick="briefing()">Briefing</button>
+  </div>
+  <pre id="out"></pre>
+</section>
+
+<section>
+  <h2>Talk to it</h2>
+  <div class="panel">
+    <div class="say"><input type="text" id="cmdText"
+      placeholder="Run a command, as though you had said it out loud">
+      <button onclick="command()">Run</button></div>
+    <div class="say" style="margin-top:12px"><input type="text" id="sayText"
+      placeholder="Or just make it say something">
+      <button class="quiet" onclick="say()">Speak</button></div>
+    <div class="note">Anything that would normally need a spoken yes is planned
+    here, not carried out.</div>
+  </div>
+</section>
+
+<section>
+  <h2>Heard recently</h2>
+  <div class="panel"><pre id="heard"></pre>
+  <div class="note">What the recogniser made of the room while waiting for the
+  wake word. If your wake word is in here as something else, add it as an alias
+  on the Setup page.</div></div>
+</section>
+
+<section>
+  <h2>Settings</h2>
+  <div class="panel" id="settings"></div>
+</section>
+</main>
+<footer>OrbitAI runs on your Mac. This page only ever talks to it directly.</footer>
+<script src="./assets/app.js"></script>
+<script src="./assets/console.js"></script>
+</body>
+</html>

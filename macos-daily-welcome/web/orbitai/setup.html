@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup - OrbitAI</title>
+<meta name="description" content="Install, permissions, and fixing the wake word.">
+<link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+<div class="sky"></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="./"><span class="ring"></span><span>OrbitAI</span></a>
+  <a class="link" href="./console">Console</a>
+  <a class="link" href="./voice">Voice</a>
+  <a class="link" href="./commands">Commands</a>
+  <a class="link" href="./macros">Macros</a>
+  <a class="link" href="./setup">Setup</a>
+  <div class="spacer"></div>
+  <div class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></div>
+</div></nav>
+<main>
+<section>
+  <h1 style="font-size:28px">Setup</h1>
+  <p class="lede">Four commands, two permissions macOS asks for, and one it
+  never will.</p>
+</section>
+
+<section>
+  <h2>Install</h2>
+  <div class="panel">
+<pre>cd ~/vortex && git pull
+./macos-daily-welcome/install.sh
+daily-welcome --set-key
+orbit selftest</pre>
+    <div class="note">The installer needs <code>swiftc</code>. If it says so, run
+    <code>xcode-select --install</code> and try again - without it there is no
+    menu bar app, and with no app macOS never asks for anything.</div>
+  </div>
+</section>
+
+<section>
+  <h2>Permissions</h2>
+  <div class="grid two">
+    <div class="card"><h3>Asked for once</h3><p>Microphone and Speech Recognition
+      for the wake word. Reminders, Calendar, Contacts, Mail, Messages, Notes for
+      reading and acting. Accessibility for typing and window commands.</p></div>
+    <div class="card"><h3>Never asked for</h3><p>Reading Messages needs Full Disk
+      Access, which macOS will not prompt for. Add
+      <code>~/Applications/DailyWelcome.app</code> under Privacy and Security,
+      Full Disk Access.</p></div>
+  </div>
+  <div class="note">Grants belong to whichever app is asking. Allowing your
+  terminal does not allow the menu bar app. If something was refused once, macOS
+  remembers - <code>daily-welcome --reset-permissions</code> makes it ask again.</div>
+</section>
+
+<section>
+  <h2>When the wake word doesn't fire</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:13.5px">A made-up name isn't in any
+    recogniser's vocabulary, so it comes back as whatever real words it
+    resembled. Three fixes, in order:</p>
+<pre>orbit listen heard                    # what it actually heard you say
+orbit listen alias "or bit"           # accept that as the wake word too
+orbit listen wake "hey computer"      # or use words it already knows</pre>
+    <div class="note">Server recognition is the default because on-device
+    recognition is markedly worse at unfamiliar words. Turn it back on in the
+    console if you would rather the audio never left the Mac.</div>
+  </div>
+</section>
+
+<section>
+  <h2>This site</h2>
+  <div class="panel">
+<pre>cd macos-daily-welcome/web/orbitai
+vercel deploy --prod
+
+orbit console --allow https://your-project.vercel.app
+orbit console --bridge                # prints the pairing token</pre>
+    <div class="note">The page runs in your browser and talks straight to your
+    Mac. A browser will let any site reach localhost, so the bridge refuses
+    anything without the token. Safari blocks HTTPS pages from reaching local
+    addresses entirely - there, run <code>orbit console</code> and use the copy
+    served from the Mac.</div>
+  </div>
+</section>
+</main>
+<footer>OrbitAI runs on your Mac. This page only ever talks to it directly.</footer>
+<script src="./assets/app.js"></script>
+</body>
+</html>

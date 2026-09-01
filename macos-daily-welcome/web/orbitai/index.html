@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OrbitAI</title>
+<meta name="description" content="A voice assistant that runs on your Mac.">
+<link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+<div class="sky"></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="./"><span class="ring"></span><span>OrbitAI</span></a>
+  <a class="link" href="./console">Console</a>
+  <a class="link" href="./voice">Voice</a>
+  <a class="link" href="./commands">Commands</a>
+  <a class="link" href="./macros">Macros</a>
+  <a class="link" href="./setup">Setup</a>
+  <div class="spacer"></div>
+  <div class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></div>
+</div></nav>
+<main>
+<section class="hero">
+  <h1>A voice that actually<br>runs your Mac.</h1>
+  <p class="lede">OrbitAI listens for its name, answers in your own cloned voice,
+  and does the thing: sends the message, places the call, drafts the replies,
+  hands work to Claude, drives the apps. It lives in the menu bar and needs
+  nothing open.</p>
+  <div class="bar">
+    <a href="./console"><button class="big">Open the console</button></a>
+    <a href="./setup"><button class="big quiet">Set it up</button></a>
+  </div>
+</section>
+
+<section>
+  <h2>What it does</h2>
+  <div class="grid two">
+    <div class="card"><h3>Wakes with you</h3>
+      <p>The first time the Mac wakes each day it greets you by name and reads
+      the briefing: reminders due, today's calendar, unread messages and mail,
+      and whatever Claude finished overnight.</p></div>
+    <div class="card"><h3>Holds a conversation</h3>
+      <p>Say its name once. After that it keeps listening until you say thanks,
+      remembers who you were just talking about, and stops mid-sentence if you
+      tell it to.</p></div>
+    <div class="card"><h3>Acts, with a hand on the brake</h3>
+      <p>Reversible things happen on the word. Sends, calls, quits and anything
+      Claude writes are read back and wait for a spoken yes.</p></div>
+    <div class="card"><h3>Answers</h3>
+      <p>Questions go to Claude and come back as a sentence or two. Point it at
+      your screen and it will explain the error you are looking at.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Sounds like</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:15px;line-height:1.8;margin:0">
+      Welcome back, Arjun. Good morning, sir. It's eight forty-two in the
+      morning, Monday the first of September. Three reminders due today, one
+      overdue. Two events on the calendar. Top of the list: call the bank.
+      That one is overdue. Standing by.</p>
+  </div>
+  <div class="note">Times, dates and counts are written out as words before they
+  reach the voice - engines mangle raw digits in their own particular ways.</div>
+</section>
+
+<section>
+  <h2>Built on</h2>
+  <div class="grid three">
+    <div class="card"><h3>Your voice</h3><p>ElevenLabs for the voice, with macOS
+      speech as the fallback when the network isn't there.</p></div>
+    <div class="card"><h3>Your Mac</h3><p>EventKit, Messages, Mail, Contacts,
+      AppleScript. No cloud copy of any of it.</p></div>
+    <div class="card"><h3>Claude Code</h3><p>For questions, screen reading, and
+      real work in your repos.</p></div>
+  </div>
+</section>
+</main>
+<footer>OrbitAI runs on your Mac. This page only ever talks to it directly.</footer>
+<script src="./assets/app.js"></script>
+</body>
+</html>

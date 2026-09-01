@@ -203,6 +203,19 @@
 # How long "who and what we were just talking about" survives.
 : "${ORBIT_CONTEXT_TTL_SECONDS:=120}"
 
+# How commands are understood.
+#   rules  - only the built-in patterns, no network, no key
+#   auto   - rules first, then OpenAI for anything they miss (default)
+#   openai - OpenAI first, for when the rules keep getting it wrong
+: "${ORBIT_NLU:=auto}"
+: "${ORBIT_OPENAI_MODEL:=gpt-4o-mini}"
+: "${ORBIT_OPENAI_TIMEOUT:=12}"
+: "${ORBIT_OPENAI_KEYCHAIN:=daily-welcome-openai}"
+: "${ORBIT_OPENAI_KEY_FILE:=$HOME/.config/daily-welcome/openai-key}"
+
+# How many previous exchanges the chat replies can see.
+: "${ORBIT_CHAT_TURNS:=6}"
+
 # Hand phrasings the rules miss to Claude Code to classify.
 : "${ORBIT_NLU_FALLBACK:=1}"
 : "${ORBIT_NLU_TIMEOUT:=25}"

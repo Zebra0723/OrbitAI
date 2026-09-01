@@ -35,6 +35,7 @@ welcome_load_user_config
 . "$ROOT/lib/tone.sh"
 . "$ROOT/lib/macros.sh"
 . "$ROOT/lib/watch.sh"
+. "$ROOT/lib/nlu_openai.sh"
 
 PLAN_DIR="$WELCOME_STATE_DIR/plans"
 mkdir -p "$PLAN_DIR" 2>/dev/null
@@ -446,12 +447,21 @@ case "${1:-}" in
       system)     plan_system "$arg1" "$arg2" "$arg3" ;;
       readback)   plan_readback "$arg1" ;;
       *)
-        # Mid-conversation the microphone is open, so a stray sentence from
-        # the room shouldn't be answered at all.
-        if [ "$IN_CHAT" = "1" ]; then
+        # Not a command, so talk. An assistant that only answers the
+        # sentences it was written for is a parser with a microphone.
+        #
+        # Two models, then a plain answer: it always says something, and it
+        # never pretends not to have heard.
+        if reply="$(openai_chat "$transcript")"; then
+          emit "$(tone_shape "$ORBIT_TONE" "$reply")" false ""
+        elif reply="$(ask_claude "$transcript")"; then
+          emit "$(tone_shape "$ORBIT_TONE" "$reply")" false ""
+        elif [ "$IN_CHAT" = "1" ] && [ "$(printf '%s' "$transcript" | wc -w)" -lt 2 ]; then
+          # Mid-conversation the microphone is open to the whole room. A
+          # single stray word is the room, not you.
           emit "" false ""
         else
-          emit "I didn't catch that. Try: message Mom saying I'm running late." false ""
+          emit "I heard you, but I have no model to answer with. Add a key with daily-welcome, set openai key." false ""
         fi ;;
     esac
     ;;
@@ -536,8 +546,19 @@ case "${1:-}" in
         echo "\"$1\" now counts as the wake word too."
         ;;
       status|*)
+        APP_BIN="$HOME/Applications/DailyWelcome.app/Contents/MacOS/DailyWelcome"
         if pgrep -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" >/dev/null 2>&1; then
           echo "App:      running"
+          # A rebuilt app that was never restarted explains a fix that
+          # "did not work": the running process is the old one.
+          if [ -x "$APP_BIN" ]; then
+            newest_source="$(ls -t "$ROOT"/menubar/*.swift 2>/dev/null | head -1)"
+            if [ -n "$newest_source" ] && [ "$newest_source" -nt "$APP_BIN" ]; then
+              echo "Build:    STALE - sources are newer than the app (./install.sh)"
+            else
+              echo "Build:    current"
+            fi
+          fi
         else
           echo "App:      NOT running   (orbit listen restart)"
         fi
@@ -610,12 +631,30 @@ case "${1:-}" in
     printf '\n'
     ;;
   console)
-    # The management console: a local page, bound to localhost only.
     shift
     if ! have_cmd python3; then
       echo "orbit: the console needs python3 (xcode-select --install)." >&2
       exit 1
     fi
+    CFG="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+    case "${1:-}" in
+      --allow)
+        # Which deployed site may drive this Mac.
+        shift
+        [ -z "${1:-}" ] && { echo 'orbit console --allow https://your.vercel.app' >&2; exit 2; }
+        mkdir -p "$(dirname "$CFG")"; touch "$CFG"
+        grep -v '^ORBIT_CONSOLE_ORIGINS=' "$CFG" > "$CFG.tmp" 2>/dev/null || : > "$CFG.tmp"
+        { cat "$CFG.tmp"; printf 'ORBIT_CONSOLE_ORIGINS="%s"\n' "$1"; } > "$CFG"
+        rm -f "$CFG.tmp"
+        echo "$1 may now connect. Start the bridge with: orbit console --bridge"
+        exit 0 ;;
+      --token)
+        python3 -c "import sys; sys.path.insert(0, '$ROOT/web'); import server; print(server.token())"
+        exit 0 ;;
+      --bridge)
+        shift ;;   # same server, just not opening a browser
+    esac
+    export ORBIT_CONSOLE_ORIGINS
     exec python3 "$ROOT/web/server.py" "$@"
     ;;
   timer-fire)
