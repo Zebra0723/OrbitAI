@@ -30,7 +30,7 @@
     <div class="say">
       <input type="text" id="bridgeUrl" placeholder="http://127.0.0.1:7717">
       <input type="password" id="bridgeToken" placeholder="pairing token">
-      <button onclick="pair()">Connect</button>
+      <button data-act="pair">Connect</button>
     </div>
     <pre id="pairOut"></pre>
     <div class="note">On the Mac: <code>orbit console --allow https://your-project.vercel.app</code>
@@ -48,8 +48,8 @@
   <h2>API key</h2>
   <div class="panel">
     <div class="say"><input type="password" id="apiKey" placeholder="sk_...">
-      <button onclick="setKey()">Save</button>
-      <button class="quiet" onclick="voices()">List my voices</button></div>
+      <button data-act="set-key">Save</button>
+      <button class="quiet" data-act="voices">List my voices</button></div>
     <div class="note">Stored in the login Keychain, or in a file readable only by
     you if the Keychain refuses to hand it back.</div>
     <pre id="voiceOut"></pre>
@@ -62,7 +62,7 @@
   <div class="bar">
     <input type="text" id="preview" style="flex:1"
            value="Welcome back. Three reminders due today, one overdue.">
-    <button onclick="previewVoice()">Preview</button>
+    <button data-act="preview-voice">Preview</button>
   </div>
 </section>
 

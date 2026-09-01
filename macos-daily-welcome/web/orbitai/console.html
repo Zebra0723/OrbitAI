@@ -30,7 +30,7 @@
     <div class="say">
       <input type="text" id="bridgeUrl" placeholder="http://127.0.0.1:7717">
       <input type="password" id="bridgeToken" placeholder="pairing token">
-      <button onclick="pair()">Connect</button>
+      <button data-act="pair">Connect</button>
     </div>
     <pre id="pairOut"></pre>
     <div class="note">On the Mac: <code>orbit console --allow https://your-project.vercel.app</code>
@@ -41,11 +41,11 @@
   <h2>Status</h2>
   <div class="tiles" id="tiles"></div>
   <div class="bar">
-    <button onclick="listen('on')">Start listening</button>
-    <button class="quiet" onclick="listen('off')">Stop</button>
-    <button class="quiet" onclick="listen('restart')">Restart app</button>
-    <button class="quiet" onclick="selftest()">Self-test</button>
-    <button class="quiet" onclick="briefing()">Briefing</button>
+    <button data-act="listen" data-arg="on">Start listening</button>
+    <button class="quiet" data-act="listen" data-arg="off">Stop</button>
+    <button class="quiet" data-act="listen" data-arg="restart">Restart app</button>
+    <button class="quiet" data-act="selftest">Self-test</button>
+    <button class="quiet" data-act="briefing">Briefing</button>
   </div>
   <pre id="out"></pre>
 </section>
@@ -53,12 +53,12 @@
 <section>
   <h2>Talk to it</h2>
   <div class="panel">
-    <div class="say"><input type="text" id="cmdText"
+    <div class="say"><input type="text" id="cmdText" data-enter="command"
       placeholder="Run a command, as though you had said it out loud">
-      <button onclick="command()">Run</button></div>
-    <div class="say" style="margin-top:12px"><input type="text" id="sayText"
+      <button data-act="command">Run</button></div>
+    <div class="say" style="margin-top:12px"><input type="text" id="sayText" data-enter="say"
       placeholder="Or just make it say something">
-      <button class="quiet" onclick="say()">Speak</button></div>
+      <button class="quiet" data-act="say">Speak</button></div>
     <div class="note">Anything that would normally need a spoken yes is planned
     here, not carried out.</div>
   </div>

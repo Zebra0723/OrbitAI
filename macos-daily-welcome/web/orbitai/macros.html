@@ -30,7 +30,7 @@
     <div class="say">
       <input type="text" id="bridgeUrl" placeholder="http://127.0.0.1:7717">
       <input type="password" id="bridgeToken" placeholder="pairing token">
-      <button onclick="pair()">Connect</button>
+      <button data-act="pair">Connect</button>
     </div>
     <pre id="pairOut"></pre>
     <div class="note">On the Mac: <code>orbit console --allow https://your-project.vercel.app</code>
@@ -50,8 +50,8 @@
     <div class="pairs-head"><div style="width:32%">Phrase</div><div>Commands, separated by ;</div></div>
     <table id="macros"></table>
     <div class="bar">
-      <button class="quiet" onclick="addRow('macros')">Add</button>
-      <button onclick="savePairs('macros')">Save macros</button>
+      <button class="quiet" data-act="add-row" data-arg="macros">Add</button>
+      <button data-act="save-pairs" data-arg="macros">Save macros</button>
     </div>
     <div class="note">Example: <code>good night</code> then
       <code>dark mode; turn off wifi; set a timer for 5 minutes</code>.
@@ -66,8 +66,8 @@
     <div class="pairs-head"><div style="width:32%">Nickname</div><div>Number or address</div></div>
     <table id="contacts"></table>
     <div class="bar">
-      <button class="quiet" onclick="addRow('contacts')">Add</button>
-      <button onclick="savePairs('contacts')">Save people</button>
+      <button class="quiet" data-act="add-row" data-arg="contacts">Add</button>
+      <button data-act="save-pairs" data-arg="contacts">Save people</button>
     </div>
     <div class="note">Anything not listed is looked up in Contacts by name. A
     name that resolves to nobody stops the command rather than guessing.</div>

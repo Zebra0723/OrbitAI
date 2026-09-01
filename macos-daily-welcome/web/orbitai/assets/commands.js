@@ -49,5 +49,5 @@ function drawCommands(filter = "") {
     || `<p class="muted">Nothing matches that.</p>`;
 }
 
-function filterCommands() { drawCommands($("filter").value); }
+on("filter-commands", () => drawCommands($("filter").value));
 drawCommands();

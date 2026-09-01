@@ -11,49 +11,78 @@ async function load() {
   draw("toneSettings", TONE_KEYS);
   return state;
 }
-window.onConnected = () => load();
+window.onConnected = () => load().catch((error) => out("voiceOut", explain(error)));
 
 function draw(target, keys) {
   $(target).innerHTML = state.settings.filter(s => keys.includes(s.key)).map((setting) => {
     const control = setting.kind === "toggle"
       ? `<button class="switch" role="switch" aria-checked="${setting.value === "1"}"
-                 onclick="toggle('${setting.key}', this)"></button>`
+                 data-act="toggle" data-arg="${esc(setting.key)}"></button>`
       : `<input type="${setting.kind === "number" ? "number" : "text"}" step="0.05"
-                value="${esc(setting.value)}" onchange="save('${setting.key}', this.value)">`;
+                value="${esc(setting.value)}" data-change="save" data-arg="${esc(setting.key)}">`;
     return `<div class="row"><div><span>${esc(setting.label)}</span>
       <span class="help">${esc(setting.help)}</span></div>
       <div class="control">${control}</div></div>`;
   }).join("");
 }
 
-async function save(key, value) {
-  await api("/api/setting", { key, value });
-  out("voiceOut", "Saved " + key + ".");
+on("set-key", () => setKey());
+on("voices", () => voices());
+on("preview-voice", () => previewVoice());
+on("toggle", (key, element) => toggle(key, element));
+on("save", (key, element) => save(key, element));
+
+function save(key, element) {
+  const value = element.value;
+  return act("voiceOut", "Saving...", async () => {
+    await api("/api/setting", { key, value });
+    return "Saved " + key + ".";
+  });
 }
 
-async function toggle(key, element) {
+function toggle(key, element) {
   const next = element.getAttribute("aria-checked") !== "true";
   element.setAttribute("aria-checked", String(next));
-  await save(key, next ? "1" : "0");
+  return act("voiceOut", "Saving...", async () => {
+    try {
+      await api("/api/setting", { key, value: next ? "1" : "0" });
+    } catch (error) {
+      // Never leave the switch showing a state the Mac isn't in.
+      element.setAttribute("aria-checked", String(!next));
+      throw error;
+    }
+    return "Saved " + key + ".";
+  });
 }
 
-async function setKey() {
+function setKey() {
   const key = $("apiKey").value.trim();
-  if (!key) return;
-  out("voiceOut", "Saving...");
-  const result = await api("/api/key", { key });
-  $("apiKey").value = "";
-  out("voiceOut", result.output);
+  if (!key) return out("voiceOut", "Paste your ElevenLabs key first.");
+  return act("voiceOut", "Saving...", async () => {
+    const result = await api("/api/key", { key });
+    $("apiKey").value = "";
+    return result.output;
+  });
 }
 
-async function voices() { out("voiceOut", "Asking ElevenLabs..."); out("voiceOut", (await api("/api/voices")).output); }
+function voices() {
+  return act("voiceOut", "Asking ElevenLabs...", async () => (await api("/api/voices")).output);
+}
 
-async function previewVoice() {
+function previewVoice() {
   const text = $("preview").value.trim();
-  if (!text) return;
-  out("voiceOut", "Speaking...");
-  const result = await api("/api/say", { text });
-  out("voiceOut", result.ok ? "Played on the Mac." : result.output);
+  if (!text) return out("voiceOut", "Type a line for it to read first.");
+  return act("voiceOut", "Speaking...", async () => {
+    const result = await api("/api/say", { text });
+    return result.ok ? "Played on the Mac." : result.output;
+  });
 }
 
-load().catch(() => {});
+function drawOffline() {
+  const message = `<p class="muted" style="margin:0">These load once this page
+    is connected to your Mac.</p>`;
+  $("voiceSettings").innerHTML = message;
+  $("toneSettings").innerHTML = message;
+}
+
+load().catch((error) => { drawOffline(); out("voiceOut", explain(error)); });

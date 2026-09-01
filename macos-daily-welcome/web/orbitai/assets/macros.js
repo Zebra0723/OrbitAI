@@ -7,32 +7,59 @@ async function load() {
   drawPairs("contacts", state.contacts);
   return state;
 }
-window.onConnected = () => load();
+window.onConnected = () => load().catch((error) => out("pairsOut", explain(error)));
 
 function rowHtml(name = "", value = "") {
   return `<tr>
     <td class="slim"><input type="text" value="${esc(name)}" placeholder="name"></td>
     <td><input type="text" value="${esc(value)}" placeholder="value"></td>
-    <td class="act"><button class="quiet" onclick="this.closest('tr').remove()">-</button></td>
+    <td class="act"><button class="quiet" data-act="drop-row" title="Remove">-</button></td>
   </tr>`;
 }
 
+// Rows live in an explicit tbody. Appending a <tr> straight to <table>
+// makes the parser open a SECOND tbody, and then "the last row" means two
+// different rows depending on who is asking.
+function body(id) {
+  const table = $(id);
+  let tbody = table.querySelector("tbody");
+  if (!tbody) { tbody = document.createElement("tbody"); table.appendChild(tbody); }
+  return tbody;
+}
+
 function drawPairs(id, rows) {
-  $(id).innerHTML = (rows.length ? rows : [{ name: "", value: "" }])
+  body(id).innerHTML = (rows.length ? rows : [{ name: "", value: "" }])
     .map(r => rowHtml(r.name, r.value)).join("");
 }
 
+on("add-row", (id) => addRow(id));
+on("save-pairs", (id) => savePairs(id));
+on("drop-row", (_arg, el) => {
+  const table = el.closest("table");
+  el.closest("tr").remove();
+  // A table with no rows has nothing to type into, so keep one blank.
+  if (table && !table.querySelector("tr")) { drawPairs(table.id, []); }
+});
+
 function addRow(id) {
-  $(id).insertAdjacentHTML("beforeend", rowHtml());
+  body(id).insertAdjacentHTML("beforeend", rowHtml());
 }
 
-async function savePairs(id) {
+function savePairs(id) {
   const rows = $$("tr", $(id)).map((tr) => {
     const [name, value] = $$("input", tr);
     return { name: name.value, value: value.value };
+  }).filter((r) => r.name.trim() || r.value.trim());
+  return act("pairsOut", "Saving...", async () => {
+    await api("/api/" + id, { rows });
+    return "Saved " + rows.length + (rows.length === 1 ? " row." : " rows.");
   });
-  await api("/api/" + id, { rows });
-  out("pairsOut", "Saved.");
 }
 
-load().catch(() => {});
+// Offline the tables still draw, empty. Editing them locally is harmless
+// and beats staring at a panel with nothing in it.
+load().catch((error) => {
+  drawPairs("macros", []);
+  drawPairs("contacts", []);
+  out("pairsOut", explain(error));
+});

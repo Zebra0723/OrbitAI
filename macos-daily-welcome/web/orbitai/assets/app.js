@@ -8,6 +8,50 @@
 const $ = (id) => document.getElementById(id);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
+// ---------------------------------------------------------------- actions
+//
+// Nothing on this site uses an inline onclick. An inline handler resolves
+// its names against the ELEMENT first and the window last, and browsers
+// keep adding element properties: HTMLButtonElement recently gained
+// `command`, so `onclick='command()'` began calling a string and threw
+// "command is not a function" - the Run button simply stopped working,
+// with nothing on screen to say why. Handlers are registered by name here
+// and bound once, so a new element property can never shadow one.
+
+const ACTIONS = {};
+
+function on(name, fn) { ACTIONS[name] = fn; }
+
+function fire(el, name) {
+  const fn = ACTIONS[name];
+  if (fn) fn(el.dataset.arg, el);
+}
+
+document.addEventListener("click", (event) => {
+  const el = event.target.closest("[data-act]");
+  if (!el) return;
+  event.preventDefault();
+  fire(el, el.dataset.act);
+});
+
+document.addEventListener("change", (event) => {
+  const el = event.target.closest("[data-change]");
+  if (el) fire(el, el.dataset.change);
+});
+
+document.addEventListener("input", (event) => {
+  const el = event.target.closest("[data-input]");
+  if (el) fire(el, el.dataset.input);
+});
+
+// Enter submits whichever box you are typing in.
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  const el = event.target.closest("[data-enter]");
+  if (el) fire(el, el.dataset.enter);
+});
+
+
 const LOCAL = ["127.0.0.1", "localhost"].includes(location.hostname);
 const store = {
   get bridge() { return LOCAL ? "" : (localStorage.getItem("orbit.bridge") || "http://127.0.0.1:7717"); },
@@ -36,6 +80,43 @@ function esc(value) {
 
 function out(id, text) { const el = $(id); if (el) el.textContent = text || ""; }
 
+// Every control on every page goes through here.
+//
+// Without it, a control was an async function called straight from an
+// onclick: the moment the bridge wasn't there the call rejected, nothing
+// caught it, and the button appeared to do nothing whatsoever. On the
+// deployed copy that is the state of the page until you pair, so most of
+// the site read as broken. Now a failure says which failure it was.
+async function act(outId, working, fn) {
+  out(outId, working);
+  try {
+    const result = await fn();
+    out(outId, typeof result === "string" ? result : "");
+  } catch (error) {
+    out(outId, explain(error));
+  }
+}
+
+function explain(error) {
+  const message = String((error && error.message) || error);
+  if (message === "not paired") {
+    return "Not connected.\n\n" +
+      "Enter the bridge address and pairing token at the top of this page.\n" +
+      "On the Mac, run: orbit console --bridge";
+  }
+  if (message.startsWith("bridge said")) {
+    return message + ".\n\nThe bridge answered, but not with what was asked for.";
+  }
+  return "No answer from " + (store.bridge || "the bridge on this Mac") + ".\n\n" +
+    "Start it on the Mac with: orbit console --bridge\n" +
+    "Safari blocks HTTPS pages from reaching local addresses - there, run\n" +
+    "orbit console and use the copy served from the Mac itself.";
+}
+
+// True once a state fetch has succeeded. Pages use it to tell "nothing
+// here yet" apart from "not connected".
+let connected = false;
+
 // The connection light in the nav, on every page.
 async function heartbeat() {
   const dot = $("navDot");
@@ -47,10 +128,12 @@ async function heartbeat() {
     const alive = state.status.app_running;
     dot.className = "dot " + (alive ? "on" : "off");
     if (label) label.textContent = alive ? listening : "app not running";
+    connected = true;
     return state;
   } catch (error) {
     dot.className = "dot off";
     if (label) label.textContent = LOCAL ? "bridge down" : "not connected";
+    connected = false;
     return null;
   }
 }
@@ -64,6 +147,7 @@ function mountPairing() {
   $("bridgeToken").value = store.token;
 }
 
+on("pair", pair);
 async function pair() {
   store.bridge = $("bridgeUrl").value.trim().replace(/\/$/, "") || "http://127.0.0.1:7717";
   store.token = $("bridgeToken").value.trim();
