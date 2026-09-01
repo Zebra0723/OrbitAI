@@ -48,6 +48,25 @@ daily-welcome --voices       # which backend and voice are actually in use
 daily-welcome --test-voice   # say one line now
 ```
 
+### Speed
+
+Four things decide how long it takes to answer, and each is dealt with
+differently:
+
+| | |
+|---|---|
+| Waiting for you to stop talking | 0.9s of silence ends the command |
+| Working out what you meant | Rule-based, so instant; only unrecognised phrasings go to Claude |
+| Making the audio | The **fast model** (`eleven_flash_v2_5`) for replies; the better one only for the daily briefing, which nobody is waiting on |
+| Playing it | Cached by phrase, so anything said before plays from disk |
+
+`orbit warm` renders the lines Orbit says constantly — the greeting, "Done",
+"Cancelled", "Sent" — so they never cost a network round trip. It runs
+automatically on install and after `--set-key`.
+
+Resolved contacts are cached too, since Contacts is slow to answer and slower
+to launch.
+
 ### Saying things correctly
 
 Speech engines mangle raw data in their own ways — `9:00 AM` as "nine

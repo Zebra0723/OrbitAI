@@ -147,6 +147,8 @@ case "$MODE" in
     unset new_key
     rm -f "$WELCOME_STATE_DIR/eleven-voice-id"   # re-resolve against the new account
     echo "Saved to the login Keychain as \"$WELCOME_KEYCHAIN_SERVICE\"."
+    # With a key now available, render the common lines up front.
+    ("$ROOT/bin/orbit" warm >/dev/null 2>&1 &) 2>/dev/null
     echo "Check it works:  daily-welcome --test-voice"
     exit 0
     ;;

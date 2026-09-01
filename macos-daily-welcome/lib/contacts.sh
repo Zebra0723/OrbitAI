@@ -49,21 +49,44 @@ end run
 APPLESCRIPT
 }
 
+# Contacts is slow to answer and slower to launch, and the same few people
+# get messaged over and over, so a resolved name is remembered.
+_contacts_cache_file() { printf '%s/contacts-cache' "$WELCOME_STATE_DIR"; }
+
+_contacts_cached() {
+  local want="$1"
+  [ -f "$(_contacts_cache_file)" ] || return 1
+  awk -F'\t' -v want="$(printf '%s' "$want" | tr '[:upper:]' '[:lower:]')" '
+    tolower($1) == want { print $2; found = 1; exit }
+    END { exit(found ? 0 : 1) }' "$(_contacts_cache_file)"
+}
+
+_contacts_remember() {
+  mkdir -p "$WELCOME_STATE_DIR" 2>/dev/null
+  printf '%s\t%s\n' "$1" "$2" >> "$(_contacts_cache_file)"
+}
+
 # contact_handle "mama" -> "+15551234567" (empty and non-zero if unknown)
 contact_handle() {
-  local want="$1" resolved
+  local want="$1" resolved cached
+
+  if cached="$(_contacts_cached "$want")"; then
+    printf '%s' "$cached"
+    return 0
+  fi
 
   resolved="$(_contacts_alias "$want")" && [ -n "$resolved" ] || resolved=""
 
   # An alias may itself be a real name to look up rather than a number.
   case "$resolved" in
     "" ) resolved="$want" ;;
-    *[0-9@]* ) printf '%s' "$resolved"; return 0 ;;
+    *[0-9@]* ) _contacts_remember "$want" "$resolved"; printf '%s' "$resolved"; return 0 ;;
   esac
 
   local found
   found="$(run_with_timeout 10 _contacts_lookup_applescript "$resolved")"
   found="$(printf '%s' "$found" | tr -d '\n\r' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
   [ -z "$found" ] && return 1
+  _contacts_remember "$want" "$found"
   printf '%s' "$found"
 }

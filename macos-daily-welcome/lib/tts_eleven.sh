@@ -188,25 +188,38 @@ _eleven_prune_cache() {
   done
 }
 
+# Where a given line's audio lives, whether or not it's been made yet.
+eleven_cache_path() {
+  local cache_dir="$WELCOME_STATE_DIR/cache" key
+  mkdir -p "$cache_dir"
+  key="$(_eleven_cache_key "$1")"
+  if [ -n "$key" ]; then
+    printf '%s/%s.mp3' "$cache_dir" "$key"
+  else
+    printf '%s/last.mp3' "$cache_dir"
+  fi
+}
+
+# Renders a line into the cache without playing it. Used to warm the lines
+# Orbit says constantly, so they don't cost a network round trip each time.
+eleven_cache_line() {
+  local text="$1" file
+  eleven_available || return 1
+  file="$(eleven_cache_path "$text")"
+  [ -s "$file" ] && return 0
+  eleven_synthesize "$text" "$file"
+}
+
 # Speaks TEXT with the hosted voice. Non-zero means "couldn't", and the
 # caller should fall back to `say`.
 eleven_speak() {
-  local text="$1"
+  local text="$1" file
   eleven_available || return 1
 
-  local cache_dir="$WELCOME_STATE_DIR/cache" key file
-  mkdir -p "$cache_dir"
-
-  key="$(_eleven_cache_key "$text")"
-  if [ -n "$key" ]; then
-    file="$cache_dir/$key.mp3"
-  else
-    file="$cache_dir/last.mp3"
-  fi
-
+  file="$(eleven_cache_path "$text")"
   if [ ! -s "$file" ]; then
     eleven_synthesize "$text" "$file" || return 1
-    _eleven_prune_cache "$cache_dir"
+    _eleven_prune_cache "$(dirname "$file")"
   fi
 
   afplay -v "$WELCOME_VOLUME" "$file" 2>/dev/null

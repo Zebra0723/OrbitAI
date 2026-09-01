@@ -34,6 +34,11 @@ welcome_load_user_config
 PLAN_DIR="$WELCOME_STATE_DIR/plans"
 mkdir -p "$PLAN_DIR" 2>/dev/null
 
+# Everything orbit says is a reply to something just said out loud, so it
+# is judged on how quickly it starts talking. The briefing keeps the
+# better-sounding, slower model; this side takes the fast one.
+WELCOME_ELEVEN_MODEL="$WELCOME_ELEVEN_FAST_MODEL"
+
 usage() {
   cat <<'USAGE'
 orbit - voice commands for daily-welcome
@@ -325,6 +330,35 @@ case "${1:-}" in
     shift
     speak_async "${1:-}"
     [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
+    ;;
+  warm)
+    # Synthesis is the slow part of a reply, and the same handful of lines
+    # come up constantly. Rendering them once, up front, means the common
+    # cases play from disk instead of waiting on the network.
+    if ! eleven_available; then
+      echo "orbit: no ElevenLabs key, nothing to warm." >&2
+      exit 0
+    fi
+    warmed=0
+    for line in \
+      "$ORBIT_GREETING" \
+      "Done." "Cancelled." "On it." "Sent." "Calling." \
+      "Muted." "Sound back on." "Volume up." "Volume down." \
+      "Saved to your desktop." "Locked." "Noted." \
+      "Added to your reminders." "Copied." "Next." "Back one." \
+      "I didn't catch that. Try: message Mom saying I'm running late." \
+      "That request has expired. Say it again." \
+      "Claude is on it. I'll tell you what happened in your next briefing."
+    do
+      [ -z "$line" ] && continue
+      if eleven_cache_line "$line"; then
+        warmed=$((warmed + 1))
+        printf '.'
+      else
+        printf 'x'
+      fi
+    done
+    printf '\n%d lines ready to play instantly.\n' "$warmed"
     ;;
   greeting)
     # The wake word on its own: acknowledge, then keep listening.

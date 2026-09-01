@@ -217,6 +217,12 @@ fi
 echo
 echo "  Something wrong:  $ROOT/bin/doctor"
 
+# Render the lines Orbit says constantly, so the first reply doesn't wait
+# on the network. Backgrounded: it's an optimisation, not a step.
+if "$ROOT/bin/daily-welcome" --status >/dev/null 2>&1; then
+  ("$ORBIT_LINK" warm >/dev/null 2>&1 &) 2>/dev/null
+fi
+
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) ;;
   *)

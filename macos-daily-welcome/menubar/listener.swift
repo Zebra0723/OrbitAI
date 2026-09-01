@@ -68,7 +68,10 @@ final class OrbitListener: NSObject {
     /// Called with the current state so the menu bar icon can reflect it.
     var onStateChange: ((ListenState) -> Void)?
 
-    private let commandSilence: TimeInterval = 1.4
+    /// How long a pause ends the command. Every millisecond here is dead
+    /// air before Orbit even starts thinking, so it's as short as it can be
+    /// without cutting people off mid-sentence.
+    private let commandSilence: TimeInterval = 0.9
     private let confirmTimeout: TimeInterval = 12
     private var confirmStartedAt = Date()
 

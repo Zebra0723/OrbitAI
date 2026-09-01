@@ -73,7 +73,12 @@
 # directly, which works either way.
 : "${WELCOME_ELEVEN_VOICE_NAME:=Veda Sky}"
 : "${WELCOME_ELEVEN_VOICE_ID:=GWparLcEBJuQc36gyF2J}"
+# Two models, because the two jobs have opposite priorities. The briefing
+# is a monologue nobody is waiting on, so it uses the better-sounding model;
+# a reply to something you just said is judged on how fast it starts, so it
+# uses the low-latency one.
 : "${WELCOME_ELEVEN_MODEL:=eleven_multilingual_v2}"
+: "${WELCOME_ELEVEN_FAST_MODEL:=eleven_flash_v2_5}"
 
 # Matches the settings the sample was rendered with: speed 1.00,
 # stability 0.50, similarity 0.75, style 0, speaker boost on.
