@@ -13,6 +13,9 @@ system_needs_confirm() {
   case "$1" in
     quit_app|empty_trash|restart|shut_down|sleep_mac|wifi_off|type_text|freeform)
       return 0 ;;
+    call_phone|call_audio|call_video)
+      # Ringing the wrong person is not something you can take back.
+      [ "$ORBIT_CONFIRM_CALLS" = "1" ] && return 0 || return 1 ;;
     *) return 1 ;;
   esac
 }
@@ -29,6 +32,9 @@ system_describe() {
     wifi_off)     printf 'Turn Wi-Fi off?' ;;
     type_text)    printf 'Type "%s" into whatever is in front?' "$arg" ;;
     freeform)     printf '%s Go ahead?' "$arg" ;;
+    call_phone)   printf 'Call %s?' "$arg" ;;
+    call_audio)   printf 'FaceTime audio %s?' "$arg" ;;
+    call_video)   printf 'FaceTime %s?' "$arg" ;;
     *)            printf 'On it.' ;;
   esac
 }
@@ -197,6 +203,78 @@ APPLESCRIPT
         open -R "$(printf '%s' "$hits" | head -1)" >/dev/null 2>&1
         printf 'Found %s. The first one is showing in Finder.' "$(num_word "$count")"
       fi ;;
+
+    # --- calls ---
+    # macOS dials through FaceTime; a phone call is handed to your iPhone.
+    # FaceTime puts up a confirmation panel, which is dismissed with Return
+    # unless you'd rather press it yourself (ORBIT_CALL_AUTOCONFIRM=0).
+    call_phone|call_audio|call_video)
+      local scheme
+      case "$action" in
+        call_phone) scheme="tel:" ;;
+        call_audio) scheme="facetime-audio:" ;;
+        call_video) scheme="facetime:" ;;
+      esac
+      open "$scheme$arg" >/dev/null 2>&1
+      if [ "$ORBIT_CALL_AUTOCONFIRM" = "1" ]; then
+        sleep 3
+        _osa 'tell application "System Events" to key code 36'
+      fi
+      printf 'Calling.' ;;
+
+    end_call)
+      if pgrep -xq FaceTime 2>/dev/null; then
+        _osa 'tell application "FaceTime" to quit'
+        printf 'Hung up.'
+      else
+        printf "There's no call to end."
+      fi ;;
+
+    # --- app control ---
+    # Clicking a named menu item is the general lever: anything an app puts
+    # in its menu bar can be driven without a per-app special case.
+    app_menu)
+      local app_name menu_item
+      app_name="${arg%%|*}"
+      menu_item="${arg#*|}"
+      if osascript - "$app_name" "$menu_item" <<'APPLESCRIPT' >/dev/null 2>&1
+on run argv
+  set appName to item 1 of argv
+  set wanted to item 2 of argv
+  tell application appName to activate
+  delay 0.4
+  tell application "System Events"
+    tell process appName
+      repeat with m in menu bar items of menu bar 1
+        try
+          repeat with i in menu items of menu 1 of m
+            if (name of i as string) is wanted then
+              click i
+              return
+            end if
+          end repeat
+        end try
+      end repeat
+      error "no such menu item"
+    end tell
+  end tell
+end run
+APPLESCRIPT
+      then
+        printf '%s in %s.' "$menu_item" "$app_name"
+      else
+        printf "I couldn't find a %s item in %s's menus." "$menu_item" "$app_name"
+      fi ;;
+
+    new_tab)      _osa 'tell application "System Events" to keystroke "t" using command down'; printf 'New tab.' ;;
+    close_tab)    _osa 'tell application "System Events" to keystroke "w" using command down'; printf 'Closed.' ;;
+    reload_page)  _osa 'tell application "System Events" to keystroke "r" using command down'; printf 'Reloading.' ;;
+    go_back)      _osa 'tell application "System Events" to keystroke "[" using command down'; printf 'Back.' ;;
+    save)         _osa 'tell application "System Events" to keystroke "s" using command down'; printf 'Saved.' ;;
+
+    play_spotify)
+      open "spotify:search:$(printf '%s' "$arg" | sed -e 's/ /%20/g')" >/dev/null 2>&1
+      printf 'Looking up %s in Spotify.' "$arg" ;;
 
     minimize)     _osa 'tell application "System Events" to keystroke "m" using command down'; printf 'Minimised.' ;;
     fullscreen)   _osa 'tell application "System Events" to keystroke "f" using {command down, control down}'; printf 'Full screen.' ;;

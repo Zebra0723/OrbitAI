@@ -1,0 +1,218 @@
+#!/bin/bash
+# daily-welcome doctor - checks every part of the install and says exactly
+# what to do about whatever is broken.
+#
+# Written so a failure is never just "no": each line that fails prints the
+# one command or click that fixes it.
+
+set -uo pipefail
+
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do SELF="$(readlink "$SELF")"; done
+ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
+
+. "$ROOT/lib/config.sh"
+welcome_load_user_config
+. "$ROOT/lib/common.sh"
+. "$ROOT/lib/speech_text.sh"
+. "$ROOT/lib/tts_eleven.sh"
+. "$ROOT/lib/voice.sh"
+
+LABEL="${DAILY_WELCOME_LABEL:-com.arjun.dailywelcome}"
+APP_DIR="$HOME/Applications/DailyWelcome.app"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+
+PROBLEMS=0
+
+ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
+bad()  { printf '  \033[31m✗\033[0m %s\n' "$1"; PROBLEMS=$((PROBLEMS + 1)); }
+warn() { printf '  \033[33m!\033[0m %s\n' "$1"; }
+fix()  { printf '      → %s\n' "$1"; }
+head_() { printf '\n\033[1m%s\033[0m\n' "$1"; }
+
+head_ "Machine"
+if [ "$(uname -s)" = "Darwin" ]; then
+  ok "macOS $(sw_vers -productVersion 2>/dev/null) on $(uname -m)"
+else
+  bad "This is $(uname -s), not macOS. Nothing here will work."
+  exit 1
+fi
+
+# ---------------------------------------------------------------- the app
+
+head_ "Menu bar app"
+
+if command -v swiftc >/dev/null 2>&1; then
+  ok "swiftc is installed ($(swiftc --version 2>/dev/null | head -1 | cut -c1-48))"
+else
+  bad "swiftc is missing, so the menu bar app was never built."
+  fix "xcode-select --install     (then re-run ./install.sh)"
+  fix "This is the usual reason there's no icon and no permission prompts."
+fi
+
+if [ -d "$APP_DIR" ]; then
+  ok "App bundle exists at $APP_DIR"
+  if [ -x "$APP_DIR/Contents/MacOS/DailyWelcome" ]; then
+    ok "Executable is in place"
+  else
+    bad "The bundle has no executable inside it."
+    fix "./install.sh"
+  fi
+else
+  bad "No app bundle. It is not installed."
+  fix "./install.sh   (and read what it prints about swiftc)"
+fi
+
+if pgrep -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" >/dev/null 2>&1; then
+  ok "The app is running right now (look for the icon in the menu bar)"
+else
+  bad "The app is not running, so nothing is listening."
+  fix "launchctl kickstart -k gui/$(id -u)/$LABEL"
+fi
+
+printf '\n  Note: it is a menu bar app, so it never appears in the Dock or\n'
+printf '  Launchpad, and it lives in ~/Applications, not /Applications.\n'
+printf '  Look for a small sun icon in the menu bar at the top right.\n'
+
+# ------------------------------------------------------------ launch agent
+
+head_ "Login agent"
+
+if [ -f "$PLIST" ]; then
+  ok "Launch agent is installed"
+else
+  bad "No launch agent, so it won't start at login."
+  fix "./install.sh"
+fi
+
+if launchctl list 2>/dev/null | grep -q "$LABEL"; then
+  ok "Launch agent is loaded"
+else
+  bad "Launch agent is not loaded."
+  fix "launchctl bootstrap gui/$(id -u) $PLIST"
+fi
+
+# --------------------------------------------------------------- commands
+
+head_ "Commands"
+
+for cmd in daily-welcome orbit; do
+  if [ -L "$HOME/.local/bin/$cmd" ]; then
+    ok "$cmd is linked"
+  else
+    bad "$cmd is not in ~/.local/bin"
+    fix "./install.sh"
+  fi
+done
+
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ok "~/.local/bin is on your PATH" ;;
+  *) warn "~/.local/bin is not on your PATH (the app doesn't care, you might)"
+     fix "echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc" ;;
+esac
+
+# ------------------------------------------------------------------ voice
+
+head_ "Voice"
+
+if eleven_available; then
+  ok "ElevenLabs key found"
+  voice_id="$(eleven_voice_id 2>/dev/null)"
+  if [ -n "$voice_id" ]; then
+    ok "Voice \"$WELCOME_ELEVEN_VOICE_NAME\" resolved"
+  else
+    bad "No voice named \"$WELCOME_ELEVEN_VOICE_NAME\" in your ElevenLabs account."
+    fix "Add it to your voices in ElevenLabs, or set WELCOME_ELEVEN_VOICE_ID"
+  fi
+else
+  warn "No ElevenLabs key - it will speak with a built-in macOS voice."
+  fix "daily-welcome --set-key"
+fi
+
+local_voice="$(resolve_voice)"
+ok "Fallback voice: ${local_voice:-system default}"
+
+# ------------------------------------------------------------ permissions
+
+head_ "Permissions"
+
+# Each probe is a real, tiny request: if TCC would block the actual work,
+# it blocks this too.
+probe() {
+  local name="$1" script="$2" setting="$3"
+  if run_with_timeout 12 osascript -e "$script" >/dev/null 2>&1; then
+    ok "$name"
+  else
+    bad "$name is blocked or was never asked for."
+    fix "System Settings > Privacy & Security > $setting > enable DailyWelcome"
+  fi
+}
+
+probe "Reminders" 'tell application "Reminders" to count lists' "Reminders"
+probe "Calendar"  'tell application "Calendar" to count calendars' "Calendars"
+probe "Contacts"  'tell application "Contacts" to count people' "Contacts"
+probe "Mail"      'tell application "Mail" to count accounts' "Automation"
+
+if sqlite3 -readonly "$HOME/Library/Messages/chat.db" 'SELECT 1 FROM message LIMIT 1;' >/dev/null 2>&1; then
+  ok "Messages database is readable (Full Disk Access is on)"
+else
+  bad "Can't read Messages. This one macOS never prompts for."
+  fix "System Settings > Privacy & Security > Full Disk Access > + > $APP_DIR"
+  fix "Add your terminal too if you want 'orbit' to work from the command line."
+fi
+
+printf '\n  Microphone and Speech Recognition can only be checked by using them:\n'
+printf '  say "%s, what time is it" and see if it answers.\n' "$ORBIT_WAKE_WORD"
+
+# --------------------------------------------------------------- optional
+
+head_ "Optional extras"
+
+if command -v claude >/dev/null 2>&1; then
+  ok "Claude Code is installed (repo jobs and freeform commands work)"
+else
+  warn "No claude command - \"tell Claude to...\" and freeform commands are off."
+fi
+
+if command -v icalBuddy >/dev/null 2>&1; then
+  ok "icalBuddy is installed (fast calendar)"
+else
+  warn "No icalBuddy - the calendar section is skipped."
+  fix "brew install ical-buddy"
+fi
+
+if command -v blueutil >/dev/null 2>&1; then
+  ok "blueutil is installed (Bluetooth commands work)"
+else
+  warn "No blueutil - Bluetooth commands are off."
+  fix "brew install blueutil"
+fi
+
+# ----------------------------------------------------------------- repos
+
+head_ "Repos Claude can be sent to"
+
+found=0
+for root in $ORBIT_REPO_ROOTS; do
+  root="${root/#\~/$HOME}"
+  [ -d "$root" ] || continue
+  count="$(find "$root" -maxdepth "$ORBIT_REPO_DEPTH" -type d -name .git 2>/dev/null | grep -c .)"
+  if [ "$count" -gt 0 ]; then
+    ok "$root ($count $( [ "$count" -eq 1 ] && echo repo || echo repos ))"
+    found=$((found + count))
+  fi
+done
+if [ "$found" -eq 0 ]; then
+  warn "No git repos found under: $ORBIT_REPO_ROOTS"
+  fix "Set ORBIT_REPO_ROOTS in ~/.config/daily-welcome/config.sh"
+fi
+
+# ---------------------------------------------------------------- verdict
+
+if [ "$PROBLEMS" -eq 0 ]; then
+  printf '\n\033[1mEverything checks out.\033[0m\n\n'
+else
+  printf '\n\033[1m%d %s to fix, listed above.\033[0m\n\n' \
+    "$PROBLEMS" "$( [ "$PROBLEMS" -eq 1 ] && echo problem || echo problems )"
+fi
+exit 0

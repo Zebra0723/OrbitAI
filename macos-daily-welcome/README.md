@@ -111,7 +111,10 @@ stays unsent.
 | Sound | volume up / down / set volume to 40 / mute / louder |
 | Display | brighter, dimmer, dark mode, light mode |
 | Music | play, pause, next song, previous track |
+| Calls | call Mama, facetime Priya, call Mom on facetime audio, hang up |
 | Apps | open Spotify, quit Slack, switch to Safari |
+| Inside apps | in Safari click New Private Window, click Export in Keynote |
+| Tabs & docs | new tab, close tab, reload, go back, save this |
 | Windows | minimise, full screen, close this window, hide everything |
 | System | lock my Mac, go to sleep, turn off the display, restart, shut down |
 | Network | turn wifi on / off, bluetooth on / off (needs `blueutil`) |
@@ -122,6 +125,16 @@ stays unsent.
 | Reading back | brief me, what's on my calendar, read my messages, any new email, what did Claude do |
 
 `orbit examples` prints this list on the machine.
+
+**Calls** go out through FaceTime, and a plain phone call is relayed by your
+iPhone (same as clicking a number in Contacts — the phone has to be nearby and
+on the same Apple ID). FaceTime's "call this number?" panel is confirmed for
+you; set `ORBIT_CALL_AUTOCONFIRM=0` to press it yourself. Orbit can't *answer*
+an incoming call — macOS doesn't expose that.
+
+**Inside apps**, "in Safari click New Private Window" clicks the actual menu
+item, which is the general lever: anything an app puts in its menu bar can be
+driven without a special case for that app.
 
 ### Anything else
 
@@ -221,6 +234,23 @@ waits until you've actually unlocked, so the greeting isn't spent on the lock
 screen.
 
 ## Troubleshooting
+
+**Start here:**
+
+```bash
+daily-welcome --doctor
+```
+
+It checks every part of the install — the app bundle, the login agent, the
+running process, each permission, the voice, your repos — and prints the exact
+command or click that fixes anything broken.
+
+**There's no app and nothing ever asked for permissions.** Almost always
+`swiftc` is missing, so the menu bar app was never built — and with no app,
+there's nothing for macOS to prompt about. `xcode-select --install`, then
+`./install.sh` again. Note the app is a menu bar item: it deliberately has no
+Dock icon, doesn't appear in Launchpad, and lives in `~/Applications`, not
+`/Applications`. Look for a small sun icon at the top right.
 
 **Nothing happened this morning.** `daily-welcome --status` shows the last
 greeting date; `launchctl list | grep dailywelcome` shows the agent;

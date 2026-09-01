@@ -153,6 +153,35 @@ _first_number() {
   printf '%s' "$1" | sed -nE 's/.*[^0-9]([0-9]{1,3})([^0-9].*|$)/\1/p; t; s/^([0-9]{1,3})([^0-9].*|$)/\1/p' | head -1
 }
 
+# Calls. Anchored to the start of the sentence so "remind me to call the
+# dentist" stays a reminder.
+_try_call() {
+  local text="$1" lower rest kind="call_phone"
+  lower="$(printf '%s' "$text" | tr '[:upper:]' '[:lower:]')"
+
+  case "$lower" in
+    "call "*|"phone "*|"ring "*)                      kind="call_phone" ;;
+    "facetime "*|"face time "*)                       kind="call_video" ;;
+    "video call "*|"video chat "*)                    kind="call_video" ;;
+    "audio call "*)                                   kind="call_audio" ;;
+    *) return 1 ;;
+  esac
+
+  rest="$(printf '%s' "$text" | sed -E 's/^[[:space:]]*(call|phone|ring|facetime|face time|video call|video chat|audio call)[[:space:]]+//I')"
+
+  # A trailing "on FaceTime" / "on video" picks the kind instead.
+  case "$(printf '%s' "$rest" | tr '[:upper:]' '[:lower:]')" in
+    *"on facetime audio"*) kind="call_audio" ;;
+    *"on facetime"*|*"on video"*) kind="call_video" ;;
+    *"on the phone"*|*"on their cell"*|*"on his cell"*|*"on her cell"*) kind="call_phone" ;;
+  esac
+  rest="$(printf '%s' "$rest" | sed -E 's/[[:space:]]+on (facetime audio|facetime|video|the phone|their cell|his cell|her cell)$//I')"
+  rest="$(printf '%s' "$rest" | sed -E 's/^(back[[:space:]]+)?//I; s/[[:space:]]+$//')"
+
+  [ -z "$rest" ] && return 1
+  printf 'call\t%s\t%s\n' "$rest" "$kind"
+}
+
 # Controlling the Mac. Ordered so the specific phrasings win: "read my
 # clipboard" is a clipboard command, not a request to read something out.
 _try_system() {
@@ -205,7 +234,42 @@ _try_system() {
 
     *"read my clipboard"*|*"what's on my clipboard"*|*"whats on my clipboard"*|*"read the clipboard"*)
       printf 'system\tread_clipboard\t\n'; return 0 ;;
+
+    *"hang up"*|*"end the call"*|*"end call"*) printf 'system\tend_call\t\n'; return 0 ;;
+
+    *"new tab"*)                          printf 'system\tnew_tab\t\n'; return 0 ;;
+    *"close tab"*|*"close this tab"*)     printf 'system\tclose_tab\t\n'; return 0 ;;
+    *"reload"*|*"refresh the page"*|*"refresh this"*) printf 'system\treload_page\t\n'; return 0 ;;
+    *"go back"*)                          printf 'system\tgo_back\t\n'; return 0 ;;
+    *"save this"*|*"save the file"*)      printf 'system\tsave\t\n'; return 0 ;;
   esac
+
+  # "in Safari click New Private Window" - the general lever for app control.
+  if printf '%s' "$lower" | grep -qE '^in [a-z0-9 .]+ (click|choose|select|hit|press) '; then
+    local app_part item_part
+    app_part="$(printf '%s' "$text" | sed -E 's/^[Ii]n[[:space:]]+//; s/[[:space:]]+(click|choose|select|hit|press)[[:space:]]+.*$//')"
+    item_part="$(printf '%s' "$text" | sed -E 's/^.*[[:space:]](click|choose|select|hit|press)[[:space:]]+//')"
+    if [ -n "$app_part" ] && [ -n "$item_part" ]; then
+      printf 'system\tapp_menu\t%s|%s\n' "$app_part" "$item_part"; return 0
+    fi
+  fi
+  # "click New Private Window in Safari" - the same thing, said the other way.
+  if printf '%s' "$lower" | grep -qE '^(click|choose|select) .+ in [a-z0-9 .]+$'; then
+    local app_part item_part
+    item_part="$(printf '%s' "$text" | sed -E 's/^(click|choose|select)[[:space:]]+//I; s/[[:space:]]+in[[:space:]]+[^[:space:]]+$//')"
+    app_part="$(printf '%s' "$text" | sed -E 's/^.*[[:space:]]in[[:space:]]+//')"
+    if [ -n "$app_part" ] && [ -n "$item_part" ]; then
+      printf 'system\tapp_menu\t%s|%s\n' "$app_part" "$item_part"; return 0
+    fi
+  fi
+
+  if arg="$(_after "$text" "play ")"; then
+    case "$(printf '%s' "$arg" | tr '[:upper:]' '[:lower:]')" in
+      *"on spotify"*)
+        arg="$(printf '%s' "$arg" | sed -E 's/[[:space:]]+on spotify$//I')"
+        printf 'system\tplay_spotify\t%s\n' "$arg"; return 0 ;;
+    esac
+  fi
 
   # Commands with an argument.
   if arg="$(_after "$text" "set a timer for ")" || arg="$(_after "$text" "timer for ")"; then
@@ -312,6 +376,7 @@ parse_intent() {
   _try_message "$text"     && return 0
   _try_claude "$text"      && return 0
   _try_mail_reply "$text"  && return 0
+  _try_call "$text"        && return 0
   _try_system "$text"      && return 0
   _try_readback "$text"    && return 0
   _try_claude_nlu "$text"  && return 0
@@ -342,9 +407,21 @@ Things Orbit understands (after "Hey Orbit"):
     ask Claude on the vortex repo to update the README
     have Claude to write tests for the parser        (uses your default repo)
 
+  Calls
+    call Mama
+    facetime Priya
+    call Mom on facetime audio
+    hang up
+
   Mail
     send an automated reply to all emails awaiting reply saying I'm on vacation
     reply to all unanswered emails saying I'll get back to you Monday
+
+  Driving apps
+    in Safari click New Private Window
+    click Export in Keynote
+    new tab / close tab / reload / go back / save this
+    play bohemian rhapsody on spotify
 
   Reading things out
     brief me

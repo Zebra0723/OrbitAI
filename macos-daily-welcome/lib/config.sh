@@ -131,6 +131,15 @@
 # Where "search for..." goes.
 : "${ORBIT_SEARCH_URL:=https://duckduckgo.com/?q=}"
 
+# Calls go out through FaceTime; a plain phone call is relayed by your
+# iPhone. FaceTime asks "call this number?" - autoconfirm presses Return
+# for you. Set to 0 to click it yourself.
+: "${ORBIT_CALL_AUTOCONFIRM:=1}"
+
+# Say the name back and wait for a yes before dialling. Ringing the wrong
+# person isn't something you can take back.
+: "${ORBIT_CONFIRM_CALLS:=1}"
+
 # The catch-all: for anything the action catalog doesn't cover, Claude
 # writes a one-line command, Orbit reads it back, and it runs only on your
 # yes. Whole categories (sudo, disk tools, piping the network to a shell)

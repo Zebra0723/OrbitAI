@@ -50,6 +50,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --preview       greet now without marking the day as done
   daily-welcome --agent         same as bare, plus lock-screen/quiet-hour guards
   daily-welcome --status        what it would do, and when it last ran
+  daily-welcome --doctor        check the whole install and say what to fix
   daily-welcome --set-key       store your ElevenLabs API key in the Keychain
   daily-welcome --test-voice    say one line now, and report which voice said it
   daily-welcome --voices        available voices, and which one it will use
@@ -71,10 +72,12 @@ while [ $# -gt 0 ]; do
     --present)    shift; WELCOME_PRESENT="${1:-dialog}" ;;
     --print)      FORCE=1; PREVIEW=1; WELCOME_PRESENT=stdout; WELCOME_SPEAK=0 ;;
     --status)     MODE=status ;;
+    --doctor)     exec "$ROOT/bin/doctor" ;;
     --set-key)    MODE=setkey ;;
     --test-voice) MODE=testvoice ;;
     --hush)       MODE=hush ;;
     --voices)     MODE=voices ;;
+    --use-voice)  MODE=usevoice; shift; VOICE_ARG="${1:-}" ;;
     --mute-today) MODE=mute ;;
     --reset)      MODE=reset ;;
     -h|--help)    usage; exit 0 ;;
@@ -131,8 +134,21 @@ case "$MODE" in
     fi
     echo "Saying:  $line"
     if [ "$backend" = "elevenlabs" ]; then
-      eleven_speak "$line" || { echo "ElevenLabs failed - falling back to say. See $WELCOME_STATE_DIR/agent.log or run with the log visible." >&2; say_speak "$line"; }
+      if ! eleven_speak "$line" 2> "$WELCOME_STATE_DIR/last-voice-error"; then
+        echo
+        echo "ElevenLabs didn't speak. What it said about it:"
+        sed 's/^/  /' "$WELCOME_STATE_DIR/last-voice-error" 2>/dev/null | tail -5
+        echo
+        echo "Most likely: the voice isn't in your account (--voices lists what is),"
+        echo "or the key is wrong (--set-key). Falling back to the built-in voice."
+        say_speak "$line"
+      fi
     else
+      echo
+      echo "This is the built-in macOS voice, not your ElevenLabs one."
+      if ! eleven_api_key >/dev/null 2>&1; then
+        echo "No API key is set. Run: daily-welcome --set-key"
+      fi
       say_speak "$line"
     fi
     exit 0
@@ -141,9 +157,24 @@ case "$MODE" in
     echo "Backend in use: $(tts_backend)"
     echo
     if eleven_available; then
-      echo "ElevenLabs is configured."
-      echo "  voice: $WELCOME_ELEVEN_VOICE_NAME"
-      echo "  id:    $(eleven_voice_id 2>/dev/null || echo '(not resolved - is the voice in your account?)')"
+      echo "ElevenLabs key: found"
+      echo "Wanted voice:   $WELCOME_ELEVEN_VOICE_NAME"
+      resolved="$(eleven_voice_id 2>/dev/null)"
+      if [ -n "$resolved" ]; then
+        echo "Resolved to:    $resolved"
+      else
+        echo "Resolved to:    NOT FOUND - this voice isn't in your account."
+      fi
+      echo
+      echo "Voices in your account:"
+      listing="$(eleven_list_voices 2>/dev/null)"
+      if [ -n "$listing" ]; then
+        printf '%s\n' "$listing" | awk -F'\t' '{ printf "  %-32s %s\n", $1, $2 }'
+        echo
+        echo "Use one:  daily-welcome --use-voice \"<name>\""
+      else
+        echo "  (couldn't list them - is the key valid?)"
+      fi
     else
       echo "ElevenLabs is not set up (no API key, or curl/afplay missing)."
       echo "  Add one with: daily-welcome --set-key"
@@ -151,8 +182,45 @@ case "$MODE" in
     echo
     voice="$(resolve_voice)"
     echo "Local fallback voice: ${voice:-system default}"
-    echo "Installed US English voices:"
-    say -v '?' 2>/dev/null | grep -E '[[:space:]]en_US[[:space:]]' | sed 's/^/  /'
+    exit 0
+    ;;
+  usevoice)
+    if ! eleven_available; then
+      echo "daily-welcome: set your ElevenLabs key first (--set-key)." >&2
+      exit 1
+    fi
+    if [ -z "${VOICE_ARG:-}" ]; then
+      echo "daily-welcome: --use-voice needs a name, e.g. --use-voice \"Veda Sky\"" >&2
+      exit 2
+    fi
+    listing="$(eleven_list_voices 2>/dev/null)"
+    match="$(printf '%s\n' "$listing" | awk -F'\t' -v want="$(printf '%s' "$VOICE_ARG" | tr '[:upper:]' '[:lower:]')" '
+      tolower($1) == want { print; found = 1; exit }
+      END { if (!found) exit 1 }')" || \
+    match="$(printf '%s\n' "$listing" | awk -F'\t' -v want="$(printf '%s' "$VOICE_ARG" | tr '[:upper:]' '[:lower:]')" '
+      index(tolower($1), want) { print; exit }')"
+
+    if [ -z "$match" ]; then
+      echo "daily-welcome: no voice matching \"$VOICE_ARG\" in your account." >&2
+      echo "Run --voices to see what's there." >&2
+      exit 1
+    fi
+
+    new_name="$(printf '%s' "$match" | cut -f1)"
+    new_id="$(printf '%s' "$match" | cut -f2)"
+    cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+    mkdir -p "$(dirname "$cfg")"
+    touch "$cfg"
+    # Replace any existing setting rather than stacking a second one.
+    grep -v '^WELCOME_ELEVEN_VOICE_\(NAME\|ID\)=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+    {
+      cat "$cfg.tmp"
+      printf 'WELCOME_ELEVEN_VOICE_NAME=%s\n' "\"$new_name\""
+      printf 'WELCOME_ELEVEN_VOICE_ID=%s\n' "\"$new_id\""
+    } > "$cfg"
+    rm -f "$cfg.tmp" "$WELCOME_STATE_DIR/eleven-voice-id"
+    echo "Voice set to \"$new_name\" ($new_id)."
+    echo "Hear it: daily-welcome --test-voice"
     exit 0
     ;;
   status)

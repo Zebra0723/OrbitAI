@@ -116,11 +116,22 @@ PLIST
     fi
     BUILT_APP=1
   else
-    echo
-    echo "  swiftc isn't installed, so there'll be no menu bar item."
-    echo "  Falling back to a background check every ${INTERVAL}s (works fine)."
-    echo "  For the menu bar version: xcode-select --install, then re-run this."
-    echo
+    cat <<'NOSWIFT'
+
+  ------------------------------------------------------------------
+  swiftc is not installed, so THE MENU BAR APP CANNOT BE BUILT.
+
+  Without it there is no menu bar icon, no "Hey Orbit" listening, and
+  macOS never asks for any permissions - there's no app to ask for them.
+  The daily briefing still works, on a timer.
+
+  To get the whole thing:
+
+      xcode-select --install       (a few minutes, ~1GB)
+      ./install.sh                 (run this again afterwards)
+  ------------------------------------------------------------------
+
+NOSWIFT
   fi
 fi
 
@@ -144,19 +155,32 @@ else
       "$ROOT/launchd/com.arjun.dailywelcome.script.plist.template" > "$PLIST"
 fi
 
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
+if ! launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null; then
+  echo "  (launchctl wouldn't load it; trying the older command)"
+  launchctl load -w "$PLIST" 2>/dev/null || true
+fi
 launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
+
+sleep 2
+if [ "$BUILT_APP" -eq 1 ] && ! pgrep -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" >/dev/null 2>&1; then
+  echo
+  echo "  The app was built but isn't running. $ROOT/bin/doctor will say why."
+fi
 
 # --- 5. done ---------------------------------------------------------------
 
 echo
 say_step "Installed."
 if [ "$BUILT_APP" -eq 1 ]; then
-  echo "  A sun icon is now in your menu bar. Nothing else needs to be open."
+  echo "  A sun icon is now in your menu bar (top right). It has no Dock icon"
+  echo "  and doesn't appear in Launchpad - the menu bar is where it lives."
   echo "  It greets you the first time the Mac wakes each day."
 else
-  echo "  Running in the background; it checks every ${INTERVAL}s."
+  echo "  Running in the background on a timer; no menu bar item, no voice"
+  echo "  commands. Install swiftc as above and re-run to get those."
 fi
+echo
+echo "  Something wrong:  $ROOT/bin/doctor"
 echo
 echo "  Add your voice:  $BIN_LINK --set-key      (ElevenLabs API key)"
 echo "  Check the voice: $BIN_LINK --test-voice"

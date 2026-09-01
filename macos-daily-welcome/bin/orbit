@@ -146,6 +146,23 @@ EOT
   emit "$(num_word "$drafted") $(_plural "$drafted" reply replies) drafted and waiting in Mail.$extra Send $(_plural "$drafted" it them)?" true "$token"
 }
 
+plan_call() {
+  local who="$1" kind="$2" handle token label
+
+  if ! handle="$(contact_handle "$who")"; then
+    emit "I couldn't find $who in your contacts, so I won't guess at a number." false ""
+    return 0
+  fi
+
+  if system_needs_confirm "$kind"; then
+    token="$(new_token)"
+    save_plan "$token" "INTENT=system" "ACTION=$kind" "ARG=$handle"
+    emit "$(system_describe "$kind" "$who")" true "$token"
+  else
+    emit "$(system_run "$kind" "$handle") $who." false ""
+  fi
+}
+
 plan_system() {
   local action="$1" arg="${2:-}" summary="${3:-}" token
 
@@ -288,6 +305,7 @@ case "${1:-}" in
       message)    plan_message "$arg1" "$arg2" ;;
       claude)     plan_claude "$arg1" "$arg2" ;;
       mail_reply) plan_mail_reply "$arg1" ;;
+      call)       plan_call "$arg1" "$arg2" ;;
       system)     plan_system "$arg1" "$arg2" "$arg3" ;;
       readback)   plan_readback "$arg1" ;;
       *)          emit "I didn't catch that. Try: message Mom saying I'm running late." false "" ;;

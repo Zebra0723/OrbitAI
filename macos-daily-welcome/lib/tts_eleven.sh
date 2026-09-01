@@ -59,6 +59,33 @@ _parse_voice_id() {
     END { if (!found && first != "") print first }'
 }
 
+# Every voice in the account, as "name <TAB> id". Used by --voices, so you
+# can see what you actually have rather than guessing at a name.
+eleven_list_voices() {
+  local key response
+  key="$(eleven_api_key)" || return 1
+  response="$(curl -sS --max-time 20 -H "xi-api-key: $key" \
+    "$ELEVEN_API/v2/voices?page_size=100" 2>/dev/null)" || return 1
+
+  if have_cmd jq; then
+    printf '%s' "$response" | jq -r '.voices[]? | "\(.name)\t\(.voice_id)"'
+    return 0
+  fi
+  printf '%s' "$response" | awk '
+    BEGIN { RS = "\"voice_id\"[[:space:]]*:[[:space:]]*\"" }
+    NR == 1 { next }
+    {
+      id = substr($0, 1, index($0, "\"") - 1)
+      name = ""
+      if (match($0, /"name"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
+        name = substr($0, RSTART, RLENGTH)
+        sub(/^"name"[[:space:]]*:[[:space:]]*"/, "", name)
+        sub(/"$/, "", name)
+      }
+      if (name != "") printf "%s\t%s\n", name, id
+    }'
+}
+
 # Resolves the configured voice name to an id, once, then remembers it.
 eleven_voice_id() {
   if [ -n "$WELCOME_ELEVEN_VOICE_ID" ]; then
@@ -87,7 +114,10 @@ eleven_voice_id() {
 
   id="$(printf '%s' "$response" | _parse_voice_id "$WELCOME_ELEVEN_VOICE_NAME")"
   if [ -z "$id" ]; then
-    welcome_log "elevenlabs: no voice named '$WELCOME_ELEVEN_VOICE_NAME' in your account"
+    # The search returned nothing, so the name isn't in this account at all.
+    # A voice from the ElevenLabs library has to be added to your voices
+    # before the API will speak with it.
+    welcome_log "elevenlabs: no voice named '$WELCOME_ELEVEN_VOICE_NAME' in your account - add it in ElevenLabs, or run: daily-welcome --use-voice \"<name>\""
     return 1
   fi
 
