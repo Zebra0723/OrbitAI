@@ -139,8 +139,8 @@ plan_claude() {
 }
 
 plan_mail_reply() {
-  local body="$1" token candidates
-  body="$(emoji_expand "$body")" count drafted=0 failed=0 line id name address subject
+  local body="$1" token candidates count drafted=0 failed=0 line id name address subject
+  body="$(emoji_expand "$body")"
 
   candidates="$(mail_awaiting_reply)"
   count="$(printf '%s' "$candidates" | grep -c . )"
@@ -311,7 +311,14 @@ plan_readback() {
       text="$(_speak_section "$(src_messages)" "unread message" "unread messages" "Nothing unread in Messages.")"
       ;;
     mail)
-      text="$(_speak_section "$(src_mail)" "unread email" "unread emails" "Your inbox is clear.")"
+      # "recent" and "summarise" are asking about the newest mail, not the
+      # unread pile - answering the wrong one of those looks like a lie.
+      case "$(printf '%s' "${ORBIT_TRANSCRIPT:-}" | tr '[:upper:]' '[:lower:]')" in
+        *recent*|*summar*|*"last five"*|*latest*)
+          text="$(_speak_section "$(src_mail_recent 5)" "recent email" "recent emails" "There is nothing in your inbox.")" ;;
+        *)
+          text="$(_speak_section "$(src_mail)" "unread email" "unread emails" "Your inbox is clear.")" ;;
+      esac
       ;;
     calendar)
       text="$(_speak_section "$(src_calendar)" "event today" "events today" "Nothing on the calendar today.")"
@@ -435,6 +442,7 @@ case "${1:-}" in
     # the request sets how the answer is delivered.
     transcript="$(context_expand "$transcript")"
     ORBIT_TONE="$(tone_of "$transcript")"
+    export ORBIT_TRANSCRIPT="$transcript"
     tone_apply "$ORBIT_TONE"
 
     plan_started="$(date '+%s')"

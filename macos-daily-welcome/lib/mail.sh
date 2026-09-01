@@ -175,3 +175,43 @@ on run argv
 end run
 APPLESCRIPT
 }
+
+# The newest messages, read or not. "Summarise my last five emails" is a
+# different question from "what is unread", and was being answered from
+# the unread list - which is why it kept saying the inbox was clear.
+_mail_recent_applescript() {
+  local limit="$1"
+  osascript <<APPLESCRIPT
+on run
+  set outText to ""
+  set shown to 0
+  tell application "Mail"
+    set total to (count of messages of inbox)
+    if total > $limit then set total to $limit
+    repeat with i from 1 to total
+      try
+        set m to message i of inbox
+        try
+          set theSender to extract name from (sender of m)
+        on error
+          set theSender to (sender of m)
+        end try
+        set shown to shown + 1
+        set outText to outText & (time string of (date received of m)) & tab & theSender & ": " & (subject of m) & tab & linefeed
+      end try
+    end repeat
+  end tell
+  return outText
+end run
+APPLESCRIPT
+}
+
+src_mail_recent() {
+  have_cmd osascript || return 0
+  local raw rc
+  raw="$(run_with_timeout "$ORBIT_MAIL_TIMEOUT" _mail_recent_applescript "${1:-5}")"
+  rc=$?
+  [ "$rc" -eq 124 ] && { _note "Mail took too long to answer"; return 0; }
+  [ "$rc" -ne 0 ] && { _note "Mail: $(last_error)"; return 0; }
+  printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != ""' | tidy_time_field
+}
