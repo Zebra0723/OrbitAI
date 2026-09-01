@@ -166,6 +166,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // stamp and lock directory make the duplicate call harmless.
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             self?.run(["--agent"])
+            // Sleep is where the microphone usually gets lost.
+            self?.listener.restartIfNeeded()
         }
     }
 

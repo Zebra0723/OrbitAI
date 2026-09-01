@@ -138,6 +138,33 @@ final class OrbitListener: NSObject {
 
     var isRunning: Bool { engine.isRunning }
 
+    /// Tears the audio down and builds it again. Cheap, and the only
+    /// reliable cure for an engine that has quietly stopped.
+    func restartSession(reason: String) {
+        status("restarting", reason)
+        silenceTimer?.invalidate()
+        restartTimer?.invalidate()
+        endRecognition()
+        if engine.isRunning {
+            engine.stop()
+        }
+        engine.inputNode.removeTap(onBus: 0)
+        greeted = false
+        heard = ""
+        setState(.idle)
+        // A beat, so the device that just changed has settled.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            self?.beginSession()
+        }
+    }
+
+    /// Called on wake and unlock: if the ears died while the Mac slept,
+    /// this is the moment to notice.
+    func restartIfNeeded() {
+        guard !engine.isRunning else { return }
+        restartSession(reason: "not running after wake")
+    }
+
     /// Skips the wake word - used by the menu item.
     func listenNow() {
         guard engine.isRunning else { start(); return }
@@ -174,9 +201,26 @@ final class OrbitListener: NSObject {
 
         // A recognition task is capped at around a minute, so it gets
         // recycled well before it expires rather than dying mid-sentence.
+        // The audio engine stops on its own more often than you'd like -
+        // sleep, a headphone plugged in, an input device changing - and it
+        // does it silently, which is exactly what "it stopped listening
+        // and I don't know why" looks like from outside.
+        NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine, queue: .main) { [weak self] _ in
+                self?.restartSession(reason: "audio device changed")
+        }
+
         restartTimer?.invalidate()
         restartTimer = Timer.scheduledTimer(withTimeInterval: 50, repeats: true) { [weak self] _ in
-            guard let self = self, self.state == .idle else { return }
+            guard let self = self else { return }
+            // Watchdog first: a dead engine is worth noticing within a
+            // minute rather than the next time you happen to talk to it.
+            if !self.engine.isRunning {
+                self.restartSession(reason: "engine had stopped")
+                return
+            }
+            guard self.state == .idle else { return }
             self.restartRecognition()
         }
 

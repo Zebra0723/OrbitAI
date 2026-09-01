@@ -47,6 +47,8 @@ orbit - voice commands for daily-welcome
   orbit run <token>              carry out a planned action
   orbit cancel <token>           drop it
   orbit say "<text>"             speak something in the Orbit voice
+  orbit listen [status|on|off|restart]   check or control the microphone
+  orbit warm                     pre-render the lines it says most
   orbit greeting                 the line for a wake word with no command
   orbit examples                 phrasings it understands
 
@@ -330,6 +332,62 @@ case "${1:-}" in
     shift
     speak_async "${1:-}"
     [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
+    ;;
+  listen)
+    shift
+    STATUS_FILE="$WELCOME_STATE_DIR/listener-status"
+    LABEL="${DAILY_WELCOME_LABEL:-com.arjun.dailywelcome}"
+    CFG="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+
+    set_listen() {
+      mkdir -p "$(dirname "$CFG")"; touch "$CFG"
+      grep -v '^ORBIT_LISTEN=' "$CFG" > "$CFG.tmp" 2>/dev/null || : > "$CFG.tmp"
+      { cat "$CFG.tmp"; printf 'ORBIT_LISTEN=%s\n' "$1"; } > "$CFG"
+      rm -f "$CFG.tmp"
+      # The app reads this at launch, so it has to be restarted to notice.
+      launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1
+    }
+
+    case "${1:-status}" in
+      on)
+        set_listen 1
+        echo "Listening turned on and the app restarted."
+        echo "Give it a couple of seconds, then say \"$ORBIT_WAKE_WORD\"."
+        ;;
+      off)
+        set_listen 0
+        echo "Listening turned off. The microphone stays shut until you turn it back on."
+        ;;
+      restart)
+        launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1
+        echo "Restarted. The ears come back a second or two after the app does."
+        ;;
+      status|*)
+        if pgrep -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" >/dev/null 2>&1; then
+          echo "App:      running"
+        else
+          echo "App:      NOT running   (orbit listen restart)"
+        fi
+        if [ -f "$STATUS_FILE" ]; then
+          awk -F'\t' '
+            $1 == "state"   { printf "State:    %s\n", $2 }
+            $1 == "detail"  { printf "Detail:   %s\n", $2 }
+            $1 == "updated" { printf "Updated:  %s\n", $2 }
+            $1 == "heard"   { printf "Heard:    \"%s\"\n", $2 }
+          ' "$STATUS_FILE"
+          # A status that hasn't moved in a while means the ears are stuck,
+          # which looks identical to "not listening" from the outside.
+          if [ -z "$(find "$STATUS_FILE" -mmin -10 2>/dev/null)" ]; then
+            echo
+            echo "That status is over ten minutes old, so it's probably stuck."
+            echo "  orbit listen restart"
+          fi
+        else
+          echo "State:    never started"
+          echo "  orbit listen on"
+        fi
+        ;;
+    esac
     ;;
   warm)
     # Synthesis is the slow part of a reply, and the same handful of lines
