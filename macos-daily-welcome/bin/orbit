@@ -683,6 +683,13 @@ case "${1:-}" in
     else
       echo "Nothing yet. Say something to it first."
     fi
+
+    # A turn that produced no answer at all leaves its reason here rather
+    # than in /dev/null, which is where it used to go.
+    if [ -s "$WELCOME_STATE_DIR/orbit-errors.log" ]; then
+      printf '\nErrors from the last few turns:\n'
+      tail -n 20 "$WELCOME_STATE_DIR/orbit-errors.log" | sed 's/^/  /'
+    fi
     ;;
   selftest)
     # Every upgrade, checked in the environment it actually runs in.

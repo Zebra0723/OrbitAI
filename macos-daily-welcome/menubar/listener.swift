@@ -559,6 +559,11 @@ final class OrbitListener: NSObject {
     /// Words that mean "close the microphone", as opposed to "stop this
     /// sentence". Same self-hearing guard as stopWord().
     private func pauseWord(in text: String) -> Bool {
+        // Only in a short utterance. Closing the microphone is the one
+        // interruption you cannot undo by talking, so it may not be
+        // triggered by a phrase that happens to appear inside a sentence -
+        // "should I go away for the weekend" is a question.
+        guard text.split(separator: " ").count <= 4 else { return false }
         let stops = ["stop listening", "leave me alone", "go away",
                      "stand down", "mute yourself", "don't listen", "dont listen"]
         let mine = speakingText.lowercased()
@@ -772,30 +777,82 @@ final class OrbitListener: NSObject {
 
     // MARK: - Talking to the shell
 
+    /// Longest a single turn may take before it is cut off and answered
+    /// anyway. Under stuckLimit on purpose: the silent recovery is a
+    /// backstop for a callback that never fires, not the normal way a slow
+    /// command ends.
+    private let commandLimit: TimeInterval = 30
+
     private func run(_ arguments: [String], then: @escaping ([String: Any]) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
+            // Output goes to a file, not a pipe. A pipe stays open as long
+            // as ANY process holds the write end, so one backgrounded
+            // grandchild - a timer, a queued Claude job - kept the read
+            // blocking forever after orbit itself had exited, and the turn
+            // simply never came back. Waiting on the process instead means
+            // only orbit's own lifetime counts.
+            let base = NSTemporaryDirectory() + "orbit-run-" + UUID().uuidString
+            let outPath = base + ".json"
+            let fm = FileManager.default
+            fm.createFile(atPath: outPath, contents: nil)
+
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/bin/bash")
             process.arguments = [self.orbitPath] + arguments
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = FileHandle.nullDevice
+            if let out = FileHandle(forWritingAtPath: outPath) {
+                process.standardOutput = out
+            }
+            // Errors used to go to /dev/null, which is why a turn that did
+            // nothing left nothing to look at. Keep them next to the log.
+            if !self.statusPath.isEmpty {
+                let errPath = (self.statusPath as NSString).deletingLastPathComponent + "/orbit-errors.log"
+                if !fm.fileExists(atPath: errPath) { fm.createFile(atPath: errPath, contents: nil) }
+                if let err = FileHandle(forWritingAtPath: errPath) {
+                    err.seekToEndOfFile()
+                    process.standardError = err
+                }
+            }
 
             do { try process.run() } catch {
                 NSLog("orbit: \(error.localizedDescription)")
+                try? fm.removeItem(atPath: outPath)
                 DispatchQueue.main.async { then(["speak": "Something went wrong running that."]) }
                 return
             }
 
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
+            // Poll rather than waitUntilExit() so there is a way out of a
+            // command that never finishes.
+            var timedOut = false
+            let deadline = Date().addingTimeInterval(self.commandLimit)
+            while process.isRunning {
+                if Date() >= deadline {
+                    timedOut = true
+                    process.terminate()
+                    Thread.sleep(forTimeInterval: 0.5)
+                    if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+                    break
+                }
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+
+            let text = (try? String(contentsOfFile: outPath, encoding: .utf8)) ?? ""
+            try? fm.removeItem(atPath: outPath)
 
             // The last line is the JSON; anything before it is log noise.
-            let text = String(data: data, encoding: .utf8) ?? ""
             let line = text.split(separator: "\n").last.map(String.init) ?? ""
             let parsed = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any]
 
-            DispatchQueue.main.async { then(parsed ?? ["speak": "I couldn't work that one out."]) }
+            if parsed == nil {
+                self.status(timedOut ? "timed-out" : "no-answer",
+                            timedOut ? "orbit \(arguments.first ?? "") ran past \(Int(self.commandLimit))s"
+                                     : "orbit \(arguments.first ?? "") returned nothing usable")
+            }
+
+            let fallback = timedOut
+                ? ["speak": "That one took too long, so I stopped it. Try me again."]
+                : ["speak": "I couldn't work that one out."]
+
+            DispatchQueue.main.async { then(parsed ?? fallback) }
         }
     }
 

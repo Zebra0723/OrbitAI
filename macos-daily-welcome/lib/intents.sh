@@ -196,6 +196,21 @@ _try_call() {
 
 # Controlling the Mac. Ordered so the specific phrasings win: "read my
 # clipboard" is a clipboard command, not a request to read something out.
+# The bare instruction inside a politely-worded one: drops the wake word,
+# the please, the "can you", and any trailing punctuation, so a short
+# command can be matched against the whole sentence rather than hunted for
+# inside it. Anything longer than the phrase itself simply won't match,
+# which is the point.
+_bare_phrase() {
+  printf '%s' "$1" \
+    | sed -E 's/[[:punct:]]+$//' \
+    | sed -E 's/^(hey |ok |okay )?orbit[ ,]*//' \
+    | sed -E 's/^(please|can you|could you|would you|will you|i want you to|i need you to|you can|just)[ ,]+//' \
+    | sed -E 's/^(please|just)[ ,]+//' \
+    | sed -E 's/[ ,]+(please|now|for now|for a bit|for a moment|for a second)$//' \
+    | sed -E 's/^[[:space:]]+|[[:space:]]+$//g'
+}
+
 _try_system() {
   local text="$1" lower arg
   lower="$(printf '%s' "$text" | tr '[:upper:]' '[:lower:]')"
@@ -206,26 +221,33 @@ _try_system() {
       [ -n "$arg" ] && { printf 'system\tvolume_set\t%s\n' "$arg"; return 0; } ;;
   esac
 
+  # Being told to be quiet is matched against the WHOLE sentence, never as
+  # a substring. These are all ordinary English - "should I go away for the
+  # weekend" is a question, not an instruction to close the microphone -
+  # and matching them loosely made Orbit deaf to anything containing them.
+  # Nobody buries "shut up" in the middle of a real request.
+  case "$(_bare_phrase "$lower")" in
+    "be quiet"|"shut up"|"stop talking"|"stop speaking"|"quiet"|"hush"|\
+    "that's enough"|"thats enough"|"shush"|"enough"|"stop it"|"silence")
+      printf 'system\tstop_talking\t\n'; return 0 ;;
+
+    "stop listening"|"stop listening to me"|"don't listen"|"dont listen"|\
+    "turn off your ears"|"close the mic"|"close the microphone"|\
+    "leave me alone"|"go away"|"stop recording"|"mute yourself"|\
+    "turn yourself off"|"stand down"|"stop listening for now")
+      printf 'system\tstop_listening\t\n'; return 0 ;;
+
+    "start listening"|"listen again"|"wake up"|"come back"|"you can listen"|\
+    "start listening again"|"listen to me")
+      printf 'system\tstart_listening\t\n'; return 0 ;;
+  esac
+
   case "$lower" in
     *"volume up"*|*louder*|*"turn it up"*|*"turn up the volume"*) printf 'system\tvolume_up\t\n'; return 0 ;;
     *"volume down"*|*quieter*|*"turn it down"*|*"turn down the volume"*) printf 'system\tvolume_down\t\n'; return 0 ;;
     "mute"*|*"mute the mac"*|*"mute the volume"*|*"mute the sound"*)
       printf 'system\tmute\t\n'; return 0 ;;
 
-    # Told to be quiet, stop talking - the voice, not the speakers.
-    *"be quiet"*|*"shut up"*|*"stop talking"*|*"stop speaking"*|"quiet"|"hush"*|\
-    *"that's enough"*|*"thats enough"*|*"shush"*)
-      printf 'system\tstop_talking\t\n'; return 0 ;;
-
-    # Told to stop listening - the microphone, until you ask for it back.
-    *"stop listening"*|*"stop listening to me"*|*"don't listen"*|*"dont listen"*|\
-    *"turn off your ears"*|*"close the mic"*|*"close the microphone"*|\
-    *"leave me alone"*|*"go away"*|*"stop recording"*|*"mute yourself"*|\
-    *"turn yourself off"*|*"stand down"*)
-      printf 'system\tstop_listening\t\n'; return 0 ;;
-
-    *"start listening"*|*"listen again"*|*"wake up"*|*"come back"*|*"you can listen"*)
-      printf 'system\tstart_listening\t\n'; return 0 ;;
     *unmute*|*"sound back"*) printf 'system\tunmute\t\n'; return 0 ;;
 
     *brighter*|*"brightness up"*|*"turn up the brightness"*) printf 'system\tbrightness_up\t\n'; return 0 ;;
