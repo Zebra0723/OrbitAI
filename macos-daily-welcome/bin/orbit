@@ -448,6 +448,11 @@ case "${1:-}" in
         # The classifier already wrote the answer, so this costs nothing
         # extra - one request understood the sentence and replied to it.
         chat_remember "$transcript" "$arg1"
+        # A checklist is unbearable read aloud and useful on screen, so the
+        # long version goes to a panel while the voice keeps it to a line.
+        if [ -n "$arg2" ]; then
+          ( present_dialog "Orbit" "$(printf '%s' "$arg2" | sed 's/\\n/\n/g')" 120 & ) 2>/dev/null
+        fi
         emit "$(tone_shape "$ORBIT_TONE" "$arg1")" false "" ;;
       social)     plan_social "$arg1" ;;
       ask)        plan_ask "$arg1" ;;
