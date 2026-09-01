@@ -142,6 +142,29 @@
 : "${ORBIT_MAIL_MAX_BATCH:=25}"
 : "${ORBIT_MAIL_TIMEOUT:=45}"
 
+# How many of the newest messages to scan per mailbox. Filtering the whole
+# mailbox is what made every mail question answer "your inbox is clear":
+# the query outlived its timeout and came back empty.
+: "${ORBIT_MAIL_SCAN:=120}"
+
+# Macros: one phrase, several commands.
+: "${ORBIT_MACROS_FILE:=$HOME/.config/daily-welcome/macros.conf}"
+
+# Speaking first: a meeting about to start, a job Claude finished, mail
+# from someone on the list. Quiet hours are shared with tone.
+: "${ORBIT_PROACTIVE:=1}"
+: "${ORBIT_PROACTIVE_GAP_SECONDS:=600}"
+: "${ORBIT_MEETING_WARNING_MINUTES:=5}"
+: "${ORBIT_VIPS:=}"
+
+# Voice commands only while the Mac is unlocked - the nearest thing to
+# knowing who is speaking that doesn't involve guessing.
+: "${ORBIT_REQUIRE_UNLOCKED:=1}"
+
+# A word that must appear in the command before anything is sent, called,
+# or dispatched. Empty means no passphrase.
+: "${ORBIT_PASSPHRASE:=}"
+
 # A confirmed action expires; a "yes" twenty minutes late shouldn't send.
 : "${ORBIT_PLAN_TTL_MINUTES:=10}"
 
@@ -159,9 +182,11 @@
 : "${ORBIT_WAKE_THRESHOLD:=0.6}"
 
 # On-device recognition keeps audio on this Mac, but is markedly worse at
-# words it has never seen - which a made-up name always is. Set to 0 to let
-# Apple's servers do the recognising, which hears "Orbit" far more reliably.
-: "${ORBIT_ONDEVICE:=1}"
+# words it has never seen - and a made-up name is always one. On-device it
+# hears "hey Orbit" as things like "pay your back oh my", which no amount
+# of fuzzy matching can rescue, so the default is Apple's server
+# recognition. Set to 1 to keep audio local and accept the misses.
+: "${ORBIT_ONDEVICE:=0}"
 
 # Answering questions, and reading the screen.
 : "${ORBIT_ASK_TIMEOUT:=30}"
@@ -206,6 +231,9 @@
 : "${ORBIT_BIN:=$HOME/.local/bin/orbit}"
 
 welcome_load_user_config() {
+  # Do this before anything looks for a tool: the app's PATH is not yours.
+  command -v orbit_widen_path >/dev/null 2>&1 && orbit_widen_path
+
   local cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
   if [ -f "$cfg" ]; then
     # shellcheck disable=SC1090

@@ -32,9 +32,10 @@ freeform_plan() {
   local text="$1" out summary command
 
   [ "$ORBIT_FREEFORM" = "1" ] || return 1
-  have_cmd claude || return 1
+  local claude_cmd
+  claude_cmd="$(claude_bin)" || return 1
 
-  out="$(run_with_timeout "$ORBIT_NLU_TIMEOUT" claude -p "$(cat <<PROMPT
+  out="$(run_with_timeout "$ORBIT_NLU_TIMEOUT" "$claude_cmd" -p "$(cat <<PROMPT
 You control a Mac through a voice assistant. Turn the request below into ONE
 shell command that a macOS terminal can run, preferring \`osascript -e\` for
 anything an app or the system exposes to AppleScript.

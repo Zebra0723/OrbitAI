@@ -21,7 +21,8 @@ _spoken_only() {
 ask_claude() {
   local question="$1" prompt answer hint
 
-  have_cmd claude || return 1
+  local claude_cmd
+  claude_cmd="$(claude_bin)" || return 1
   hint="$(tone_prompt_hint "${ORBIT_TONE:-neutral}")"
 
   prompt="You are the voice of a Mac assistant. Answer the question below out loud.
@@ -36,7 +37,7 @@ Rules:
 
 Question: $question"
 
-  answer="$(run_with_timeout "$ORBIT_ASK_TIMEOUT" claude -p "$prompt" 2>/dev/null)" || return 1
+  answer="$(run_with_timeout "$ORBIT_ASK_TIMEOUT" "$claude_cmd" -p "$prompt" 2>/dev/null)" || return 1
   answer="$(_spoken_only "$answer")"
   [ -z "$answer" ] && return 1
   printf '%s' "$answer"
@@ -48,7 +49,8 @@ ask_about_screen() {
   local question="${1:-What is on this screen? If there is an error, explain it.}"
   local shot prompt answer
 
-  have_cmd claude || return 1
+  local claude_cmd
+  claude_cmd="$(claude_bin)" || return 1
   have_cmd screencapture || return 1
 
   shot="$(mktemp -t orbit-screen.XXXXXX)" || return 1
@@ -66,7 +68,7 @@ question is about an error, say what it means and the single most likely fix.
 
 Question: $question"
 
-  answer="$(run_with_timeout "$ORBIT_SCREEN_TIMEOUT" claude -p "$prompt" 2>/dev/null)"
+  answer="$(run_with_timeout "$ORBIT_SCREEN_TIMEOUT" "$claude_cmd" -p "$prompt" 2>/dev/null)"
   rm -f "$shot"
 
   answer="$(_spoken_only "$answer")"

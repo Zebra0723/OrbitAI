@@ -13,15 +13,45 @@ on run
   set outText to ""
   set shown to 0
   tell application "Mail"
-    repeat with m in (messages of inbox whose read status is false)
-      if shown >= $limit then exit repeat
-      set shown to shown + 1
+    -- The unified inbox misses accounts whose mail Mail hasn't merged into
+    -- it, so every account's own inbox is asked as well. Duplicates are
+    -- filtered on the way out rather than risking an empty answer.
+    set boxes to {inbox}
+    repeat with acct in accounts
       try
-        set theSender to extract name from (sender of m)
-      on error
-        set theSender to (sender of m)
+        set end of boxes to (mailbox "INBOX" of acct)
       end try
-      set outText to outText & (time string of (date received of m)) & tab & theSender & ": " & (subject of m) & tab & linefeed
+      try
+        set end of boxes to (inbox of acct)
+      end try
+    end repeat
+
+    repeat with theBox in boxes
+      if shown >= $limit then exit repeat
+      try
+        -- Deliberately NOT "messages whose read status is false": that
+        -- filter walks the entire mailbox, which on a large inbox takes
+        -- longer than any sensible timeout and comes back as nothing at
+        -- all. Mail returns newest first, so scanning the top of the pile
+        -- finds today's unread mail in a fraction of the time.
+        set total to (count of messages of theBox)
+        if total > $ORBIT_MAIL_SCAN then set total to $ORBIT_MAIL_SCAN
+        repeat with i from 1 to total
+          if shown >= $limit then exit repeat
+          try
+            set m to message i of theBox
+            if (read status of m) is false then
+              set shown to shown + 1
+              try
+                set theSender to extract name from (sender of m)
+              on error
+                set theSender to (sender of m)
+              end try
+              set outText to outText & (time string of (date received of m)) & tab & theSender & ": " & (subject of m) & tab & (id of m) & linefeed
+            end if
+          end try
+        end repeat
+      end try
     end repeat
   end tell
   return outText
@@ -33,7 +63,7 @@ src_mail() {
   have_cmd osascript || return 0
 
   local raw rc
-  raw="$(run_with_timeout "$WELCOME_SOURCE_TIMEOUT" \
+  raw="$(run_with_timeout "$ORBIT_MAIL_TIMEOUT" \
     _mail_unread_applescript "$((WELCOME_MAX_ITEMS * 2))")"
   rc=$?
 
@@ -41,7 +71,12 @@ src_mail() {
   if [ "$rc" -ne 0 ]; then
     _note "Mail: $(last_error) (daily-welcome --doctor)"; return 0
   fi
-  printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != "" { print }' | tidy_time_field
+
+  # Field 3 is the message id, used only to drop the duplicates that come
+  # from asking both the unified inbox and each account's own.
+  printf '%s\n' "$raw" \
+    | awk -F'\t' 'NF >= 2 && $2 != "" && !seen[$3]++ { printf "%s\t%s\t\n", $1, $2 }' \
+    | tidy_time_field
 }
 
 # --------------------------------------------------------- awaiting reply
@@ -56,21 +91,27 @@ on run
   set outText to ""
   set shown to 0
   tell application "Mail"
-    repeat with m in (messages of inbox whose was replied to is false and date received > cutoff)
+    set total to (count of messages of inbox)
+    if total > $ORBIT_MAIL_SCAN then set total to $ORBIT_MAIL_SCAN
+    repeat with i from 1 to total
       if shown >= $limit then exit repeat
-      try
-        set theAddress to extract address from (sender of m)
-      on error
-        set theAddress to (sender of m)
-      end try
-      try
-        set theName to extract name from (sender of m)
-      on error
-        set theName to theAddress
-      end try
-      if theAddress is not "" then
-        set shown to shown + 1
-        set outText to outText & (id of m) & tab & theName & tab & theAddress & tab & (subject of m) & linefeed
+      set m to message i of inbox
+      if (date received of m) < cutoff then exit repeat
+      if (was replied to of m) is false then
+        try
+          set theAddress to extract address from (sender of m)
+        on error
+          set theAddress to (sender of m)
+        end try
+        try
+          set theName to extract name from (sender of m)
+        on error
+          set theName to theAddress
+        end try
+        if theAddress is not "" then
+          set shown to shown + 1
+          set outText to outText & (id of m) & tab & theName & tab & theAddress & tab & (subject of m) & linefeed
+        end if
       end if
     end repeat
   end tell

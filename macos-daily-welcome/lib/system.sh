@@ -171,10 +171,15 @@ APPLESCRIPT
       printf 'Added to your reminders.' ;;
 
     timer)
-      # Detached, so the timer outlives this command.
-      ( sleep $((arg * 60))
-        "$ORBIT_BIN" say "Your $(num_word "$arg") minute timer is up."
-      ) >/dev/null 2>&1 &
+      # A backgrounded subshell keeps the parent's command substitution
+      # open until it finishes - so a five-minute timer meant a five-minute
+      # wait for the reply confirming it. nohup on a separate process image
+      # detaches properly.
+      if [ -x "$ORBIT_BIN" ]; then
+        nohup "$ORBIT_BIN" timer-fire "$arg" </dev/null >/dev/null 2>&1 &
+      else
+        nohup /bin/bash -c "sleep $((arg * 60))" </dev/null >/dev/null 2>&1 &
+      fi
       printf 'Timer set for %s minutes.' "$(num_word "$arg")" ;;
 
     type_text)

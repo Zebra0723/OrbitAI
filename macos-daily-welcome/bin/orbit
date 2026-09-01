@@ -33,6 +33,8 @@ welcome_load_user_config
 . "$ROOT/lib/context.sh"
 . "$ROOT/lib/ask.sh"
 . "$ROOT/lib/tone.sh"
+. "$ROOT/lib/macros.sh"
+. "$ROOT/lib/watch.sh"
 
 PLAN_DIR="$WELCOME_STATE_DIR/plans"
 mkdir -p "$PLAN_DIR" 2>/dev/null
@@ -117,7 +119,7 @@ plan_claude() {
     emit "I couldn't find a repo called $repo_name under your project folders." false ""
     return 0
   fi
-  if ! have_cmd claude; then
+  if ! have_claude; then
     emit "Claude Code isn't installed on this Mac, so I can't hand that off." false ""
     return 0
   fi
@@ -215,6 +217,61 @@ plan_screen() {
   emit "$answer" false ""
 }
 
+# A macro is a phrase standing in for several commands. Each step is an
+# ordinary command, so a macro can do anything you could say out loud - and
+# if any step needs confirming, the whole macro is confirmed once.
+plan_macro() {
+  local phrase="$1" steps token needs_confirm=0 step parsed intent
+  steps="$(macro_steps "$phrase")" || return 1
+  [ -z "$steps" ] && return 1
+
+  token="$(new_token)"
+  : > "$(plan_file "$token")"
+  printf 'INTENT=macro\n' >> "$(plan_file "$token")"
+  printf 'PHRASE=%s\n' "$phrase" >> "$(plan_file "$token")"
+
+  while IFS= read -r step; do
+    [ -z "$step" ] && continue
+    printf 'STEP\t%s\n' "$step" >> "$(plan_file "$token")"
+    parsed="$(parse_intent "$step")"
+    intent="$(printf '%s' "$parsed" | cut -f1)"
+    if [ "$intent" = "system" ]; then
+      system_needs_confirm "$(printf '%s' "$parsed" | cut -f2)" && needs_confirm=1
+    else
+      needs_confirm=1   # anything that isn't a plain Mac control
+    fi
+  done <<EOT
+$steps
+EOT
+
+  local count
+  count="$(printf '%s\n' "$steps" | grep -c .)"
+  if [ "$needs_confirm" = "1" ]; then
+    emit "$phrase: $(num_word "$count") $(_plural "$count" step steps). Go ahead?" true "$token"
+  else
+    rm -f "$(plan_file "$token")"
+    emit "$(run_macro_steps "$steps")" false ""
+  fi
+}
+
+# Runs each step and reports what happened, briefly.
+run_macro_steps() {
+  local steps="$1" step parsed intent done_count=0
+  while IFS= read -r step; do
+    [ -z "$step" ] && continue
+    parsed="$(parse_intent "$step")"
+    intent="$(printf '%s' "$parsed" | cut -f1)"
+    case "$intent" in
+      system) system_run "$(printf '%s' "$parsed" | cut -f2)" "$(printf '%s' "$parsed" | cut -f3)" >/dev/null ;;
+      *)      : ;;
+    esac
+    done_count=$((done_count + 1))
+  done <<EOT
+$steps
+EOT
+  printf 'Done. %s %s.' "$(num_word "$done_count")" "$(_plural "$done_count" step steps)"
+}
+
 plan_system() {
   local action="$1" arg="${2:-}" summary="${3:-}" token
 
@@ -261,9 +318,17 @@ plan_readback() {
 # records, singular, plural, empty-case -> a spoken sentence plus the top items
 _speak_section() {
   local records="$1" one="$2" many="$3" empty="$4"
-  local n line out
+  local n line out note
   n="$(count_records "$records")"
-  if [ "$n" -eq 0 ]; then printf '%s' "$empty"; return 0; fi
+
+  if [ "$n" -eq 0 ]; then
+    # A source that couldn't answer leaves a note. Reporting "your inbox is
+    # clear" when Mail actually refused the question is worse than useless:
+    # it is a confident wrong answer.
+    note="$(printf '%s\n' "$records" | awk -F'\t' '$1 == "#note" { print $2; exit }')"
+    if [ -n "$note" ]; then printf '%s' "$note"; else printf '%s' "$empty"; fi
+    return 0
+  fi
 
   out="$(num_word "$n") $(_plural "$n" "$one" "$many")."
   while IFS= read -r line; do
@@ -328,6 +393,12 @@ run_plan() {
         emit "Sent $(num_word "$sent") $(_plural "$sent" reply replies)." false ""
       fi
       ;;
+    macro)
+      local steps
+      steps="$(awk -F'\t' '$1 == "STEP" { print $2 }' "$file")"
+      rm -f "$file"
+      emit "$(run_macro_steps "$steps")" false ""
+      ;;
     system)
       rm -f "$file"
       emit "$(system_run "$ACTION" "$ARG")" false ""
@@ -362,6 +433,7 @@ case "${1:-}" in
     arg3="$(printf '%s' "$parsed" | cut -f4)"
 
     case "$intent" in
+      macro)      plan_macro "$arg1" || emit "That macro has no steps." false "" ;;
       social)     plan_social "$arg1" ;;
       ask)        plan_ask "$arg1" ;;
       screen)     plan_screen "$arg1" ;;
@@ -427,6 +499,40 @@ case "${1:-}" in
         launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1
         echo "Restarted. The ears come back a second or two after the app does."
         ;;
+      heard)
+        if [ -f "$WELCOME_STATE_DIR/heard.log" ]; then
+          echo "The last things it heard while waiting for the wake word:"
+          sed 's/^/  /' "$WELCOME_STATE_DIR/heard.log"
+          echo
+          echo "If your wake word is in there as something else, add it:"
+          echo "  orbit listen alias \"<what it hears>\""
+        else
+          echo "Nothing logged yet. Say something near the Mac and try again."
+        fi
+        ;;
+      wake)
+        shift
+        if [ -z "${1:-}" ]; then echo "orbit listen wake \"hey computer\"" >&2; exit 2; fi
+        mkdir -p "$(dirname "$CFG")"; touch "$CFG"
+        grep -v '^ORBIT_WAKE_WORD=' "$CFG" > "$CFG.tmp" 2>/dev/null || : > "$CFG.tmp"
+        { cat "$CFG.tmp"; printf 'ORBIT_WAKE_WORD="%s"\n' "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"; } > "$CFG"
+        rm -f "$CFG.tmp"
+        launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1
+        echo "Wake word set to \"$1\". Give the app a couple of seconds."
+        echo "Ordinary words work far better than invented ones."
+        ;;
+      alias)
+        shift
+        if [ -z "${1:-}" ]; then echo "orbit listen alias \"what it hears\"" >&2; exit 2; fi
+        mkdir -p "$(dirname "$CFG")"; touch "$CFG"
+        existing="$(grep '^ORBIT_WAKE_ALIASES=' "$CFG" 2>/dev/null | tail -1 | sed -E 's/^ORBIT_WAKE_ALIASES="?//; s/"$//')"
+        [ -z "$existing" ] && existing="$ORBIT_WAKE_ALIASES"
+        grep -v '^ORBIT_WAKE_ALIASES=' "$CFG" > "$CFG.tmp" 2>/dev/null || : > "$CFG.tmp"
+        { cat "$CFG.tmp"; printf 'ORBIT_WAKE_ALIASES="%s|%s"\n' "$existing" "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"; } > "$CFG"
+        rm -f "$CFG.tmp"
+        launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1
+        echo "\"$1\" now counts as the wake word too."
+        ;;
       status|*)
         if pgrep -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" >/dev/null 2>&1; then
           echo "App:      running"
@@ -453,6 +559,61 @@ case "${1:-}" in
         fi
         ;;
     esac
+    ;;
+  watch)
+    # One announcement or nothing. Called on a timer by the menu bar app.
+    line="$(watch_once)" || exit 0
+    [ -z "$line" ] && exit 0
+    speak_async "$line"
+    [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
+    printf '%s\n' "$line"
+    ;;
+  selftest)
+    # Every upgrade, checked in the environment it actually runs in.
+    pass() { printf '  \033[32mok\033[0m   %s\n' "$1"; }
+    fail() { printf '  \033[31mno\033[0m   %s\n' "$1"; printf '       %s\n' "$2"; }
+
+    printf '\nOrbit self-test\n\n'
+
+    if claude_bin >/dev/null 2>&1; then pass "Claude Code found at $(claude_bin)"
+    else fail "Claude Code not found" "Questions, screen reading and repo jobs all need it"; fi
+
+    if [ -n "$(ask_claude 'say the word ready and nothing else' 2>/dev/null)" ]; then
+      pass "Questions answered"
+    else fail "Questions not answered" "claude -p returned nothing within ${ORBIT_ASK_TIMEOUT}s"; fi
+
+    if eleven_available; then
+      if [ -n "$(speak_to_file 'Self test.' 2>/dev/null)" ]; then pass "Voice renders"
+      else fail "Voice does not render" "$(cat "$WELCOME_STATE_DIR/last-voice-error" 2>/dev/null | head -c 160)"; fi
+    else fail "ElevenLabs not available" "daily-welcome --check-key"; fi
+
+    n="$(count_records "$(src_mail)")"
+    note="$(printf '%s\n' "$(src_mail)" | awk -F'\t' '$1 == "#note" { print $2; exit }')"
+    if [ -n "$note" ]; then fail "Mail" "$note"
+    else pass "Mail readable ($n unread)"; fi
+
+    n="$(count_records "$(src_reminders)")"
+    note="$(printf '%s\n' "$(src_reminders)" | awk -F'\t' '$1 == "#note" { print $2; exit }')"
+    if [ -n "$note" ]; then fail "Reminders" "$note"
+    else pass "Reminders readable ($n due)"; fi
+
+    if [ -f "$ORBIT_MACROS_FILE" ] && [ -n "$(macros_list)" ]; then
+      pass "Macros defined: $(macros_list | cut -f1 | tr '\n' ' ')"
+    else fail "No macros" "Add some to $ORBIT_MACROS_FILE"; fi
+
+    if [ -f "$WELCOME_STATE_DIR/listener-status" ]; then
+      pass "Listener state: $(awk -F'\t' '$1 == "state" { print $2 }' "$WELCOME_STATE_DIR/listener-status")"
+    else fail "Listener has never run" "orbit listen on"; fi
+
+    printf '\n'
+    ;;
+  timer-fire)
+    # Runs detached: sleep, then say so. Only ever started by nohup.
+    shift
+    minutes="${1:-5}"
+    sleep $((minutes * 60))
+    speak_async "Your $(num_word "$minutes") minute timer is up."
+    [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
     ;;
   warm)
     # Synthesis is the slow part of a reply, and the same handful of lines

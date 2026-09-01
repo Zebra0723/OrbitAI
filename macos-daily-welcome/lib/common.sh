@@ -119,3 +119,36 @@ tidy_time_field() {
 }
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+# The menu bar app inherits launchd's PATH, not a login shell's, so tools
+# installed in a home directory are invisible to it - which made every
+# Claude-backed feature fail silently when spoken and work perfectly when
+# typed. Widening PATH here fixes all of them at once.
+orbit_widen_path() {
+  local extra dir
+  extra="$HOME/.local/bin:$HOME/.claude/local:$HOME/bin:$HOME/.npm-global/bin"
+  extra="$extra:$HOME/.bun/bin:$HOME/.volta/bin:/opt/homebrew/bin:/usr/local/bin"
+  for dir in $(printf '%s' "$extra" | tr ':' ' '); do
+    case ":$PATH:" in
+      *":$dir:"*) ;;
+      *) [ -d "$dir" ] && PATH="$PATH:$dir" ;;
+    esac
+  done
+  export PATH
+}
+
+# Where Claude Code actually is. `command -v` first, then the places it
+# installs itself.
+claude_bin() {
+  local candidate
+  candidate="$(command -v claude 2>/dev/null)"
+  if [ -n "$candidate" ]; then printf '%s' "$candidate"; return 0; fi
+  for candidate in "$HOME/.claude/local/claude" "$HOME/.local/bin/claude" \
+                   "$HOME/.bun/bin/claude" "/opt/homebrew/bin/claude" \
+                   "/usr/local/bin/claude"; do
+    [ -x "$candidate" ] && { printf '%s' "$candidate"; return 0; }
+  done
+  return 1
+}
+
+have_claude() { claude_bin >/dev/null 2>&1; }

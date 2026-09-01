@@ -371,9 +371,10 @@ _try_readback() {
 _try_claude_nlu() {
   local text="$1" out
   [ "$ORBIT_NLU_FALLBACK" = "1" ] || return 1
-  have_cmd claude || return 1
+  local claude_cmd
+  claude_cmd="$(claude_bin)" || return 1
 
-  out="$(run_with_timeout "$ORBIT_NLU_TIMEOUT" claude -p "$(cat <<PROMPT
+  out="$(run_with_timeout "$ORBIT_NLU_TIMEOUT" "$claude_cmd" -p "$(cat <<PROMPT
 Classify this voice command into exactly one line, no explanation, no code fences.
 Allowed forms:
 message<TAB><person><TAB><what to say>
@@ -424,6 +425,12 @@ parse_intent() {
 
   # Drop the wake word if the recognizer kept it.
   text="$(printf '%s' "$text" | sed -E 's/^(hey|hi|ok|okay)[[:space:]]+orbit[[:space:]]*[,.]?[[:space:]]*//I')"
+
+  # A macro phrase is user-defined, so it outranks every built-in reading.
+  if macro_steps "$text" >/dev/null 2>&1; then
+    printf 'macro\t%s\t\n' "$text"
+    return 0
+  fi
 
   _try_social "$text"      && return 0
   _try_message "$text"     && return 0

@@ -181,7 +181,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    @objc private func backstopTick() { run(["--agent"]) }
+    @objc private func backstopTick() {
+        run(["--agent"])
+        // The same tick asks whether anything is worth saying unprompted.
+        // Everything that decides "worth" lives in the shell, including
+        // quiet hours and the rate limit.
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [orbitPath, "watch"]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+    }
 
     // MARK: - Menu
 
