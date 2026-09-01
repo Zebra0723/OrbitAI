@@ -33,6 +33,8 @@ Rules:
 - Numbers, dates and times written as words, the way you would say them.
 - If you do not know, say so in one sentence rather than guessing.
 - No preamble. Start with the answer.
+- Opinions, recommendations and small talk are all fair game. Answer the
+  way a person would, not the way a reference book would.
 - $hint
 
 Question: $question"
@@ -74,4 +76,40 @@ Question: $question"
   answer="$(_spoken_only "$answer")"
   [ -z "$answer" ] && return 1
   printf '%s' "$answer"
+}
+
+# chat_claude "<what they said>" -> a spoken reply
+#
+# ask_claude answers questions; this one talks. The difference matters:
+# a factual prompt met with "wanna chat?" produces either a refusal or a
+# definition of chatting, and both are worse than "sure, what's up".
+chat_claude() {
+  local text="$1" prompt reply history claude_cmd
+  claude_cmd="$(claude_bin)" || return 1
+
+  history="$(chat_history 2>/dev/null | awk -F'\t' '{ printf "%s: %s\n", $1, $2 }')"
+
+  prompt="You are Orbit, a voice assistant on ${WELCOME_NAME}'s Mac. You are
+speaking out loud.
+
+- One or two sentences. Never three.
+- Plain spoken English. No markup, no lists, no emoji, no stage directions.
+- Warm and direct. No preamble, no offering to help in the abstract.
+- Small talk is fine and welcome. If they want to chat, chat.
+- Never refuse to answer. If you do not know, say so in a sentence."
+
+  [ -n "$history" ] && prompt="$prompt
+
+What was said just before:
+$history"
+
+  prompt="$prompt
+
+They said: $text"
+
+  reply="$(run_with_timeout "$ORBIT_ASK_TIMEOUT" "$claude_cmd" -p "$prompt" 2>/dev/null)" || return 1
+  reply="$(_spoken_only "$reply")"
+  [ -z "$reply" ] && return 1
+  chat_remember "$text" "$reply" 2>/dev/null
+  printf '%s' "$reply"
 }

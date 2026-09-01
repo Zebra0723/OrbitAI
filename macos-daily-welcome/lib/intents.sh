@@ -352,6 +352,10 @@ _try_social() {
       printf 'social\tpraise\n' ;;
     "are you there"|"you there"|"can you hear me"|"hello?"|"you awake")
       printf 'social\tpresent\n' ;;
+    "wanna chat"*|"want to chat"*|"let's chat"*|"lets chat"*|"let's talk"*|\
+    "lets talk"*|"can we talk"*|"talk to me"*|"keep me company"*|"i'm bored"*|\
+    "im bored"*|"say something"*)
+      printf 'social\tchat\n' ;;
     *) return 1 ;;
   esac
 }

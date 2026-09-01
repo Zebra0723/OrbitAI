@@ -202,6 +202,7 @@ plan_social() {
     goodnight)  emit "Good night, $WELCOME_NAME." false "" true ;;
     nevermind)  emit "No problem." false "" true ;;
     praise)     emit "Any time." false "" ;;
+    chat)       emit "Sure. What's on your mind?" false "" ;;
     present)    emit "I'm here." false "" ;;
     *)          emit "I'm here." false "" ;;
   esac
@@ -465,7 +466,7 @@ case "${1:-}" in
         # never pretends not to have heard.
         if reply="$(openai_chat "$transcript")"; then
           emit "$(tone_shape "$ORBIT_TONE" "$reply")" false ""
-        elif reply="$(ask_claude "$transcript")"; then
+        elif reply="$(chat_claude "$transcript")"; then
           emit "$(tone_shape "$ORBIT_TONE" "$reply")" false ""
         elif [ "$IN_CHAT" = "1" ] && [ "$(printf '%s' "$transcript" | wc -w)" -lt 2 ]; then
           # Mid-conversation the microphone is open to the whole room. A
