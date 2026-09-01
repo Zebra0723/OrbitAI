@@ -206,6 +206,18 @@ fi
 echo
 echo "  Something wrong:  $ROOT/bin/doctor"
 
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *)
+    echo
+    echo "  Note: ~/.local/bin isn't on your PATH, so typing 'daily-welcome'"
+    echo "  or 'orbit' won't find them. Either use the full paths above, or:"
+    echo
+    echo "      echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc"
+    echo "      source ~/.zshrc"
+    ;;
+esac
+
 if [ "$NEW_BUILD" -eq 1 ]; then
   echo
   echo "  The app was rebuilt, which macOS treats as a new app, so it will"
