@@ -32,6 +32,7 @@ welcome_load_user_config
 # shellcheck source=../lib/voice.sh
 . "$ROOT/lib/voice.sh"
 
+LABEL_ID="${DAILY_WELCOME_LABEL:-com.arjun.dailywelcome}"
 STATE_FILE="$WELCOME_STATE_DIR/last-run"
 MUTE_FILE="$WELCOME_STATE_DIR/muted-on"
 LOCK_DIR="$WELCOME_STATE_DIR/lock"
@@ -51,6 +52,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --agent         same as bare, plus lock-screen/quiet-hour guards
   daily-welcome --status        what it would do, and when it last ran
   daily-welcome --doctor        check the whole install and say what to fix
+  daily-welcome --reset-permissions   make macOS ask about access again
   daily-welcome --set-key       store your ElevenLabs API key in the Keychain
   daily-welcome --test-voice    say one line now, and report which voice said it
   daily-welcome --voices        available voices, and which one it will use
@@ -76,6 +78,7 @@ while [ $# -gt 0 ]; do
     --set-key)    MODE=setkey ;;
     --test-voice) MODE=testvoice ;;
     --hush)       MODE=hush ;;
+    --reset-permissions) MODE=resetperms ;;
     --voices)     MODE=voices ;;
     --use-voice)  MODE=usevoice; shift; VOICE_ARG="${1:-}" ;;
     --mute-today) MODE=mute ;;
@@ -104,6 +107,31 @@ case "$MODE" in
     ;;
   hush)
     hush
+    exit 0
+    ;;
+  resetperms)
+    # macOS remembers a refusal as firmly as an approval, and a refused
+    # app often disappears from the Automation list entirely - leaving
+    # nothing to switch back on. Clearing the decisions makes it ask again.
+    if ! have_cmd tccutil; then
+      echo "daily-welcome: no tccutil on this system." >&2
+      exit 1
+    fi
+    echo "Clearing remembered permission answers..."
+    for service in AppleEvents Reminders Calendar AddressBook; do
+      tccutil reset "$service" "$LABEL_ID" >/dev/null 2>&1 && echo "  $service (DailyWelcome)"
+    done
+    tccutil reset AppleEvents >/dev/null 2>&1 && echo "  AppleEvents (everything, including your terminal)"
+    echo
+    echo "Now run something that needs them and answer Allow:"
+    echo "  daily-welcome --doctor"
+    echo
+    echo "Two things worth knowing:"
+    echo "  - Each app asks separately. Allowing your terminal does not allow"
+    echo "    the menu bar app, and the other way round."
+    echo "  - The prompts are Automation prompts (\"wants to control Reminders\"),"
+    echo "    which live under Privacy & Security > Automation, not under the"
+    echo "    Reminders switch."
     exit 0
     ;;
   setkey)

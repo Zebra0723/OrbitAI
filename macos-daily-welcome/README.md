@@ -194,6 +194,27 @@ hand under System Settings → Privacy & Security → Full Disk Access → +
 → `~/Applications/DailyWelcome.app`. Without it, everything else still works
 and the Messages section says so.
 
+### "I allowed Reminders and it still says no"
+
+Three things trip this up, all of them macOS rather than Orbit:
+
+- **Look under Automation, not Reminders.** The Reminders switch governs apps
+  reading the database directly. Driving the Reminders *app* through
+  AppleScript is a separate grant, listed under Privacy & Security →
+  Automation → *the app doing the asking* → Reminders.
+- **Grants are per-asking-app.** Running `daily-welcome` in Terminal means
+  Terminal is asking, so the approval attaches to Terminal. The menu bar app
+  asks for its own, separately. Approving one does nothing for the other.
+- **A refusal is remembered as firmly as an approval** — and a refused app
+  often vanishes from the Automation list entirely, leaving no switch to flip
+  back. `daily-welcome --reset-permissions` clears the remembered answers so
+  the prompts come back.
+
+Rebuilding the app also resets its permissions: an ad-hoc signature changes on
+every build, and macOS reasonably treats that as a different app. `install.sh`
+therefore only rebuilds when the sources actually changed; `--rebuild` forces
+it, at the cost of re-approving.
+
 ## Settings
 
 `~/.config/daily-welcome/config.sh`, plain bash, created on install from

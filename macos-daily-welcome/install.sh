@@ -18,15 +18,19 @@ INTERVAL="${DAILY_WELCOME_INTERVAL:-120}"
 WAKE_WORD="${ORBIT_WAKE_WORD:-hey Orbit}"
 AGENT_PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 WANT_APP=1
+FORCE_REBUILD=0
+NEW_BUILD=0
 
 for arg in "$@"; do
   case "$arg" in
     --no-app) WANT_APP=0 ;;         # skip the menu bar app, poll instead
+    --rebuild) FORCE_REBUILD=1 ;;   # rebuild even if nothing changed
     -h|--help)
       sed -n '2,4p' "$0"
       echo
       echo "  ./install.sh            menu bar app if swiftc is available"
       echo "  ./install.sh --no-app   background polling only, no menu bar item"
+      echo "  ./install.sh --rebuild  force a rebuild (resets app permissions)"
       exit 0 ;;
     *) echo "install: unknown option $arg" >&2; exit 2 ;;
   esac
@@ -73,8 +77,26 @@ pkill -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" 2>/dev/null || true
 # --- 3. build the menu bar app, if we can ----------------------------------
 
 BUILT_APP=0
+
+# Rebuilding changes the app's ad-hoc signature, and macOS ties permissions
+# to that signature - so an unnecessary rebuild silently throws away every
+# Reminders, Calendar and Microphone approval you have given. Only rebuild
+# when the sources are actually newer than the binary.
+app_is_current() {
+  local binary="$APP_DIR/Contents/MacOS/DailyWelcome" src
+  [ -x "$binary" ] || return 1
+  for src in "$ROOT"/menubar/*.swift; do
+    [ "$src" -nt "$binary" ] && return 1
+  done
+  return 0
+}
+
 if [ "$WANT_APP" -eq 1 ]; then
   if command -v swiftc >/dev/null 2>&1; then
+    if [ "$FORCE_REBUILD" -eq 0 ] && app_is_current; then
+      say_step "Menu bar app is already up to date (keeping its permissions)"
+      BUILT_APP=1
+    else
     say_step "Building the menu bar app"
     rm -rf "$APP_DIR"
     mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
@@ -115,6 +137,8 @@ PLIST
       codesign --force --sign - "$APP_DIR" >/dev/null 2>&1 || true
     fi
     BUILT_APP=1
+    NEW_BUILD=1
+    fi
   else
     cat <<'NOSWIFT'
 
@@ -181,6 +205,12 @@ else
 fi
 echo
 echo "  Something wrong:  $ROOT/bin/doctor"
+
+if [ "$NEW_BUILD" -eq 1 ]; then
+  echo
+  echo "  The app was rebuilt, which macOS treats as a new app, so it will"
+  echo "  ask for its permissions again. That's expected, not a fault."
+fi
 echo
 echo "  Add your voice:  $BIN_LINK --set-key      (ElevenLabs API key)"
 echo "  Check the voice: $BIN_LINK --test-voice"

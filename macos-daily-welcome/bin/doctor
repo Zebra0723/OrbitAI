@@ -136,22 +136,33 @@ ok "Fallback voice: ${local_voice:-system default}"
 
 head_ "Permissions"
 
-# Each probe is a real, tiny request: if TCC would block the actual work,
-# it blocks this too.
+# Permissions here are Automation (Apple Events) permissions, not the
+# "Reminders" / "Calendars" switches most people find first. Those switches
+# govern apps reading the data directly; driving Reminders through
+# AppleScript is a different grant, listed under Automation.
+#
+# They are also per-asking-app. Run this from Terminal and it is Terminal
+# asking, so the answer you get is Terminal's; the menu bar app is granted
+# separately, the first time it needs each one.
+ASKER="$(ps -o comm= -p "$PPID" 2>/dev/null | sed 's#.*/##')"
+printf '  Asking as: %s (grants below belong to it, not to DailyWelcome)\n\n' "${ASKER:-this shell}"
+
 probe() {
-  local name="$1" script="$2" setting="$3"
+  local name="$1" script="$2"
   if run_with_timeout 12 osascript -e "$script" >/dev/null 2>&1; then
     ok "$name"
   else
-    bad "$name is blocked or was never asked for."
-    fix "System Settings > Privacy & Security > $setting > enable DailyWelcome"
+    bad "$name is blocked, or was refused once and remembered."
+    fix "System Settings > Privacy & Security > Automation > ${ASKER:-your terminal} > turn on $name"
+    fix "If $name isn't listed there at all, the answer was cached. Clear it:"
+    fix "  daily-welcome --reset-permissions      (then run this again)"
   fi
 }
 
-probe "Reminders" 'tell application "Reminders" to count lists' "Reminders"
-probe "Calendar"  'tell application "Calendar" to count calendars' "Calendars"
-probe "Contacts"  'tell application "Contacts" to count people' "Contacts"
-probe "Mail"      'tell application "Mail" to count accounts' "Automation"
+probe "Reminders" 'tell application "Reminders" to count lists'
+probe "Calendar"  'tell application "Calendar" to count calendars'
+probe "Contacts"  'tell application "Contacts" to count people'
+probe "Mail"      'tell application "Mail" to count accounts'
 
 if sqlite3 -readonly "$HOME/Library/Messages/chat.db" 'SELECT 1 FROM message LIMIT 1;' >/dev/null 2>&1; then
   ok "Messages database is readable (Full Disk Access is on)"
