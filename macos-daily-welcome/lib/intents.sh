@@ -315,6 +315,35 @@ _try_system() {
   return 1
 }
 
+# The things people say to a person that aren't instructions. Answering
+# them is most of the difference between a command line with a microphone
+# and something you can talk to.
+_try_social() {
+  local lower
+  lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[[:punct:]]+$//')"
+
+  case "$lower" in
+    "thank you"*|"thanks"*|"thankyou"*|"cheers"|"much appreciated"|"appreciate it"|\
+    "that's all"|"thats all"|"that will be all"|"that is all"|"nothing else"|\
+    "we're done"|"were done"|"i'm done"|"im done"|"goodbye"|"bye"|"bye bye"|"see you"|\
+    "go away"|"dismissed")
+      printf 'social\tthanks\n' ;;
+    "hello"|"hi"|"hey"|"good morning"|"morning"|"good afternoon"|"good evening"|"yo")
+      printf 'social\thello\n' ;;
+    "how are you"*|"how's it going"*|"hows it going"*|"you good"*|"how are we"*)
+      printf 'social\thowareyou\n' ;;
+    "good night"|"goodnight"|"night"|"i'm going to bed"|"im going to bed")
+      printf 'social\tgoodnight\n' ;;
+    "sorry"*|"my bad"|"never mind"|"nevermind"|"forget it")
+      printf 'social\tnevermind\n' ;;
+    "nice"|"cool"|"great"|"perfect"|"lovely"|"awesome"|"good job"|"well done"|"nice one")
+      printf 'social\tpraise\n' ;;
+    "are you there"|"you there"|"can you hear me"|"hello?"|"you awake")
+      printf 'social\tpresent\n' ;;
+    *) return 1 ;;
+  esac
+}
+
 _try_readback() {
   local lower
   lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
@@ -361,6 +390,29 @@ PROMPT
   printf '%s\n' "$out"
 }
 
+# A question, rather than an order. Checked late, so "what time is it"
+# and "what's on my calendar" stay local and instant.
+_try_ask() {
+  local text="$1" lower
+  lower="$(printf '%s' "$text" | tr '[:upper:]' '[:lower:]')"
+
+  case "$lower" in
+    "what's on my screen"*|"whats on my screen"*|"what am i looking at"*|\
+    "read my screen"*|"what does this say"*|"what's this error"*|"whats this error"*|\
+    "what does this error mean"*|"explain this"*|"what is this on screen"*)
+      printf 'screen\t%s\t\n' "$text"; return 0 ;;
+  esac
+
+  case "$lower" in
+    what*|who*|when*|where*|why*|how*|which*|\
+    "is "*|"are "*|"was "*|"were "*|"can "*|"could "*|"should "*|"do "*|"does "*|\
+    "did "*|"will "*|"would "*|"tell me about "*|"explain "*|"ask claude "*|\
+    "look up "*|"define "*|"what if "*)
+      printf 'ask\t%s\t\n' "$text"; return 0 ;;
+  esac
+  return 1
+}
+
 # parse_intent "<transcript>" -> intent <TAB> arg1 <TAB> arg2
 parse_intent() {
   local text
@@ -373,12 +425,14 @@ parse_intent() {
   # Drop the wake word if the recognizer kept it.
   text="$(printf '%s' "$text" | sed -E 's/^(hey|hi|ok|okay)[[:space:]]+orbit[[:space:]]*[,.]?[[:space:]]*//I')"
 
+  _try_social "$text"      && return 0
   _try_message "$text"     && return 0
   _try_claude "$text"      && return 0
   _try_mail_reply "$text"  && return 0
   _try_call "$text"        && return 0
   _try_system "$text"      && return 0
   _try_readback "$text"    && return 0
+  _try_ask "$text"         && return 0
   _try_claude_nlu "$text"  && return 0
 
   # Nothing recognised it: let Claude write the command, to be confirmed

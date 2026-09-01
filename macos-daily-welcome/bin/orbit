@@ -30,6 +30,9 @@ welcome_load_user_config
 . "$ROOT/lib/tts_eleven.sh"
 . "$ROOT/lib/voice.sh"
 . "$ROOT/lib/intents.sh"
+. "$ROOT/lib/context.sh"
+. "$ROOT/lib/ask.sh"
+. "$ROOT/lib/tone.sh"
 
 PLAN_DIR="$WELCOME_STATE_DIR/plans"
 mkdir -p "$PLAN_DIR" 2>/dev/null
@@ -61,8 +64,15 @@ USAGE
 
 emit() {
   # emit SPEAK CONFIRM TOKEN
-  printf '{"speak":"%s","confirm":%s,"token":"%s"}\n' \
-    "$(json_escape "$1")" "$2" "$3"
+  #
+  # The audio is rendered here, while the caller is already waiting, and
+  # handed over as a path. Speaking used to mean launching a second shell
+  # that re-read every config file and then started afplay - on a one-word
+  # answer that overhead was most of the delay.
+  local audio=""
+  audio="$(speak_to_file "$1" 2>/dev/null)" || audio=""
+  printf '{"speak":"%s","audio":"%s","confirm":%s,"token":"%s","end":%s}\n' \
+    "$(json_escape "$1")" "$(json_escape "$audio")" "$2" "$3" "${4:-false}"
 }
 
 new_token() {
@@ -170,6 +180,39 @@ plan_call() {
   else
     emit "$(system_run "$kind" "$handle") $who." false ""
   fi
+}
+
+# The social half of talking to something. "Thanks" ends the conversation,
+# which is how you stop without saying stop.
+plan_social() {
+  case "$1" in
+    thanks)     emit "$ORBIT_SIGNOFF" false "" true ;;
+    hello)      emit "$(_greeting_word), $WELCOME_NAME. What do you need?" false "" ;;
+    howareyou)  emit "Running fine. What can I do?" false "" ;;
+    goodnight)  emit "Good night, $WELCOME_NAME." false "" true ;;
+    nevermind)  emit "No problem." false "" true ;;
+    praise)     emit "Any time." false "" ;;
+    present)    emit "I'm here." false "" ;;
+    *)          emit "I'm here." false "" ;;
+  esac
+}
+
+plan_ask() {
+  local question="$1" answer
+  answer="$(ask_claude "$question")" || {
+    emit "I can't answer that without Claude Code installed." false ""
+    return 0
+  }
+  emit "$(tone_shape "$ORBIT_TONE" "$answer")" false ""
+}
+
+plan_screen() {
+  local answer
+  answer="$(ask_about_screen "$1")" || {
+    emit "I couldn't read the screen just then." false ""
+    return 0
+  }
+  emit "$answer" false ""
 }
 
 plan_system() {
@@ -300,9 +343,17 @@ run_plan() {
 case "${1:-}" in
   plan)
     shift
+    IN_CHAT=0
+    if [ "${1:-}" = "--chat" ]; then IN_CHAT=1; shift; fi
     transcript="${1:-}"
     [ -z "$transcript" ] && { emit "I didn't catch that." false ""; exit 0; }
     prune_plans
+
+    # Follow-ups get filled in from what was just said, then the tone of
+    # the request sets how the answer is delivered.
+    transcript="$(context_expand "$transcript")"
+    ORBIT_TONE="$(tone_of "$transcript")"
+    tone_apply "$ORBIT_TONE"
 
     parsed="$(parse_intent "$transcript")"
     intent="$(printf '%s' "$parsed" | cut -f1)"
@@ -311,13 +362,23 @@ case "${1:-}" in
     arg3="$(printf '%s' "$parsed" | cut -f4)"
 
     case "$intent" in
+      social)     plan_social "$arg1" ;;
+      ask)        plan_ask "$arg1" ;;
+      screen)     plan_screen "$arg1" ;;
       message)    plan_message "$arg1" "$arg2" ;;
       claude)     plan_claude "$arg1" "$arg2" ;;
       mail_reply) plan_mail_reply "$arg1" ;;
       call)       plan_call "$arg1" "$arg2" ;;
       system)     plan_system "$arg1" "$arg2" "$arg3" ;;
       readback)   plan_readback "$arg1" ;;
-      *)          emit "I didn't catch that. Try: message Mom saying I'm running late." false "" ;;
+      *)
+        # Mid-conversation the microphone is open, so a stray sentence from
+        # the room shouldn't be answered at all.
+        if [ "$IN_CHAT" = "1" ]; then
+          emit "" false ""
+        else
+          emit "I didn't catch that. Try: message Mom saying I'm running late." false ""
+        fi ;;
     esac
     ;;
   run)
@@ -438,6 +499,10 @@ case "${1:-}" in
   listen)    printf '%s\n' "$ORBIT_LISTEN" ;;
       followup)  printf '%s\n' "$ORBIT_FOLLOWUP_SECONDS" ;;
       aliases)   printf '%s\n' "$ORBIT_WAKE_ALIASES" ;;
+      conversation) printf '%s\n' "$ORBIT_CONVERSATION" ;;
+      conversation_seconds) printf '%s\n' "$ORBIT_CONVERSATION_SECONDS" ;;
+      wake_threshold) printf '%s\n' "$ORBIT_WAKE_THRESHOLD" ;;
+      ondevice)  printf '%s\n' "$ORBIT_ONDEVICE" ;;
       *)         printf 'orbit config: wake_word | listen | followup | aliases\n' >&2; exit 2 ;;
     esac
     ;;

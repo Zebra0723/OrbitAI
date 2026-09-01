@@ -181,6 +181,22 @@ speak_async() {
   WELCOME_SPEAK_PID=$!
 }
 
+# Renders TEXT and prints the path to the audio, without playing it.
+# The listener plays it itself, which saves launching a second shell and
+# an afplay just to make a sound - on a one-word reply that overhead was
+# most of the wait.
+speak_to_file() {
+  local text="$1" file
+  [ "$WELCOME_SPEAK" = "1" ] || return 1
+  [ -z "$text" ] && return 1
+  [ "$(tts_backend)" = "elevenlabs" ] || return 1
+
+  file="$(eleven_cache_path "$text")"
+  [ -s "$file" ] && { printf '%s' "$file"; return 0; }
+  eleven_synthesize "$text" "$file" || return 1
+  printf '%s' "$file"
+}
+
 # Stops whatever is currently talking.
 hush() {
   pkill -x afplay 2>/dev/null

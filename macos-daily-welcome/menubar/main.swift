@@ -127,6 +127,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let seconds = Double(shellConfig("followup") ?? ""), seconds > 0 {
             listener.followUpWindow = seconds
         }
+        if let seconds = Double(shellConfig("conversation_seconds") ?? ""), seconds > 0 {
+            listener.conversationWindow = seconds
+        }
+        listener.conversationMode = (shellConfig("conversation") ?? "1") != "0"
+        listener.onDeviceOnly = (shellConfig("ondevice") ?? "1") != "0"
+        if let threshold = Double(shellConfig("wake_threshold") ?? ""), threshold > 0 {
+            listener.wakeThreshold = threshold
+        }
+        listener.heardLogPath = stateDir + "/heard.log"
         listener.onStateChange = { [weak self] state in
             self?.reflect(state)
         }

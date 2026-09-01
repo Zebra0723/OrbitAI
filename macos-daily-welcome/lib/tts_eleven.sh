@@ -196,7 +196,16 @@ eleven_synthesize() {
 
   # The failed response body landed in $out; keep the reason, drop the file.
   if [ -s "$out" ]; then
-    welcome_log "elevenlabs: $(head -c 300 "$out" | tr -d '\n')"
+    local reason
+    reason="$(head -c 400 "$out" | tr -d '\n')"
+    welcome_log "elevenlabs: $reason"
+    # Save it where --test-voice and doctor can read it: a valid key with a
+    # voice the account can't use fails exactly like a bad key otherwise.
+    printf '%s' "$reason" > "$WELCOME_STATE_DIR/last-voice-error" 2>/dev/null
+    case "$reason" in
+      *voice_not_found*|*"voice does not exist"*|*"voice_id"*)
+        welcome_log "elevenlabs: that voice isn't available to this account - daily-welcome --voices" ;;
+    esac
   fi
   rm -f "$out"
   return 1

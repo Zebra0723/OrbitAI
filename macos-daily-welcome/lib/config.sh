@@ -148,6 +148,36 @@
 # How many items get read back for "what's on my calendar".
 : "${ORBIT_READBACK_ITEMS:=3}"
 
+# Conversation: after the first exchange the wake word isn't needed again
+# until you end it ("thanks", "that's all") or say nothing for a while.
+: "${ORBIT_CONVERSATION:=1}"
+: "${ORBIT_CONVERSATION_SECONDS:=25}"
+: "${ORBIT_SIGNOFF:=Any time.}"
+
+# How close a heard word must be to the name to count as the wake word.
+# Lower catches more mishearings and more false alarms.
+: "${ORBIT_WAKE_THRESHOLD:=0.6}"
+
+# On-device recognition keeps audio on this Mac, but is markedly worse at
+# words it has never seen - which a made-up name always is. Set to 0 to let
+# Apple's servers do the recognising, which hears "Orbit" far more reliably.
+: "${ORBIT_ONDEVICE:=1}"
+
+# Answering questions, and reading the screen.
+: "${ORBIT_ASK_TIMEOUT:=30}"
+: "${ORBIT_ASK_SENTENCES:=2}"
+: "${ORBIT_SCREEN_TIMEOUT:=45}"
+
+# Match the tone of the request: a clipped order gets a clipped answer, a
+# frustrated one gets no cheerfulness, late at night gets quieter.
+: "${ORBIT_MATCH_TONE:=1}"
+: "${ORBIT_QUIET_FROM_HOUR:=22}"
+: "${ORBIT_QUIET_UNTIL_HOUR:=7}"
+: "${ORBIT_TONE:=neutral}"
+
+# How long "who and what we were just talking about" survives.
+: "${ORBIT_CONTEXT_TTL_SECONDS:=120}"
+
 # Hand phrasings the rules miss to Claude Code to classify.
 : "${ORBIT_NLU_FALLBACK:=1}"
 : "${ORBIT_NLU_TIMEOUT:=25}"

@@ -38,6 +38,7 @@ final class OrbitListener: NSObject {
     private var wakePrefix = ""
     /// What Orbit is currently saying, so its own words can't interrupt it.
     private var speakingText = ""
+    private var player: AVAudioPlayer?
     private var silenceTimer: Timer?
     private var restartTimer: Timer?
     private var pendingToken = ""
@@ -55,6 +56,7 @@ final class OrbitListener: NSObject {
         wakeWord.split(separator: " ").last.map(String.init) ?? wakeWord
     }
 
+    private var lastLogged = ""
     private var lastStatus = ""
     private var lastStatusWrite = Date.distantPast
 
@@ -72,6 +74,18 @@ final class OrbitListener: NSObject {
     /// mishearings are consistent enough to just accept.
     var wakeAliases: [String] = []
 
+    /// How close a heard word has to be to the name to count. 0.6 accepts
+    /// "orbid" and "or bit" while still rejecting ordinary conversation.
+    var wakeThreshold: Double = 0.6
+
+    /// On-device recognition keeps audio on the Mac but is markedly worse
+    /// at words it has never seen - which a made-up name always is.
+    var onDeviceOnly = true
+
+    /// Everything heard while idle, most recent last. The only way to know
+    /// what the recogniser is actually making of you.
+    var heardLogPath: String = ""
+
     /// Called with the current state so the menu bar icon can reflect it.
     var onStateChange: ((ListenState) -> Void)?
 
@@ -88,6 +102,13 @@ final class OrbitListener: NSObject {
 
     /// Seconds to keep listening after answering a bare wake word.
     var followUpWindow: TimeInterval = 9
+
+    /// Once a conversation has started, the wake word is not needed again
+    /// until it ends - either because you said so, or because nothing has
+    /// been said for this long.
+    var conversationMode = true
+    var conversationWindow: TimeInterval = 25
+    private var inConversation = false
     /// True once the wake word has been acknowledged on its own, so the
     /// greeting happens at most once per wake rather than on a loop.
     private var greeted = false
@@ -255,7 +276,7 @@ final class OrbitListener: NSObject {
 
         let req = SFSpeechAudioBufferRecognitionRequest()
         req.shouldReportPartialResults = true
-        if #available(macOS 13.0, *), recognizer?.supportsOnDeviceRecognition == true {
+        if onDeviceOnly, #available(macOS 13.0, *), recognizer?.supportsOnDeviceRecognition == true {
             req.requiresOnDeviceRecognition = true
         }
         // A made-up name is not in any language model, so it comes back as
@@ -297,6 +318,7 @@ final class OrbitListener: NSObject {
                 // hearing me" and "it hears me as something else" look
                 // identical from the outside and need different fixes.
                 status("listening", "waiting for \"\(wakeWord)\"", heard: lower)
+                logHeard(lower)
                 return
             }
             // Anything said after the wake word in the same breath counts
@@ -379,7 +401,58 @@ final class OrbitListener: NSObject {
         if squashed.contains(wakeKey) || squashed.contains(wakeWord.replacingOccurrences(of: " ", with: "")) {
             return text.endIndex..<text.endIndex
         }
+
+        // Nothing matched literally. A made-up name isn't in the
+        // recogniser's vocabulary, so it comes back as the nearest real
+        // words it can find - and the nearest real word is usually close.
+        // Compare each word, and each pair of adjacent words, against the
+        // name and accept anything near enough.
+        if fuzzyContainsWake(text) {
+            return text.endIndex..<text.endIndex
+        }
         return nil
+    }
+
+    private func fuzzyContainsWake(_ text: String) -> Bool {
+        let words = text.split(separator: " ").map(String.init)
+        guard !words.isEmpty else { return false }
+
+        for (index, word) in words.enumerated() {
+            if similarity(word, wakeKey) >= wakeThreshold { return true }
+            if index + 1 < words.count {
+                let pair = word + words[index + 1]
+                if similarity(pair, wakeKey) >= wakeThreshold { return true }
+            }
+        }
+        return false
+    }
+
+    /// 1.0 is identical, 0 is nothing alike.
+    private func similarity(_ a: String, _ b: String) -> Double {
+        if a == b { return 1 }
+        if a.isEmpty || b.isEmpty { return 0 }
+        // A short word can't be a mishearing of a much longer one.
+        if abs(a.count - b.count) > max(2, b.count / 2) { return 0 }
+
+        let distance = editDistance(Array(a), Array(b))
+        return 1.0 - Double(distance) / Double(max(a.count, b.count))
+    }
+
+    private func editDistance(_ a: [Character], _ b: [Character]) -> Int {
+        var previous = Array(0...b.count)
+        var current = [Int](repeating: 0, count: b.count + 1)
+
+        for i in 1...a.count {
+            current[0] = i
+            for j in 1...b.count {
+                let cost = a[i - 1] == b[j - 1] ? 0 : 1
+                current[j] = min(previous[j] + 1,        // deletion
+                                 current[j - 1] + 1,     // insertion
+                                 previous[j - 1] + cost) // substitution
+            }
+            previous = current
+        }
+        return previous[b.count]
     }
 
     private func yesOrNo(in text: String) -> Bool? {
@@ -402,6 +475,8 @@ final class OrbitListener: NSObject {
     }
 
     private func interrupt() {
+        player?.stop()
+        player = nil
         speakingText = ""
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
@@ -446,10 +521,11 @@ final class OrbitListener: NSObject {
                 greeted = true
                 greet()
 
-            } else if command.isEmpty, greeted, quietFor > followUpWindow {
+            } else if command.isEmpty, greeted, quietFor > (inConversation ? conversationWindow : followUpWindow) {
                 // Nothing followed the greeting. Go quiet without comment -
                 // an assistant that announces its own timeout is a nag.
                 greeted = false
+                inConversation = false
                 setState(.idle)
                 restartRecognition()
             }
@@ -482,7 +558,7 @@ final class OrbitListener: NSObject {
         setState(.working)
         run(["greeting"]) { [weak self] json in
             guard let self = self else { return }
-            self.say(json["speak"] as? String ?? "") {
+            self.play(json["audio"] as? String ?? "", saying: json["speak"] as? String ?? "") {
                 // Straight back to listening, with the follow-up clock
                 // starting from the end of the greeting, not the wake word.
                 self.heard = ""
@@ -493,22 +569,45 @@ final class OrbitListener: NSObject {
         }
     }
 
+    /// Where a turn ends up: back in the conversation, or back to waiting
+    /// for the wake word.
+    private func finishTurn(ended: Bool) {
+        greeted = true          // no greeting mid-conversation
+        heard = ""
+        wakePrefix = ""
+
+        if conversationMode && !ended {
+            inConversation = true
+            lastHeardAt = Date()
+            setState(.capturing)
+        } else {
+            inConversation = false
+            setState(.idle)
+        }
+        restartRecognition()
+    }
+
     private func plan(_ command: String) {
-        run(["plan", command]) { [weak self] json in
+        // Tells orbit this is a follow-up, so it can stay quiet about
+        // things it didn't understand instead of interrupting the room.
+        let args = inConversation ? ["plan", "--chat", command] : ["plan", command]
+        run(args) { [weak self] json in
             guard let self = self else { return }
             let speak = json["speak"] as? String ?? ""
+            let audio = json["audio"] as? String ?? ""
             let confirm = json["confirm"] as? Bool ?? false
             let token = json["token"] as? String ?? ""
 
-            self.say(speak) {
+            let ended = json["end"] as? Bool ?? false
+
+            self.play(audio, saying: speak) {
                 if confirm, !token.isEmpty {
                     self.pendingToken = token
                     self.confirmStartedAt = Date()
                     self.setState(.confirming)
                     self.restartRecognition()
                 } else {
-                    self.setState(.idle)
-                    self.restartRecognition()
+                    self.finishTurn(ended: ended)
                 }
             }
         }
@@ -519,9 +618,9 @@ final class OrbitListener: NSObject {
         pendingToken = ""
         run(["run", token]) { [weak self] json in
             guard let self = self else { return }
-            self.say(json["speak"] as? String ?? "Done.") {
-                self.setState(.idle)
-                self.restartRecognition()
+            self.play(json["audio"] as? String ?? "",
+                      saying: json["speak"] as? String ?? "Done.") {
+                self.finishTurn(ended: false)
             }
         }
     }
@@ -537,7 +636,7 @@ final class OrbitListener: NSObject {
         run(["cancel", token]) { [weak self] json in
             guard let self = self else { return }
             let line = silent ? "" : (json["speak"] as? String ?? "Cancelled.")
-            self.say(line) {
+            self.play(silent ? "" : (json["audio"] as? String ?? ""), saying: line) {
                 self.setState(.idle)
                 self.restartRecognition()
             }
@@ -575,6 +674,40 @@ final class OrbitListener: NSObject {
 
     /// Speaks through orbit (so it uses the same voice as the briefing),
     /// with the microphone closed so it doesn't hear itself.
+    /// Plays audio orbit already rendered. Nothing is launched, so this
+    /// starts in milliseconds where a shell round trip took a moment.
+    private func play(_ path: String, saying text: String, then: @escaping () -> Void) {
+        guard !path.isEmpty, FileManager.default.fileExists(atPath: path) else {
+            say(text, then: then)
+            return
+        }
+
+        speakingText = text
+        setState(.speaking)
+
+        do {
+            let player = try AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
+            player.volume = 1.0
+            player.prepareToPlay()
+            self.player = player
+            player.play()
+
+            // Poll rather than using the delegate: the interrupt path may
+            // stop the player out from under us, and this stays correct
+            // either way.
+            let duration = player.duration
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.15) { [weak self] in
+                guard let self = self else { return }
+                self.speakingText = ""
+                self.player = nil
+                guard self.state == .speaking else { return }
+                then()
+            }
+        } catch {
+            say(text, then: then)
+        }
+    }
+
     private func say(_ text: String, then: @escaping () -> Void) {
         guard !text.isEmpty else { then(); return }
 
@@ -599,6 +732,22 @@ final class OrbitListener: NSObject {
                 then()
             }
         }
+    }
+
+    /// Keeps the last twenty things heard while idle. If the wake word
+    /// never fires, this is the file that says why.
+    private func logHeard(_ text: String) {
+        guard !heardLogPath.isEmpty, !text.isEmpty else { return }
+        if text == lastLogged { return }
+        lastLogged = text
+
+        var lines = (try? String(contentsOfFile: heardLogPath, encoding: .utf8))?
+            .split(separator: "\n").map(String.init) ?? []
+        let stamp = DateFormatter()
+        stamp.dateFormat = "HH:mm:ss"
+        lines.append("\(stamp.string(from: Date()))\t\(text)")
+        if lines.count > 20 { lines = Array(lines.suffix(20)) }
+        try? lines.joined(separator: "\n").write(toFile: heardLogPath, atomically: true, encoding: .utf8)
     }
 
     private func chime(_ name: String) {
