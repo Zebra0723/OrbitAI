@@ -151,6 +151,7 @@ stays unsent.
 | Questions | how long do I boil an egg, what's the capital of Peru, explain this error |
 | The screen | what's on my screen, what does this say, what's this error |
 | Macros | whatever you name in macros.conf: "good night", "focus" |
+| Emoji | message Mama saying happy birthday with a party emoji |
 
 `orbit examples` prints this list on the machine.
 

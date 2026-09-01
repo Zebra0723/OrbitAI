@@ -151,6 +151,7 @@ system_run() {
       printf "It's %s, %s." "$(now_words)" "$(today_words)" ;;
 
     new_note)
+      arg="$(emoji_expand "$arg")"
       osascript - "$arg" <<'APPLESCRIPT' >/dev/null 2>&1
 on run argv
   tell application "Notes"
@@ -161,6 +162,7 @@ APPLESCRIPT
       printf 'Noted.' ;;
 
     add_reminder)
+      arg="$(emoji_expand "$arg")"
       osascript - "$arg" <<'APPLESCRIPT' >/dev/null 2>&1
 on run argv
   tell application "Reminders"
@@ -183,6 +185,7 @@ APPLESCRIPT
       printf 'Timer set for %s minutes.' "$(num_word "$arg")" ;;
 
     type_text)
+      arg="$(emoji_expand "$arg")"
       osascript - "$arg" <<'APPLESCRIPT' >/dev/null 2>&1
 on run argv
   tell application "System Events" to keystroke (item 1 of argv)
@@ -191,6 +194,7 @@ APPLESCRIPT
       printf 'Typed.' ;;
 
     copy_text)
+      arg="$(emoji_expand "$arg")"
       printf '%s' "$arg" | pbcopy 2>/dev/null; printf 'Copied.' ;;
     read_clipboard)
       local clip

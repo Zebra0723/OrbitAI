@@ -36,6 +36,7 @@ welcome_load_user_config
 . "$ROOT/lib/macros.sh"
 . "$ROOT/lib/watch.sh"
 . "$ROOT/lib/nlu_openai.sh"
+. "$ROOT/lib/emoji.sh"
 
 PLAN_DIR="$WELCOME_STATE_DIR/plans"
 mkdir -p "$PLAN_DIR" 2>/dev/null
@@ -101,6 +102,8 @@ save_plan() {
 
 plan_message() {
   local who="$1" body="$2" handle token
+  # "with a fire emoji" is an instruction about the message, not part of it.
+  body="$(emoji_expand "$body")"
 
   if ! handle="$(contact_handle "$who")"; then
     emit "I couldn't find $who in your contacts. Add a nickname to your contacts file and try again." false ""
@@ -133,7 +136,8 @@ plan_claude() {
 }
 
 plan_mail_reply() {
-  local body="$1" token candidates count drafted=0 failed=0 line id name address subject
+  local body="$1" token candidates
+  body="$(emoji_expand "$body")" count drafted=0 failed=0 line id name address subject
 
   candidates="$(mail_awaiting_reply)"
   count="$(printf '%s' "$candidates" | grep -c . )"

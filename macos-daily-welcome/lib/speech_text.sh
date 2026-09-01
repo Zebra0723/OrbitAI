@@ -123,6 +123,7 @@ speech_clean() {
     | sed -E 's/([0-9]{1,2}(:[0-9]{2})?)[[:space:]]*[Pp]\.?[Mm]\.?/\1 PM/g' \
     | sed -E 's/([0-9]{1,2}(:[0-9]{2})?)[[:space:]]*[Aa]\.?[Mm]\.?/\1 AM/g' \
     | tr -cd '[:print:]' \
+    | sed -E 's/[[:space:]]+/ /g' \
     | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//' \
     | cut -c1-120
 }
