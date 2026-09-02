@@ -116,7 +116,11 @@
 # Neural and Siri voices may ignore these, since they do their own
 # prosody - which is a good sign, not a bad one. Set modulation to
 # empty to send nothing at all.
-: "${WELCOME_SAY_MODULATION:=78}"
+# How much the built-in voice moves in pitch. EMPTY means the voice's own
+# setting, which is what it was tuned with. This was pushed to 78 to
+# answer "it is so expressionless", and 78 is a lot of swing: the result
+# sings rather than speaks. --expression puts it back up if you want it.
+: "${WELCOME_SAY_MODULATION:=}"
 : "${WELCOME_SAY_PITCH:=}"
 
 # The built-in voices are not all the same. The default one that ships
@@ -257,10 +261,12 @@
 # and ran the words together. A person resting at a comma is about 200.
 : "${WELCOME_PAUSE_MS:=210}"
 
-# Lean very slightly on the words that mean "act on this" - overdue,
-# unread, late. `say` understands [[emph +]]; a voice that does not just
-# ignores it. Set to 0 if it sounds mannered on your voice.
-: "${WELCOME_SAY_EMPHASIS:=1}"
+# Lean on the words that mean "act on this" - overdue, unread, late.
+#
+# Off by default. `say` understands [[emph +]], but what it does with it
+# is blunt: the word jumps in pitch and stretches, and stacked on top of
+# any pitch modulation it lurches. Worth trying, not worth defaulting to.
+: "${WELCOME_SAY_EMPHASIS:=0}"
 
 : "${WELCOME_OPENAI_VOICE:=nova}"
 : "${WELCOME_OPENAI_TTS_MODEL:=gpt-4o-mini-tts}"

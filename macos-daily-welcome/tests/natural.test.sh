@@ -76,28 +76,32 @@ contains "the briefing contracts too" "It's" "$out"
 
 # ----------------------------------------------------------- the pauses
 
-export WELCOME_PAUSE=short WELCOME_PAUSE_MS=200 WELCOME_SAY_EMPHASIS=1
-paced="$(speech_pace "Good evening, sir. It's late, and you have two unread, one overdue." say)"
+export WELCOME_PAUSE=short WELCOME_PAUSE_MS=200
+line="Good evening, sir. It's late, and you have two unread, one overdue."
+paced="$(WELCOME_SAY_EMPHASIS=0 speech_pace "$line" say)"
 
-# Three different pauses, not one repeated: a breath before a
-# conjunction, a beat at a clause, a stop at a sentence end.
+# Two lengths, not one repeated: barely a breath before a conjunction, a
+# proper beat at a comma that opens a clause.
 ok "a breath before a conjunction" "110" \
    "$(printf '%s' "$paced" | grep -oE 'slnc 110' | head -1 | grep -oE '[0-9]+')"
 ok "a beat at a clause"            "200" \
    "$(printf '%s' "$paced" | grep -oE 'slnc 200' | head -1 | grep -oE '[0-9]+')"
-ok "a stop at the end of a sentence" "350" \
-   "$(printf '%s' "$paced" | grep -oE 'slnc 350' | head -1 | grep -oE '[0-9]+')"
 
-contains "the words that matter are leaned on" "[[emph +]]overdue[[emph -]]" "$paced"
-contains "and so is unread" "[[emph +]]unread[[emph -]]" "$paced"
+# Nothing added at a full stop. `say` already stops there, and stacking
+# another pause on top made every sentence land with a thud.
+lacks "no pause piled onto a full stop" ". [[slnc" "$paced"
 
-# Turning it off turns it off.
-plain="$(WELCOME_SAY_EMPHASIS=0 speech_pace "One overdue." say)"
-lacks "emphasis is optional" "emph" "$plain"
+# Emphasis is off unless it is asked for. What `say` does with [[emph]]
+# is blunt - the word jumps and stretches - so it is a thing to try, not
+# a thing to default to.
+lacks "emphasis is off by default" "emph" "$paced"
+loud="$(WELCOME_SAY_EMPHASIS=1 speech_pace "$line" say)"
+contains "and on when asked for" "[[emph +]]overdue[[emph -]]" "$loud"
+contains "on the words that mean act on this" "[[emph +]]unread[[emph -]]" "$loud"
 
 # A number is still a number.
 contains "a thousand keeps its comma" "1,000" \
-   "$(speech_pace "You have 1,000 unread." say)"
+   "$(WELCOME_SAY_EMPHASIS=0 speech_pace "You have 1,000 unread." say)"
 
 # Other backends are untouched by any of it.
 lacks "elevenlabs gets no say markup" "slnc" "$(speech_pace "Morning, sir." elevenlabs)"

@@ -64,7 +64,8 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
   daily-welcome --set-openai-key   store an OpenAI key, for understanding commands
   daily-welcome --test-voice    say one line now, and report which voice said it
-  daily-welcome --compare-voice the same line before and after the shaping
+  daily-welcome --voice-probe   the same line six ways, to find what sounds wrong
+  daily-welcome --emphasis on|off  lean on "overdue" and "unread" (off by default)
   daily-welcome --test-voice --plain   the same, with nothing done to the text
   daily-welcome --pause <ms>    how long it rests at a comma (210 is the default)
   daily-welcome --expression <0-150>   how much the built-in voice moves
@@ -109,7 +110,8 @@ while [ $# -gt 0 ]; do
       exit 2 ;;
     --check-key)  MODE=checkkey ;;
     --test-voice) MODE=testvoice ;;
-    --compare-voice) MODE=compare ;;
+    --voice-probe|--compare-voice) MODE=compare ;;
+    --emphasis)   MODE=emphasis; shift; VOICE_ARG="${1:-}" ;;
     --hush)       MODE=hush ;;
     --reset-permissions) MODE=resetperms ;;
     --voices)     MODE=voices ;;
@@ -302,29 +304,61 @@ case "$MODE" in
     exit 0
     ;;
   compare)
-    # The same line twice, plain and then shaped, so "it sounds robotic"
-    # can be aimed at whichever half is the problem. If the two are
-    # indistinguishable, the words are not what is wrong - the voice is,
-    # and --mac-voices is the next thing to try.
-    line="Good evening, $WELCOME_NAME. It's $(time_words "$(date '+%-H')" "$((10#$(date '+%M')))" 0), and you have three reminders due today, one of them overdue."
-    flat="It is $(now_words) on $(today_words), and you have three reminders due today, one of them is overdue."
-    echo "Backend: $(tts_backend)     Voice: $(resolve_voice || echo 'system default')"
+    # Every layer on its own, in order, with a gap between each.
+    #
+    # "The voice is weird" can mean any of four different things stacked
+    # on top of each other, and guessing which one from a description has
+    # not worked. This says the same sentence six ways and prints the
+    # command that keeps whichever one sounded right.
+    # Written without the apostrophe on purpose - speech_natural puts it
+    # there, and a nested quote inside a command substitution is exactly
+    # the thing bash 3.2 mis-parses.
+    now_short="$(time_words "$(date '+%-H')" "$((10#$(date '+%M')))" 0)"
+    line="$(speech_natural "$(_greeting_word), $WELCOME_NAME. It is $now_short, and you have two unread and one overdue.")"
+    flat="It is $(now_words) on $(today_words), and you have two unread and one overdue."
+
+    echo "Voice: $(resolve_voice || echo 'the System Settings voice')     Backend: $(tts_backend)"
     echo
-    echo "1. As it used to be - written English, one pause everywhere:"
-    echo "   $flat"
-    WELCOME_PAUSE=natural WELCOME_SAY_EMPHASIS=0 say_speak "$flat" 2>/dev/null || true
-    sleep 1
+    probe() {
+      printf '     sent: %s\n' "$1"
+      say_speak_raw "$1"
+      sleep 1
+    }
+    # Speaks exactly what it is given, with nothing added.
+    say_speak_raw() {
+      local v; v="$(resolve_voice)"
+      if [ -n "$v" ]; then say -v "$v" -r "$WELCOME_SPEAK_RATE" "$1" >/dev/null 2>&1
+      else say -r "$WELCOME_SPEAK_RATE" "$1" >/dev/null 2>&1; fi
+    }
+
+    echo "1. Written English, no shaping at all - what it used to be"
+    probe "$flat"
+    echo "2. Spoken English, still no shaping - words only"
+    probe "$line"
+    echo "3. Plus shorter pauses at the commas - THIS IS THE DEFAULT NOW"
+    probe "$(WELCOME_SAY_EMPHASIS=0 speech_pace "$line" say)"
+    echo "4. Plus a lean on \"unread\" and \"overdue\""
+    probe "$(WELCOME_SAY_EMPHASIS=1 speech_pace "$line" say)"
+    echo "5. Plus some pitch movement"
+    probe "[[pmod 60]] $(WELCOME_SAY_EMPHASIS=0 speech_pace "$line" say)"
+    echo "6. Plus a lot of pitch movement - what it was until now"
+    probe "[[pmod 78]] $(WELCOME_SAY_EMPHASIS=0 speech_pace "$line" say)"
+
     echo
-    echo "2. As it is now - spoken English, pauses of three different lengths:"
-    echo "   $(speech_natural "$line")"
-    say_speak "$(speech_natural "$line")" 2>/dev/null || true
+    echo "If any of those read the square brackets OUT LOUD, that is the"
+    echo "answer: this voice does not understand them and should not be"
+    echo "sent them.  daily-welcome --pause natural  stops all of it."
     echo
-    echo "Still robotic in both? Then it is the voice, not the words:"
-    echo "  daily-welcome --mac-voices     a Premium voice is a free download"
+    echo "Keep the one you liked:"
+    echo "  3   nothing to do, that is what it does now"
+    echo "  4   daily-welcome --emphasis on"
+    echo "  5   daily-welcome --expression 60"
+    echo "  6   daily-welcome --expression 78"
+    echo "  1   daily-welcome --pause natural   (and tell me, because that would surprise me)"
+    echo
+    echo "All six still weird? Then it is the voice itself, not the shaping:"
+    echo "  daily-welcome --mac-voices     a Premium version is a free download"
     echo "  daily-welcome --setup-piper    a free neural voice, no account"
-    echo
-    echo "Dials:  --pause <ms>        how long it rests (now $WELCOME_PAUSE_MS)"
-    echo "        --expression <n>    how much the voice moves (now $WELCOME_SAY_MODULATION)"
     exit 0
     ;;
   testvoice)
@@ -480,6 +514,25 @@ case "$MODE" in
     echo
     echo "Then anyone else who uses it. To refuse a voice:"
     echo "  orbit voice ban <name>"
+    exit 0
+    ;;
+  emphasis)
+    case "$VOICE_ARG" in
+      on|1|yes)  value=1 ;;
+      off|0|no)  value=0 ;;
+      *) echo "daily-welcome --emphasis on|off" >&2; exit 2 ;;
+    esac
+    cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+    mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+    grep -v '^WELCOME_SAY_EMPHASIS=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+    { cat "$cfg.tmp"; printf 'WELCOME_SAY_EMPHASIS="%s"\n' "$value"; } > "$cfg"
+    rm -f "$cfg.tmp"
+    if [ "$value" = 1 ]; then
+      echo "It will lean on \"overdue\", \"unread\", \"urgent\" and \"late\"."
+    else
+      echo "Emphasis off - every word said the same way."
+    fi
+    echo "Hear it: daily-welcome --test-voice"
     exit 0
     ;;
   expression)

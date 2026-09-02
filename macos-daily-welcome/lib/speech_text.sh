@@ -295,9 +295,8 @@ speech_pace() {
       # person breathes differently at different joins: barely at all
       # before "and then", properly at a comma that opens a clause, and
       # fully at the end of a sentence. Three numbers instead of one.
-      local short_ms long_ms
+      local short_ms
       short_ms=$(( WELCOME_PAUSE_MS * 55 / 100 ))
-      long_ms=$(( WELCOME_PAUSE_MS * 175 / 100 ))
 
       # The words that mean "this is the part to act on". Understated on
       # purpose: a voice that leans on every number sounds like a
@@ -307,10 +306,12 @@ speech_pace() {
           's/(^|[^A-Za-z])(overdue|unread|urgent|late)($|[^A-Za-z])/\1[[emph +]]\2[[emph -]]\3/g')"
       fi
 
+      # No extra pause at a full stop: `say` already stops there, and
+      # adding to it made every sentence land with a thud. The commas
+      # were the complaint; the full stops never were.
       printf '%s' "$text" | sed -E "
         s/, (and then|then|and|but|so) / [[slnc $short_ms]] \1 /g
         s/,([^0-9])/ [[slnc $WELCOME_PAUSE_MS]]\1/g
-        s/([.?!]) /\1 [[slnc $long_ms]] /g
       " ;;
     elevenlabs)
       printf '%s' "$text" \
