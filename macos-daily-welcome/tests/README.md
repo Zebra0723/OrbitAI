@@ -34,6 +34,8 @@ the name you gave matches no suite.
 | `memory` | what it remembers and what it lets go of |
 | `slots` | the half-finished request, and the way out of one |
 | `speaker` | the voice store: matching, banning, and strangers |
+| `backend` | choosing how to speak, without dying in the attempt |
+| `unbound` | every variable read is one something declares |
 | `static` | every file parses; Swift balances; no inline `onclick` |
 | `plans` | `orbit plan` and `orbit run` agree on the field names |
 | `prompts` | every prompt reaches its own last line |

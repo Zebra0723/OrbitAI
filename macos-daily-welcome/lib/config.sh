@@ -253,6 +253,17 @@
 # Delivery notes, for the models that accept them. Empty is fine.
 : "${WELCOME_OPENAI_TTS_INSTRUCTIONS:=Speak with calm confidence, like a capable assistant who is already halfway through the task. Keep phrases connected and do not pause between them; run clauses together the way people do in conversation. Brisk, even pace. No rising intonation at the end of statements.}"
 
+# Piper, the free neural voice that runs on this Mac. These have to be
+# declared even when piper is not installed: tts_backend asks
+# piper_available whether it is there, piper_available reads these, and
+# under set -u reading one that was never declared ends the shell where
+# it stands - silently, in the middle of working out how to speak.
+# daily-welcome --setup-piper downloads a voice and points the model at it.
+: "${WELCOME_PIPER_BIN:=}"
+: "${WELCOME_PIPER_MODEL:=$HOME/.config/daily-welcome/piper/voice.onnx}"
+# Above 1 is slower and steadier; below 1 is quicker.
+: "${WELCOME_PIPER_LENGTH:=1.0}"
+
 : "${ORBIT_SLOT_TTL_SECONDS:=120}"
 
 # How many past events and matched history lines a turn may carry into
@@ -267,6 +278,10 @@
 : "${ORBIT_SPEAKER_THRESHOLD:=0.72}"
 : "${ORBIT_SPEAKER_TIMEOUT:=12}"
 : "${ORBIT_SPEAKER_PYTHON:=}"
+# Who is speaking, for whatever is about to be asked. Set by orbit before
+# it plans a turn; declared here so that everything else that reads it -
+# the prompt builder above all - has something to read when it was not.
+: "${ORBIT_SPEAKER_NAME:=}"
 # Once somebody has enrolled, an unrecognised voice is turned away. Until
 # then it lets everyone through, or the first person could never enrol.
 : "${ORBIT_SPEAKER_REQUIRE_ENROLLED:=1}"
