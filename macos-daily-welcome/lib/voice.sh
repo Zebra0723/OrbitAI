@@ -68,10 +68,19 @@ resolve_voice() {
   return 0
 }
 
+# The prosody prefix `say` accepts. Sent once at the front, it applies to
+# everything after it.
+_say_prosody() {
+  local out=""
+  [ -n "$WELCOME_SAY_PITCH" ] && out="$out[[pbas $WELCOME_SAY_PITCH]] "
+  [ -n "$WELCOME_SAY_MODULATION" ] && out="$out[[pmod $WELCOME_SAY_MODULATION]] "
+  printf '%s' "$out"
+}
+
 say_speak() {
   local text="$1" voice
   have_cmd say || return 1
-  text="$(speech_pace "$text" say)"
+  text="$(_say_prosody)$(speech_pace "$text" say)"
   voice="$(resolve_voice)"
   if [ -n "$voice" ]; then
     say -v "$voice" -r "$WELCOME_SPEAK_RATE" "$text" >/dev/null 2>&1

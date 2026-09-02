@@ -99,6 +99,23 @@
 : "${WELCOME_ELEVEN_KEY_FILE:=$HOME/.config/daily-welcome/elevenlabs-key}"
 
 # --- Apple `say`, used when ElevenLabs isn't reachable ---
+# Expression, for the built-in voices.
+#
+# `say` is flat because nothing was ever asking it not to be. It takes
+# embedded commands the rest of this never used:
+#
+#   [[pmod N]]  pitch MODULATION - how far the pitch moves across a
+#               sentence. This is the expressiveness dial. Default is
+#               around 50; higher is livelier, past ~120 is pantomime.
+#   [[pbas N]]  pitch baseline - the middle of the voice's range.
+#   [[volm N]]  volume, 0 to 1.
+#
+# Neural and Siri voices may ignore these, since they do their own
+# prosody - which is a good sign, not a bad one. Set modulation to
+# empty to send nothing at all.
+: "${WELCOME_SAY_MODULATION:=78}"
+: "${WELCOME_SAY_PITCH:=}"
+
 # The built-in voices are not all the same. The default one that ships
 # turned on is the worst of them; the Premium downloads are markedly
 # better, and the Siri voices better still.

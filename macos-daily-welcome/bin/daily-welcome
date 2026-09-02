@@ -62,6 +62,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --test-voice    say one line now, and report which voice said it
   daily-welcome --test-voice --plain   the same, with nothing done to the text
   daily-welcome --pause <ms>    how long it rests at a comma (210 is the default)
+  daily-welcome --expression <0-150>   how much the built-in voice moves
   daily-welcome --voices        available voices, and which one it will use
   daily-welcome --voice-provider openai | elevenlabs | piper | say | auto
   daily-welcome --setup-piper   a free neural voice that runs on this Mac
@@ -110,6 +111,7 @@ while [ $# -gt 0 ]; do
     --mac-voices)  MODE=macvoices ;;
     --plain)       WELCOME_PAUSE=natural ;;
     --pause)       MODE=pause; shift; VOICE_ARG="${1:-}" ;;
+    --expression)  MODE=expression; shift; VOICE_ARG="${1:-}" ;;
     --mute-today) MODE=mute ;;
     --reset)      MODE=reset ;;
     -h|--help)    usage; exit 0 ;;
@@ -305,6 +307,7 @@ case "$MODE" in
     # What the engine is actually handed, after pacing. If a pause marker
     # ever gets READ ALOUD instead of obeyed, this is where you see it.
     spoken="$(speech_pace "$line" "$backend")"
+    [ "$backend" = "say" ] && spoken="$(_say_prosody)$spoken"
     [ "$spoken" != "$line" ] && echo "Sent:    $spoken"
 
     case "$backend" in
@@ -362,6 +365,35 @@ case "$MODE" in
         fi
         say_speak "$line" ;;
     esac
+    exit 0
+    ;;
+  expression)
+    # One dial for how much the built-in voice moves, so it can be found
+    # by ear instead of by reading Apple's speech synthesis notes.
+    cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+    mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+    case "${VOICE_ARG:-}" in
+      ''|*[!0-9]*)
+        echo "daily-welcome --expression <0-150>" >&2
+        echo >&2
+        echo "  How far the pitch moves across a sentence - the difference" >&2
+        echo "  between reading and speaking. Only affects the built-in" >&2
+        echo "  voices; a neural or Siri voice does its own prosody." >&2
+        echo >&2
+        echo "  0    monotone" >&2
+        echo "  50   Apple's default" >&2
+        echo "  78   livelier            (this is the default here)" >&2
+        echo "  110  animated" >&2
+        echo "  150  pantomime" >&2
+        echo >&2
+        echo "Now: $WELCOME_SAY_MODULATION" >&2
+        exit 2 ;;
+    esac
+    grep -v '^WELCOME_SAY_MODULATION=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+    { cat "$cfg.tmp"; printf 'WELCOME_SAY_MODULATION="%s"\n' "$VOICE_ARG"; } > "$cfg"
+    rm -f "$cfg.tmp"
+    echo "Expression set to $VOICE_ARG."
+    echo "Hear it: daily-welcome --test-voice"
     exit 0
     ;;
   pause)

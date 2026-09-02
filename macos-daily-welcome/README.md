@@ -239,6 +239,21 @@ question are cut at that point, so the subject cannot come back on its
 own. The full record stays on disk, so "what did we say about X" can still
 find it if you ask for it deliberately.
 
+### Expression
+
+The built-in voices are flat because nothing was asking them not to be.
+`say` takes prosody commands nothing here used:
+
+```
+daily-welcome --expression 78     livelier  (the default)
+daily-welcome --expression 115    animated
+daily-welcome --expression 0      monotone
+```
+
+That is pitch modulation - how far the voice moves across a sentence, which
+is the difference between reading and speaking. A neural or Siri voice does
+its own prosody and may ignore it; that is a good sign, not a bad one.
+
 ### Pauses
 
 A comma tells a reader to breathe and tells a speech engine to stop, and
