@@ -19,6 +19,37 @@ num_word() {
   }'
 }
 
+# duration_words 5400 -> "an hour and a half"; 30 -> "thirty seconds".
+# The noun phrase, for "Timer set for ___."
+duration_words() {
+  local secs="${1:-0}" n unit
+  if [ "$secs" -lt 60 ]; then
+    printf '%s second%s' "$(num_word "$secs")" "$([ "$secs" = 1 ] || echo s)"
+  elif [ "$secs" = 5400 ]; then
+    printf 'an hour and a half'
+  elif [ $((secs % 3600)) -eq 0 ]; then
+    n=$((secs / 3600))
+    printf '%s hour%s' "$(num_word "$n")" "$([ "$n" = 1 ] || echo s)"
+  else
+    n=$((secs / 60))
+    printf '%s minute%s' "$(num_word "$n")" "$([ "$n" = 1 ] || echo s)"
+  fi
+}
+
+# duration_attr 7200 -> "two hour", for "Your ___ timer is up."
+duration_attr() {
+  local secs="${1:-0}" n
+  if [ "$secs" -lt 60 ]; then
+    printf '%s second' "$(num_word "$secs")"
+  elif [ "$secs" = 5400 ]; then
+    printf 'hour and a half'
+  elif [ $((secs % 3600)) -eq 0 ]; then
+    printf '%s hour' "$(num_word $((secs / 3600)))"
+  else
+    printf '%s minute' "$(num_word $((secs / 60)))"
+  fi
+}
+
 # ordinal_word 31 -> "thirty-first"   (1-31)
 ordinal_word() {
   awk -v n="$1" 'BEGIN {
@@ -36,9 +67,13 @@ ordinal_word() {
 
 _day_part() {
   local h24="$1"
-  if [ "$h24" -lt 12 ]; then printf 'in the morning'
+  # Half past midnight is not the morning to anyone who is awake for it,
+  # and neither is eleven at night.
+  if [ "$h24" -lt 5 ]; then printf 'at night'
+  elif [ "$h24" -lt 12 ]; then printf 'in the morning'
   elif [ "$h24" -lt 18 ]; then printf 'in the afternoon'
-  else printf 'in the evening'
+  elif [ "$h24" -lt 22 ]; then printf 'in the evening'
+  else printf 'at night'
   fi
 }
 

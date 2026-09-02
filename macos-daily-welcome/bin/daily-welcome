@@ -58,6 +58,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --agent         same as bare, plus lock-screen/quiet-hour guards
   daily-welcome --status        what it would do, and when it last ran
   daily-welcome --doctor        check the whole install and say what to fix
+  daily-welcome --test          run the test suite (a few seconds, no network)
   daily-welcome --reset-permissions   make macOS ask about access again
   daily-welcome --set-key       store your ElevenLabs API key in the Keychain
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
@@ -90,6 +91,7 @@ while [ $# -gt 0 ]; do
     --print)      FORCE=1; PREVIEW=1; WELCOME_PRESENT=stdout; WELCOME_SPEAK=0 ;;
     --status)     MODE=status ;;
     --doctor)     exec "$ROOT/bin/doctor" ;;
+    --test)       exec "$ROOT/tests/run" ;;
     --set-key)    MODE=setkey ;;
     --set-openai-key) MODE=setopenai ;;
     sk-*|sk_*)

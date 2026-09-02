@@ -111,7 +111,7 @@ memory_event_words() {
   case "$action" in
     add_reminder) printf 'Added a reminder: %s' "$arg" ;;
     new_note)     printf 'Made a note: %s' "$arg" ;;
-    timer)        printf 'Set a timer for %s minutes' "$arg" ;;
+    timer)        printf 'Set a timer for %s' "$(duration_words "$arg")" ;;
     open_app)     printf 'Opened %s' "$arg" ;;
     quit_app)     printf 'Quit %s' "$arg" ;;
     play_spotify) printf 'Played %s' "$arg" ;;
@@ -159,7 +159,7 @@ memory_search() {
   words="$(printf '%s' "$query" | tr '[:upper:]' '[:lower:]' \
     | tr -cs "a-z0-9'" '\n' \
     | awk 'length($0) > 3' \
-    | grep -Ev '^(what|when|where|which|that|this|there|were|was|did|does|done|have|has|had|about|with|from|then|than|they|them|你|the|and|you|your|yours|mine|remember|earlier|before|last|time|said|say|tell|told|again|ever|just|like|much|many|some|any|know|think)$' \
+    | grep -Ev '^(what|when|where|which|that|this|there|were|was|did|does|done|have|has|had|about|with|from|then|than|they|them|the|and|you|your|yours|mine|remember|earlier|before|last|time|said|say|tell|told|again|ever|just|like|much|many|some|any|know|think)$' \
     | sort -u | head -6 | tr '\n' '|' | sed 's/|$//')"
   [ -n "$words" ] || return 0
 

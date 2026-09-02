@@ -932,9 +932,9 @@ case "${1:-}" in
   timer-fire)
     # Runs detached: sleep, then say so. Only ever started by nohup.
     shift
-    minutes="${1:-5}"
-    sleep $((minutes * 60))
-    speak_async "Your $(num_word "$minutes") minute timer is up."
+    seconds="${1:-300}"
+    sleep "$seconds"
+    speak_async "Your $(duration_attr "$seconds") timer is up."
     [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
     ;;
   warm)

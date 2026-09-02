@@ -214,6 +214,8 @@ _after() {
   }'
 }
 
+# The first number in a sentence, however it was said.
+#
 # Numbers arrive as WORDS. Nobody says "set a timer for one zero minutes",
 # and the recogniser writes what it hears - so a digits-only reading of
 # "set a timer for ten minutes" found no number at all and the command
@@ -222,6 +224,11 @@ _after() {
 # Done in awk rather than sed because "twenty five" is two words and one
 # number, and because the answer wanted is the FIRST number in the
 # sentence: a greedy regex quietly returned the last one.
+#
+# Just the number: no units, no conversion. It used to read "an hour" as
+# 60 on the way to a timer, which meant the same function answered in
+# minutes for some inputs and in plain counts for others. Durations are
+# _duration_seconds now, and this counts.
 _first_number() {
   printf '%s' "$1" | awk '
     BEGIN {
@@ -233,8 +240,7 @@ _first_number() {
       for (i in tens) { value[tens[i]] = i * 10 + 10; isTen[tens[i]] = 1 }
       value["fourty"] = 40; isTen["fourty"] = 1        # spelt as it sounds
       value["hundred"] = 100
-      value["half"] = 30                                # "half an hour"
-      value["an"] = 60; value["a"] = 1                  # "an hour", "a minute"
+      value["a"] = 1; value["an"] = 1
     }
     {
       gsub(/[^a-zA-Z0-9 ]/, " ")
@@ -247,12 +253,72 @@ _first_number() {
         # "a" in the sentence would read as the number one.
         if ((w == "a" || w == "an") &&
             !(word[i+1] ~ /^(minute|minutes|second|seconds|hour|hours)$/)) continue
-        if (w == "half" && word[i+1] != "an") continue
 
         if (!(w in value)) continue
         if (isTen[w] && (word[i+1] in value) && value[word[i+1]] < 10 &&
             !isTen[word[i+1]]) { print value[w] + value[word[i+1]]; exit }
         print value[w]; exit
+      }
+    }'
+}
+
+# _duration_seconds "<what was said>" -> seconds, or nothing.
+#
+# A timer needs the unit, not just the number. Reading only the number made
+# "two hours" a two minute timer and "thirty seconds" a thirty minute one -
+# both silently, since a timer that is wrong says nothing until it goes off.
+# A bare number still means minutes, which is what people mean when they
+# leave the unit off.
+_duration_seconds() {
+  printf '%s' "$1" | awk '
+    BEGIN {
+      split("zero one two three four five six seven eight nine ten " \
+            "eleven twelve thirteen fourteen fifteen sixteen seventeen " \
+            "eighteen nineteen", units, " ")
+      for (i in units) value[units[i]] = i - 1
+      split("twenty thirty forty fifty sixty seventy eighty ninety", tens, " ")
+      for (i in tens) { value[tens[i]] = i * 10 + 10; isTen[tens[i]] = 1 }
+      value["fourty"] = 40; isTen["fourty"] = 1
+      value["a"] = 1; value["an"] = 1
+      per["second"] = 1;  per["seconds"] = 1;  per["sec"] = 1;  per["secs"] = 1
+      per["minute"] = 60; per["minutes"] = 60; per["min"] = 60; per["mins"] = 60
+      per["hour"] = 3600; per["hours"] = 3600; per["hr"] = 3600; per["hrs"] = 3600
+    }
+    {
+      gsub(/[^a-zA-Z0-9 ]/, " ")
+      n = split(tolower($0), w, " ")
+
+      # "half an hour", "half a minute".
+      for (i = 1; i <= n; i++) {
+        if (w[i] == "half" && (w[i+1] == "an" || w[i+1] == "a") && (w[i+2] in per)) {
+          print int(per[w[i+2]] / 2); exit
+        }
+      }
+
+      for (i = 1; i <= n; i++) {
+        count = -1
+        if (w[i] ~ /^[0-9]{1,4}$/) count = w[i] + 0
+        else if (w[i] in value) {
+          count = value[w[i]]
+          # "twenty five" is one number, not two.
+          if (isTen[w[i]] && (w[i+1] in value) && value[w[i+1]] < 10 && !isTen[w[i+1]]) {
+            count += value[w[i+1]]; i++
+          }
+        }
+        if (count < 0) continue
+
+        # "and a half" can come before the unit ("two and a half hours") or
+        # after it ("an hour and a half"), and in the first case the unit
+        # is four words along, not one.
+        half = 0; u = i + 1
+        if (w[i+1] == "and" && w[i+2] == "a" && w[i+3] == "half") { half = 1; u = i + 4 }
+        unit = (w[u] in per) ? per[w[u]] : 60   # no unit said means minutes
+        if (!half && (w[i+1] in per) &&
+            w[i+2] == "and" && w[i+3] == "a" && w[i+4] == "half") half = 1
+        total = count * unit + (half ? int(unit / 2) : 0)
+
+        if (total > 0) print total
+        exit
       }
     }'
 }
@@ -338,7 +404,12 @@ _try_system() {
     "stop listening"|"stop listening to me"|"don't listen"|"dont listen"|\
     "turn off your ears"|"close the mic"|"close the microphone"|\
     "leave me alone"|"go away"|"stop recording"|"mute yourself"|\
-    "turn yourself off"|"stand down"|"stop listening for now")
+    "turn yourself off"|"stand down"|"stop listening for now"|\
+    "go to sleep"|"goodnight"|"good night"|"night night")
+      # "go to sleep" said to an assistant means stop listening, and the
+      # substring rule further down took it as an instruction to sleep the
+      # Mac - which ends the session you were in the middle of. Saying
+      # "sleep the mac" or "put the mac to sleep" still does that.
       printf 'system\tstop_listening\t\n'; return 0 ;;
 
     "start listening"|"listen again"|"wake up"|"come back"|"you can listen"|\
@@ -430,7 +501,9 @@ _try_system() {
 
   # Commands with an argument.
   if arg="$(_after "$text" "set a timer for ")" || arg="$(_after "$text" "timer for ")"; then
-    arg="$(_first_number "$arg")"
+    # Seconds, not minutes: a timer is the one command where the unit is
+    # part of what was asked for.
+    arg="$(_duration_seconds "$arg")"
     [ -n "$arg" ] && { printf 'system\ttimer\t%s\n' "$arg"; return 0; }
   fi
   if arg="$(_after "$text" "remind me to ")"; then
@@ -659,7 +732,12 @@ _scrub_disfluency() {
   printf '%s' "$1" | sed -E '
     # Fillers, wherever they appear.
     s/(^|[[:space:],])(um+|uh+|erm+|er+|hmm+|mmm+)([[:space:],]|$)/\1/Ig
-    s/(^|[[:space:]])(you know|i mean|sort of|kind of|kinda|basically)[[:space:],]+/\1/Ig
+    # These are only fillers when a comma says so. Stripping them on sight
+    # turned "what kind of bird is that" into "what bird is that", and
+    # "tell Mama I mean it" into "tell Mama it". "Basically" has no such
+    # second life.
+    s/(^|[[:space:]])(you know|i mean|sort of|kind of|kinda)[[:space:]]*,[[:space:]]*/\1/Ig
+    s/(^|[[:space:]])(basically)[[:space:],]+/\1/Ig
     # A false start: "can you, can you send" - the same words again.
     s/(^|[[:space:]])([a-z]+ [a-z]+)[[:space:],]+\2([[:space:]]|$)/\1\2\3/Ig
     # A stutter, or a word said twice: "the the", "s-s-send".

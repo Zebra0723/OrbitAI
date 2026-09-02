@@ -506,6 +506,7 @@ daily-welcome --print      the briefing as text, no voice
 daily-welcome --status     what it thinks, and when it last ran
 daily-welcome --set-key    ElevenLabs key into the Keychain
 daily-welcome --test-voice speak one line, report which voice said it
+daily-welcome --test       run the test suite (four seconds, no network)
 daily-welcome --hush       stop talking right now
 
 orbit console              the management console in a browser
@@ -567,6 +568,21 @@ wake-word problem.
 **It heard me but did the wrong thing.** `orbit plan "what you said"` prints
 the interpretation without running it.
 
+## Tests
+
+```
+tests/run              everything, about four seconds
+tests/run intents      just the suites whose names match
+daily-welcome --test   the same thing, from anywhere
+```
+
+No network, no keys, no Mac: everything runs against a throwaway state
+directory with the rules-only parser, so it is quick enough to run without
+thinking about it. Every case in there is something that actually went
+wrong once - `"did the pain go away?"` used to close the microphone, and
+`"set a timer for two hours"` used to run for two minutes. `tests/README.md`
+covers what each suite protects and how to add one.
+
 ## Uninstall
 
 ```bash
@@ -593,6 +609,10 @@ lib/speech_text.sh      numbers, times, dates -> words a voice reads right
 lib/tts_eleven.sh       ElevenLabs synthesis, caching, soft failure
 lib/voice.sh            records -> spoken sentences, backend choice
 lib/present.sh          records -> screen text, dialog, notification
+lib/memory.sh           what was said and done, and dropping a subject
+lib/slots.sh            the half-finished request, and its one question
+lib/speaker.py          who is speaking: embeddings, matching, banning
+tests/run               the whole test suite; see tests/README.md
 menubar/main.swift      the menu bar app, wake and unlock triggers
 menubar/listener.swift  wake word, command capture, yes/no loop
 launchd/*.template      login agent, one per install mode
