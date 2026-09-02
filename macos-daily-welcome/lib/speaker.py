@@ -13,6 +13,8 @@ banning a voice here refuses a request rather than securing anything.
     speaker.py enroll <name> <wav>    add a sample for someone
     speaker.py identify <wav>         name<TAB>score, or nothing
     speaker.py scores <wav>           every score, for tuning
+    speaker.py health <name>          do their own samples agree
+    speaker.py prune <name>           drop the ones that do not
     speaker.py list                   who is enrolled
     speaker.py forget <name>          remove them
 """
@@ -32,6 +34,9 @@ THRESHOLD = float(os.environ.get("ORBIT_SPEAKER_THRESHOLD", "0.78"))
 # How far ahead of the runner-up the winner has to be. Without this, two
 # people who sound alike take turns being each other.
 MARGIN = float(os.environ.get("ORBIT_SPEAKER_MARGIN", "0.06"))
+# How much actual speech - silence already removed - a clip needs before
+# it is worth embedding at all.
+MIN_VOICE_SECONDS = float(os.environ.get("ORBIT_SPEAKER_MIN_SECONDS", "1.6"))
 
 
 def _fail(message, code=1):
@@ -86,9 +91,14 @@ def _embed(wav_path):
     _compat()
     from resemblyzer import preprocess_wav
     wav = preprocess_wav(Path(wav_path))
-    # Under about a second there is not enough voice to characterise.
-    if len(wav) < 16000:
-        _fail("that clip is too short to recognise a voice in", 4)
+    # preprocess_wav has already cut the silence out, so this is actual
+    # VOICE. A second of it embeds badly - the vector wanders, and a
+    # wandering vector is what lands a stranger next to somebody real.
+    # Refusing is better than answering with a number nobody can trust.
+    seconds = len(wav) / 16000.0
+    if seconds < MIN_VOICE_SECONDS:
+        _fail("only %.1fs of speech in that clip - need at least %.1fs"
+              % (seconds, MIN_VOICE_SECONDS), 4)
     return _encoder().embed_utterance(wav).tolist()
 
 
@@ -188,6 +198,70 @@ def scores(wav_path):
         print("margin\t%.3f\t(needs %.2f)" % (rows[0][1] - rows[1][1], MARGIN))
 
 
+def _agreement(samples, i):
+    """How well one sample fits in with the others: its BEST match.
+
+    Not the average. With four recordings and one intruder, averaging
+    against everybody drags the three real ones down too, and the report
+    says all four are wrong. The question worth asking is whether a
+    recording has at least one other that agrees with it - a genuine one
+    always does, and the intruder has nobody.
+    """
+    best = 0.0
+    for j, other in enumerate(samples):
+        if j == i:
+            continue
+        score = _similarity(samples[i], other)
+        if score > best:
+            best = score
+    return best
+
+
+def health(name):
+    """How well somebody's own samples agree with each other.
+
+    A person recorded three times should look like the same person three
+    times. When one sample disagrees with the rest, it is not a bad day
+    or a cold - it is a recording that caught somebody else, and it drags
+    the average towards them. That is how a stranger ends up being
+    identified as you, and no threshold can fix it because the fault is
+    in what was learnt, not in how it is compared.
+    """
+    data = _load()
+    person = data["people"].get(name)
+    if person is None:
+        _fail("nobody called %s has enrolled" % name, 5)
+    samples = person.get("samples", [])
+    if len(samples) < 2:
+        print("%s\t%d\tonly one sample, nothing to compare" % (name, len(samples)))
+        return
+
+    for i, sample in enumerate(samples):
+        agreement = _agreement(samples, i)
+        verdict = "ok" if agreement >= 0.80 else (
+            "odd" if agreement >= 0.70 else "not the same voice")
+        print("%d\t%.3f\t%s" % (i + 1, agreement, verdict))
+
+
+def prune(name, floor=0.70):
+    """Drops the samples that do not agree with the rest."""
+    data = _load()
+    person = data["people"].get(name)
+    if person is None:
+        _fail("nobody called %s has enrolled" % name, 5)
+    samples = person.get("samples", [])
+    if len(samples) < 3:
+        _fail("only %d samples - too few to drop any" % len(samples), 6)
+
+    keep = [s for i, s in enumerate(samples) if _agreement(samples, i) >= floor]
+    if not keep:
+        _fail("none of them agree with each other - start again with forget", 6)
+    dropped = len(samples) - len(keep)
+    person["samples"] = keep
+    _save(data)
+    print("%s\t%d\t%d" % (name, dropped, len(keep)))
+
+
 def main():
     if len(sys.argv) < 2:
         _fail(__doc__, 2)
@@ -197,6 +271,10 @@ def main():
         enroll(sys.argv[2], sys.argv[3])
     elif command == "identify" and len(sys.argv) == 3:
         identify(sys.argv[2])
+    elif command == "health" and len(sys.argv) == 3:
+        health(sys.argv[2])
+    elif command == "prune" and len(sys.argv) in (3, 4):
+        prune(sys.argv[2], float(sys.argv[3]) if len(sys.argv) == 4 else 0.70)
     elif command == "scores" and len(sys.argv) == 3:
         scores(sys.argv[2])
     elif command == "list":

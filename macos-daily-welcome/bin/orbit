@@ -71,7 +71,7 @@ orbit - voice commands for daily-welcome
   orbit greeting                 the line for a wake word with no command
   orbit console                  open the OrbitAI console in a browser
   orbit memory [show|events|add|forget|clear]  what it remembers, and did
-  orbit voice [enroll <name>|who|list|ban|unban|forget]  who is speaking
+  orbit voice [enroll|who|test|check|ban|unban|forget]   who is speaking
   orbit log                      what it heard, how it read it, how long it took
   orbit selftest                 check every feature in the place it runs
   orbit debug                    one command, everything worth pasting back
@@ -1245,6 +1245,66 @@ case "${1:-}" in
           echo "Nobody has enrolled yet. Start with: orbit voice enroll <name>"
         fi
         ;;
+      check|health)
+        shift
+        name="${1:-}"
+        [ -n "$name" ] || { echo 'orbit voice check <name>' >&2; exit 2; }
+        speaker_installed || { echo "Voice recognition isn't set up." >&2; exit 1; }
+        echo "How well each of ${name}'s recordings fits with the others."
+        echo "One that fits with none of them caught somebody else, and it"
+        echo "pulls the average towards them - which is how a stranger ends"
+        echo "up being recognised as you, whatever the threshold is set to."
+        echo
+        if out="$(speaker_run health "$name" 2>&1)"; then
+          printf '  %-8s %-8s %s\n' sample agreement verdict
+          printf '%s\n' "$out" | awk -F'\t' '{ printf "  %-8s %-8s %s\n", $1, $2, $3 }'
+          if printf '%s' "$out" | grep -q "not the same voice"; then
+            echo
+            echo "One of those is not $name. Drop it:"
+            echo "  orbit voice prune \"$name\""
+          fi
+        else
+          echo "$out" >&2; exit 1
+        fi
+        ;;
+      prune)
+        shift
+        name="${1:-}"
+        [ -n "$name" ] || { echo 'orbit voice prune <name>' >&2; exit 2; }
+        speaker_installed || { echo "Voice recognition isn't set up." >&2; exit 1; }
+        if out="$(speaker_run prune "$name" 2>&1)"; then
+          dropped="$(printf '%s' "$out" | cut -f2)"
+          left="$(printf '%s' "$out" | cut -f3)"
+          echo "Dropped $dropped that did not sound like $name. $left left."
+          echo "Record another to make up for it: orbit voice enroll \"$name\""
+        else
+          echo "$out" >&2; exit 1
+        fi
+        ;;
+      test|score|scores)
+        shift
+        speaker_installed || { echo "Voice recognition isn't set up." >&2; exit 1; }
+        wav="$(speaker_utterance)"
+        [ -s "$wav" ] || {
+          echo "Nothing has been said yet for me to score." >&2
+          echo "Say something to Orbit first, then run this." >&2
+          exit 1
+        }
+        echo "The last voice heard, scored against everyone enrolled."
+        echo "Match needs $ORBIT_SPEAKER_THRESHOLD or more, AND to be"
+        echo "$ORBIT_SPEAKER_MARGIN clear of the runner-up."
+        echo
+        if out="$(speaker_run scores "$wav" 2>&1)"; then
+          printf '%s\n' "$out" | awk -F'\t' '
+            $1 == "margin" { printf "\n  gap to the runner-up: %s %s\n", $2, $3; next }
+            { printf "  %-16s %-7s %-6s %s\n", $1, $2, $3, $4 }'
+          echo
+          echo "Too willing to say yes?  ORBIT_SPEAKER_THRESHOLD=0.82"
+          echo "Too willing to say no?   ORBIT_SPEAKER_THRESHOLD=0.74"
+        else
+          echo "$out" >&2; exit 1
+        fi
+        ;;
       refusals)
         shift
         howmany="${1:-8}"
@@ -1327,6 +1387,9 @@ orbit voice ban last [label]  refuse whoever just spoke
 orbit voice unban <name>      allow them again
 orbit voice forget <name>     remove them entirely
 orbit voice refusals [n]      what it says to a voice it will not obey
+orbit voice test              score the last voice against everyone
+orbit voice check <name>      do their own recordings agree with each other
+orbit voice prune <name>      drop the recordings that caught somebody else
 USAGE
         exit 2 ;;
     esac

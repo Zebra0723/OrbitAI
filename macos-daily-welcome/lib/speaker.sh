@@ -32,8 +32,13 @@ _speaker_python() {
 speaker_run() {
   local py
   py="$(_speaker_python)" || return 1
+  # Every knob the recogniser reads has to be handed over here, or the
+  # shell and the Python disagree about where the bar is and `orbit voice
+  # test` reports one thing while the gate does another.
   ORBIT_SPEAKER_STORE="$ORBIT_SPEAKER_STORE" \
   ORBIT_SPEAKER_THRESHOLD="$ORBIT_SPEAKER_THRESHOLD" \
+  ORBIT_SPEAKER_MARGIN="$ORBIT_SPEAKER_MARGIN" \
+  ORBIT_SPEAKER_MIN_SECONDS="$ORBIT_SPEAKER_MIN_SECONDS" \
     "$py" "$(_speaker_py)" "$@"
 }
 

@@ -36,8 +36,23 @@ walk() {
 # WELCOME_TTS=openai, but nothing falls into it and gets billed for it.
 out="$(WELCOME_TTS=auto walk)"
 lacks "auto never lands on openai" "openai" "$out"
-body="$(declare -f tts_backend)"
-lacks "and does not even ask it" "openai_tts_available" "$body"
+
+# The auto branch must not consult it at all - reaching openai by
+# accident is the thing being prevented, not merely preferring not to.
+auto_branch="$(declare -f tts_backend | sed -n '/auto|\*)/,/;;/p')"
+lacks "and auto does not even ask it" "openai_tts_available" "$auto_branch"
+
+# But a provider chosen on purpose still has to be able to speak. A
+# setting written when a key worked used to keep naming that provider
+# long after the key stopped, and be reported as the voice in use while
+# something else did the talking.
+out="$(WELCOME_TTS=openai walk)"
+lacks "a chosen provider that cannot speak is not used" "END openai" "$out"
+contains "something that can speak is used instead" "END" "$out"
+out="$(WELCOME_TTS=elevenlabs walk)"
+lacks "same for elevenlabs" "END elevenlabs" "$out"
+out="$(WELCOME_TTS=piper walk)"
+lacks "and for piper" "END piper" "$out"
 
 # The system voice is the default, because it is the only way to reach a
 # Siri voice: `say -v` cannot name one, so the route is to name none.

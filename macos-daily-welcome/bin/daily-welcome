@@ -628,6 +628,10 @@ case "$MODE" in
     # cannot name one, so it has to be the System Voice and we use that.
     echo "  No neural voice is set up, so this is as good as it gets for now:"
     echo
+    # And whatever the provider was set to before, it is not that now.
+    # An explicit WELCOME_TTS beats every default, so a setting written
+    # weeks ago keeps a voice in use long after it stopped being wanted.
+    "$0" --voice-provider say >/dev/null 2>&1
     installed="$(_installed_voices)"
     current="$(resolve_voice)"
     base="$(printf '%s' "${current:-}" | sed -E 's/ \((Premium|Enhanced)\)$//')"

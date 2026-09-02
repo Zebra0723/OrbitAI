@@ -301,9 +301,17 @@
 # on quietly. daily-welcome --setup-speaker turns it on deliberately.
 : "${ORBIT_SPEAKER_ID:=0}"
 : "${ORBIT_SPEAKER_STORE:=$HOME/.config/daily-welcome/voices.json}"
-# How close a voice must be to count as a match. Higher admits fewer
-# people and says "I don't know" more often, which is the safer error.
-: "${ORBIT_SPEAKER_THRESHOLD:=0.72}"
+# How close a voice must be to count as a match, and how far clear of
+# the runner-up it must be. Higher admits fewer people and says "I don't
+# know" more often, which is the safer error. `orbit voice test` prints
+# the actual numbers for the last thing said, so these can be set from
+# evidence rather than from a guess.
+: "${ORBIT_SPEAKER_THRESHOLD:=0.78}"
+: "${ORBIT_SPEAKER_MARGIN:=0.06}"
+# How much real speech - silence already removed - a clip needs before it
+# is worth embedding. A second of voice embeds badly, and a wandering
+# vector is what lands a stranger next to somebody real.
+: "${ORBIT_SPEAKER_MIN_SECONDS:=1.6}"
 : "${ORBIT_SPEAKER_TIMEOUT:=12}"
 : "${ORBIT_SPEAKER_PYTHON:=}"
 # Who is speaking, for whatever is about to be asked. Set by orbit before

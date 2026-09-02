@@ -127,6 +127,32 @@ with tempfile.TemporaryDirectory() as tmp:
     check("best first", "Arjun", rows[0].split("\t")[0])
     data = m._load(); data["people"].pop("Priya", None); m._save(data)
 
+    # ------------------------------------------- do somebody's samples agree
+    #
+    # A person recorded three times should look like the same person
+    # three times. When one recording disagrees with the rest it caught
+    # somebody ELSE - which happened for real, because the eight-second
+    # ring the clip came from was never cleared between turns and so
+    # spanned whoever had been talking before. That sample then drags the
+    # average towards the stranger, and no threshold can fix it: the
+    # fault is in what was learnt, not in how it is compared.
+    data = m._load()
+    data["people"]["Mixed"] = {"samples": [ARJUN, ARJUN, PRIYA], "banned": False}
+    m._save(data)
+
+    report = says(m, m.health, "Mixed")
+    rows = [r.split("\t") for r in report.splitlines()]
+    check("three samples, three verdicts", 3, len(rows))
+    check("the odd one out is named", "not the same voice", rows[2][2])
+    check("and the real ones are not", "ok", rows[0][2])
+
+    dropped = says(m, m.prune, "Mixed").split("\t")
+    check("pruning drops the intruder", "1", dropped[1])
+    check("and keeps the rest", "2", dropped[2])
+    check("which now agree", "ok",
+          says(m, m.health, "Mixed").splitlines()[0].split("\t")[2])
+    data = m._load(); data["people"].pop("Mixed", None); m._save(data)
+
     # ------------------------------------------------------------ banning
     m.STORE = store
     data = m._load(); data["people"]["Arjun"]["banned"] = True; m._save(data)

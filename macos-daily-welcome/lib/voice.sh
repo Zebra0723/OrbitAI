@@ -22,9 +22,19 @@ play_file() {
 tts_backend() {
   case "$WELCOME_TTS" in
     say) printf 'say' ;;
-    elevenlabs) printf 'elevenlabs' ;;
-    openai) printf 'openai' ;;
-    piper) printf 'piper' ;;
+    # An explicitly chosen provider still has to be able to speak. It
+    # used to be taken at its word, so a setting written when a key
+    # worked kept naming that provider long after the key stopped -
+    # reported everywhere as the voice in use, while something else did
+    # the talking.
+    elevenlabs) if eleven_available; then printf 'elevenlabs'
+                elif piper_available; then printf 'piper'
+                else printf 'say'; fi ;;
+    openai)     if openai_tts_available; then printf 'openai'
+                elif piper_available; then printf 'piper'
+                else printf 'say'; fi ;;
+    piper)      if piper_available; then printf 'piper'
+                else printf 'say'; fi ;;
     auto|*)
       # ElevenLabs if it is working, then the local neural voice, then
       # the built-in one. OpenAI is deliberately not in this chain - it

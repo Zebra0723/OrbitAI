@@ -373,6 +373,31 @@ final class OrbitListener: NSObject {
     /// Writes what is in hand to a WAV, for the identifier to read. Called
     /// the moment a command is submitted, so the file is the thing that
     /// was just said.
+    /// Throws away everything older than `seconds`.
+    ///
+    /// The ring is eight seconds long and was never cleared between
+    /// turns, so the clip handed to the voice identifier spanned whoever
+    /// had been talking before - the previous person in the room, and
+    /// Orbit's own reply if the microphone caught it. A blend of two
+    /// voices embeds somewhere between them, which is exactly how a
+    /// stranger gets identified as the person who spoke a moment ago.
+    ///
+    /// Not a full flush: a second and a half keeps the wake word, which
+    /// belongs to the person about to give the command, and a one-breath
+    /// "hey Orbit, mute" would otherwise leave nothing to identify.
+    private func trimRecent(toSeconds seconds: Double) {
+        audioQueue.async { [weak self] in
+            guard let self = self, let rate = self.recentFormat?.sampleRate, rate > 0
+            else { return }
+            let keep = AVAudioFrameCount(rate * seconds)
+            while self.recentFrames > keep, let first = self.recentAudio.first {
+                self.recentFrames -= first.frameLength
+                self.recentAudio.removeFirst()
+                if !self.recentPeaks.isEmpty { self.recentPeaks.removeFirst() }
+            }
+        }
+    }
+
     private func flushRecent() {
         audioQueue.async { [weak self] in
             self?.recentAudio.removeAll()
@@ -1361,6 +1386,19 @@ final class OrbitListener: NSObject {
     }
 
     private func setState(_ next: ListenState) {
+        // A new command begins here, and the audio kept for identifying
+        // who is speaking must belong to THEM. Done in the one place
+        // every route into capturing goes through - the wake word, a
+        // follow-up, a question being answered - rather than at each of
+        // them, because the one that gets forgotten is the one that
+        // misidentifies somebody.
+        //
+        // Not while enrolling: that is a deliberately long recording of
+        // one person and trimming it every tick would leave a second and
+        // a half of it.
+        if next == .capturing, state != .capturing, !enrolling {
+            trimRecent(toSeconds: 1.5)
+        }
         state = next
         stateSince = Date()
         onStateChange?(next)
