@@ -1413,6 +1413,40 @@ case "${1:-}" in
           echo "$out" >&2; exit 1
         fi
         ;;
+      gate)
+        shift
+        cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+        case "${1:-status}" in
+          on)
+            mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+            grep -v '^ORBIT_SPEAKER_REQUIRE_ENROLLED=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+            { cat "$cfg.tmp"; printf 'ORBIT_SPEAKER_REQUIRE_ENROLLED="1"\n'; } > "$cfg"
+            rm -f "$cfg.tmp"
+            echo "Unrecognised voices will be turned away."
+            echo
+            echo "Check it is ready for that first - say something, then:"
+            echo "  orbit voice test    what your own voice actually scores"
+            echo "  orbit voice check \"$WELCOME_NAME\"   whether your recordings agree"
+            echo "If it scores you below $ORBIT_SPEAKER_THRESHOLD it will turn YOU away." ;;
+          off)
+            mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+            grep -v '^ORBIT_SPEAKER_REQUIRE_ENROLLED=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+            { cat "$cfg.tmp"; printf 'ORBIT_SPEAKER_REQUIRE_ENROLLED="0"\n'; } > "$cfg"
+            rm -f "$cfg.tmp"
+            bypass_end; bypass_window_end
+            echo "Nobody is turned away now. It still knows who you are and"
+            echo "still greets you by name; it just does not refuse anyone."
+            echo "A voice you have deliberately banned is still refused." ;;
+          *)
+            if [ "$ORBIT_SPEAKER_REQUIRE_ENROLLED" = "1" ]; then
+              echo "On: a voice it does not recognise is turned away."
+            else
+              echo "Off: it recognises voices but refuses nobody."
+            fi
+            echo "  orbit voice gate on | off" ;;
+        esac
+        exit 0
+        ;;
       bypass)
         shift
         case "${1:-start}" in
@@ -1476,6 +1510,13 @@ case "${1:-}" in
           fi
           # Already known? Then just ban them under the name they have.
           known="$(speaker_name 2>/dev/null)"
+          if [ "$known" = "$WELCOME_NAME" ]; then
+            echo "That was you." >&2
+            echo "Banning yourself locks you out of your own assistant, so no." >&2
+            echo "If it keeps mistaking people for you, the recordings are the" >&2
+            echo "problem rather than the threshold: orbit voice check \"$WELCOME_NAME\"" >&2
+            exit 1
+          fi
           if [ -n "$known" ]; then
             label="$known"
           else
@@ -1494,6 +1535,10 @@ case "${1:-}" in
         fi
 
         [ -n "$name" ] || { echo "orbit voice $action <name>" >&2; exit 2; }
+        if [ "$action" = "ban" ] && [ "$name" = "$WELCOME_NAME" ]; then
+          echo "Banning yourself locks you out of your own assistant, so no." >&2
+          exit 1
+        fi
         if out="$(speaker_run "$action" "$name" 2>&1)"; then
           case "$action" in
             ban)    echo "$name is banned. Commands in that voice will be refused." ;;
@@ -1513,6 +1558,7 @@ orbit voice ban <name>        refuse that person from now on
 orbit voice ban last [label]  refuse whoever just spoke
 orbit voice unban <name>      allow them again
 orbit voice forget <name>     remove them entirely
+orbit voice gate on|off       turn away voices it does not recognise
 orbit voice bypass [end]      let unrecognised voices in for a few minutes
 orbit voice refusals [n]      what it says to a voice it will not obey
 orbit voice test              score the last voice against everyone

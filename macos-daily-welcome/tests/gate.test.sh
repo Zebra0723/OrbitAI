@@ -28,6 +28,9 @@ case "$1" in
     case "$(cat "$SPEAKER_WHO" 2>/dev/null)" in
       arjun)  printf 'Arjun\t0.910\tok\n' ;;
       banned) printf 'Neighbour\t0.880\tbanned\n' ;;
+      # A short sentence, a bit of noise, and it declines to name
+      # anybody. The ordinary case, not an exotic one.
+      hazy)   : ;;
       *)      : ;;
     esac ;;
 esac
@@ -36,6 +39,9 @@ chmod +x "$fake"
 
 export SPEAKER_WHO="$WELCOME_STATE_DIR/who"
 export ORBIT_SPEAKER_PYTHON="$fake"
+# Turned on deliberately: refusing people is off by default, because a
+# recogniser that is wrong once stops the assistant working for the
+# person who owns it.
 export ORBIT_SPEAKER_ID=1 ORBIT_SPEAKER_REQUIRE_ENROLLED=1
 export ORBIT_NLU=rules WELCOME_SPEAK=0 WELCOME_CONFIG=/dev/null
 printf 'pretend audio' > "$WELCOME_STATE_DIR/utterance.wav"
@@ -104,19 +110,28 @@ says arjun "bypass 727590" >/dev/null
 ok "the same for a voice it does not know" "no" \
    "$(refused "$(says unknown "what time is it")")"
 
-# It is one voice, not an open house. Waving a neighbour in must not let
-# the next stranger in behind them.
+# A live bypass is live for anybody, and that is on purpose.
+#
+# It used to insist the voice match the one it was granted for, which
+# sounds careful and is not: the recogniser names somebody on one
+# sentence and shrugs on the next, so the person just waved through was
+# refused again the moment it lost confidence in them. This is that
+# exact sequence - the same person, identified, then not.
 reset
 says banned "what time is it" >/dev/null
 says arjun "bypass 727590" >/dev/null
-ok "waving one voice in does not admit another" "yes" \
-   "$(refused "$(says unknown "what time is it")")"
+ok "still in when the recogniser goes quiet on them" "no" \
+   "$(refused "$(says hazy "what time is it")")"
+ok "and in again when it picks them back up" "no" \
+   "$(refused "$(says banned "what time is it")")"
 
 reset
 says unknown "what time is it" >/dev/null
 says arjun "bypass 727590" >/dev/null
-ok "nor the other way round" "yes" \
+ok "and the other way round" "no" \
    "$(refused "$(says banned "what time is it")")"
+
+# What keeps it narrow is time and intent, not identity.
 
 # The ban is not undone, only overridden for a while.
 reset
@@ -178,3 +193,24 @@ ok "and a banned voice as well" "no" \
 "$TEST_ROOT/bin/orbit" voice bypass end >/dev/null 2>&1
 ok "and closing it puts things back" "yes" \
    "$(refused "$(says banned "what time is it")")"
+
+# ------------------------------------------------------------- the gate itself
+#
+# Off by default. Recognising a voice is a guess with a confidence
+# attached, and a guess used as a gate stops the assistant working for
+# its owner every time the guess is wrong.
+reset
+ok "refusing is off unless asked for" "0" \
+   "$(ORBIT_SPEAKER_REQUIRE_ENROLLED= bash -c '
+      . "'"$TEST_ROOT"'/lib/config.sh" >/dev/null 2>&1
+      printf "%s" "$ORBIT_SPEAKER_REQUIRE_ENROLLED"')"
+ok "and with it off a stranger is answered" "no" \
+   "$(refused "$(ORBIT_SPEAKER_REQUIRE_ENROLLED=0 says unknown "what time is it")")"
+# A ban is a decision somebody made, so it still holds.
+ok "but a banned voice is still refused" "yes" \
+   "$(refused "$(ORBIT_SPEAKER_REQUIRE_ENROLLED=0 says banned "what time is it")")"
+
+# Banning yourself is the one-word lockout. It is not allowed.
+out="$("$TEST_ROOT/bin/orbit" voice ban "$WELCOME_NAME" 2>&1)" && rc=0 || rc=1
+ok "you cannot ban yourself" "1" "$rc"
+contains "and it says why" "locks you out" "$out"

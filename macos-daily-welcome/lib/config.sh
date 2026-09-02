@@ -339,9 +339,18 @@
 # it plans a turn; declared here so that everything else that reads it -
 # the prompt builder above all - has something to read when it was not.
 : "${ORBIT_SPEAKER_NAME:=}"
-# Once somebody has enrolled, an unrecognised voice is turned away. Until
-# then it lets everyone through, or the first person could never enrol.
-: "${ORBIT_SPEAKER_REQUIRE_ENROLLED:=1}"
+# Whether an unrecognised voice is REFUSED, as opposed to simply not
+# greeted by name.
+#
+# Off. Recognising a voice is a guess with a confidence attached, and
+# turning a guess into a gate means every time the guess is wrong the
+# assistant stops working for the person who owns it - including, if the
+# wrong guess lands on a ban, for everybody at once. Names, greetings and
+# refusing a voice you have deliberately banned all work without it.
+#
+# `orbit voice gate on` turns it on once you have enrolled properly and
+# `orbit voice test` shows scores you believe.
+: "${ORBIT_SPEAKER_REQUIRE_ENROLLED:=0}"
 # What an unrecognised voice hears, and what a banned one hears.
 #
 # Empty means the built-in lines in lib/speaker.sh, which are a rotating

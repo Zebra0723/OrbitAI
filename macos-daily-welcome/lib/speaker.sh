@@ -121,13 +121,19 @@ bypass_active() {
     return 1
   fi
 
-  subject="$(bypass_subject)"
-  case "$subject" in
-    '*') return 0 ;;                       # everybody, from the terminal
-    '')  [ -z "${1-}" ] && return 0 ;;     # whoever it did not recognise
-    *)   [ "$subject" = "${1-}" ] && return 0 ;;
-  esac
-  return 1
+  # Live means live, for anybody.
+  #
+  # This used to insist the voice match the one the bypass was granted
+  # for, which sounds careful and is not: the recogniser names somebody
+  # on one sentence and shrugs on the next, so the person just waved
+  # through was refused again the moment it lost confidence in them.
+  # Matching an identity across turns needs a recogniser that is certain,
+  # and if it were certain none of this would be necessary.
+  #
+  # What keeps it narrow is time and intent, not identity: ten minutes,
+  # ended by the conversation ending, and granted out loud by somebody it
+  # did recognise.
+  return 0
 }
 
 # How much longer it lasts, in whole minutes, for saying out loud.
