@@ -189,7 +189,38 @@ daily-welcome --use-voice nova              pick one
 daily-welcome --test-voice                  hear it, and see which said it
 ```
 
-Commas are stripped before the text reaches the voice. A comma is
+### Free voices that are not the default one
+
+The voice macOS ships turned on is the worst one it has. Better ones are a
+free download, no account:
+
+```
+daily-welcome --mac-voices                  what you have, and how to get more
+daily-welcome --use-voice "Ava (Premium)"   pick one
+daily-welcome --use-voice system            use the System Settings voice
+```
+
+System Settings > Accessibility > Spoken Content > System Voice > Manage
+Voices. Ava, Zoe and Allison are the young expressive ones in English (US).
+The Siri voices in that same list are the best of the lot, but `say` cannot
+select them by name - set one as your System Voice and use
+`--use-voice system`.
+
+### Pauses
+
+A comma tells a reader to breathe and tells a speech engine to stop, and
+they stop hard - which is most of what makes a synthetic voice sound
+synthetic. The comma stays; the pause is shortened, using whatever each
+engine offers (`[[slnc]]` for `say`, a break tag for ElevenLabs, and the
+delivery instructions for OpenAI, which has no pause control).
+
+```
+WELCOME_PAUSE=short      default
+WELCOME_PAUSE=natural    leave the text exactly as written
+WELCOME_PAUSE=none       remove the commas altogether
+WELCOME_PAUSE_MS=110     how long the shortened pause is
+```
+ A comma is
 punctuation for a reader; a speech model treats it as a full stop, and the
 constant pausing is most of what makes a synthetic voice sound synthetic.
 What you see on screen keeps them. `WELCOME_TIGHTEN_SPEECH=0` turns it off.

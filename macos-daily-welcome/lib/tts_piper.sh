@@ -61,7 +61,7 @@ piper_synthesize() {
     return 1
   }
 
-  text="$(speech_pace "$text")"
+  text="$(speech_pace "$text" piper)"
 
   # length_scale below 1 speeds it up; the default reads slightly slowly.
   if ! printf '%s' "$text" | "$bin" \

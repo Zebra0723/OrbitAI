@@ -48,7 +48,7 @@ _openai_tts_body() {
 openai_tts_synthesize() {
   local text="$1" out="$2" key code attempt
 
-  text="$(speech_pace "$text")"
+  text="$(speech_pace "$text" openai)"
   key="$(openai_api_key)" || return 1
 
   for attempt in 1 0; do

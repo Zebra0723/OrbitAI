@@ -63,6 +63,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --voices        available voices, and which one it will use
   daily-welcome --voice-provider openai | elevenlabs | piper | say | auto
   daily-welcome --setup-piper   a free neural voice that runs on this Mac
+  daily-welcome --mac-voices    the built-in voices, and how to get better ones
   daily-welcome --hush          stop talking right now
   daily-welcome --mute-today    skip the rest of today
   daily-welcome --reset         forget that today's greeting happened
@@ -104,6 +105,7 @@ while [ $# -gt 0 ]; do
     --use-voice)  MODE=usevoice; shift; VOICE_ARG="${1:-}" ;;
     --voice-provider) MODE=provider; shift; VOICE_ARG="${1:-}" ;;
     --setup-piper) MODE=setuppiper ;;
+    --mac-voices)  MODE=macvoices ;;
     --mute-today) MODE=mute ;;
     --reset)      MODE=reset ;;
     -h|--help)    usage; exit 0 ;;
@@ -349,6 +351,46 @@ case "$MODE" in
     esac
     exit 0
     ;;
+  macvoices)
+    # The built-in voices, sorted by how good they actually sound, plus
+    # the two ways to get better ones. The default that ships enabled is
+    # the worst of them, which is why this exists.
+    echo "Voices installed on this Mac"
+    echo
+    installed="$(_installed_voices)"
+    prem="$(printf '%s\n' "$installed" | grep -F "(Premium)" | grep -Ei "ava|zoe|allison|nicky|samantha|susan|karen|serena|moira|tessa")"
+    enh="$(printf '%s\n' "$installed" | grep -F "(Enhanced)" | grep -Ei "ava|zoe|allison|nicky|samantha|susan|karen|serena|moira|tessa")"
+
+    if [ -n "$prem" ]; then
+      echo "  Premium  (the best downloadable ones)"
+      printf '%s\n' "$prem" | sed 's/^/    /'
+    else
+      echo "  Premium  none installed  <-- this is almost certainly your problem"
+    fi
+    echo
+    if [ -n "$enh" ]; then
+      echo "  Enhanced (better than the default, smaller download)"
+      printf '%s\n' "$enh" | sed 's/^/    /'
+    else
+      echo "  Enhanced none installed"
+    fi
+    echo
+    echo "  In use right now: $(resolve_voice || true)"
+    [ -z "$(resolve_voice)" ] && echo "                    (the System Settings voice)"
+    echo
+    echo "To get better ones, free, no account:"
+    echo "  System Settings > Accessibility > Spoken Content > System Voice"
+    echo "  > Manage Voices... > tick a Premium voice > Done"
+    echo
+    echo "  English (US): Ava, Zoe and Allison are the young expressive ones."
+    echo "  The Siri voices in that same list are the best of the lot, but"
+    echo "  \`say\` cannot pick them by name - set one as your System Voice"
+    echo "  and then run:  daily-welcome --use-voice system"
+    echo
+    echo "Then:  daily-welcome --use-voice \"Ava (Premium)\""
+    echo "       daily-welcome --test-voice"
+    exit 0
+    ;;
   setuppiper)
     # A free neural voice, in two steps, without hunting through docs.
     dir="$HOME/.config/daily-welcome/piper"
@@ -482,6 +524,35 @@ case "$MODE" in
     exit 0
     ;;
   usevoice)
+    # "system", or any installed macOS voice, when the local voice is the
+    # one speaking. Without this there was no way to choose among them
+    # except editing the config by hand.
+    if [ "$(tts_backend)" = "say" ] || [ "${VOICE_ARG:-}" = "system" ]; then
+      if [ -z "${VOICE_ARG:-}" ]; then
+        echo "daily-welcome: --use-voice needs a name. What is installed:" >&2
+        _installed_voices | sed 's/^/  /' >&2
+        exit 2
+      fi
+      if [ "$VOICE_ARG" != "system" ] && ! _installed_voices | grep -Fxq "$VOICE_ARG"; then
+        echo "daily-welcome: no voice called \"$VOICE_ARG\" on this Mac." >&2
+        echo "See what there is, and how to get more: daily-welcome --mac-voices" >&2
+        exit 1
+      fi
+      cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+      mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+      grep -v '^WELCOME_VOICE=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+      { cat "$cfg.tmp"; printf 'WELCOME_VOICE="%s"\n' "$VOICE_ARG"; } > "$cfg"
+      rm -f "$cfg.tmp"
+      if [ "$VOICE_ARG" = "system" ]; then
+        echo "Now using whatever voice System Settings is set to."
+        echo "Set a Siri voice there and this is how you hear it."
+      else
+        echo "Voice set to \"$VOICE_ARG\"."
+      fi
+      echo "Hear it: daily-welcome --test-voice"
+      exit 0
+    fi
+
     if [ "$(tts_backend)" = "openai" ]; then
       if [ -z "${VOICE_ARG:-}" ]; then
         echo "daily-welcome: --use-voice needs a name, e.g. --use-voice nova" >&2

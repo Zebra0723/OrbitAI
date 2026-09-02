@@ -130,23 +130,51 @@ speech_clean() {
 
 # Punctuation for the ear, not the page.
 #
-# A comma tells a reader to breathe and tells a speech model to STOP, and
-# the hosted ones stop hard - "Welcome back, Arjun. Good morning, sir." is
-# three sentences of content and five pauses, which is most of what makes
-# a synthetic voice sound synthetic. The text you read keeps its commas;
-# the text the voice is handed does not.
+# A comma tells a reader to breathe and tells a speech engine to STOP,
+# and they stop hard - which is most of what makes a synthetic voice
+# sound synthetic. Deleting the commas fixed the pausing and cost the
+# phrasing, so instead the pause is SHORTENED and the comma kept.
 #
-# Only the ones that buy nothing aloud are removed. A comma between digits
-# stays (1,000), and full stops stay, because the pause at the end of a
-# sentence is the one a person actually makes.
+# Each engine has a different lever, so this takes the backend:
+#   say          [[slnc N]] - an exact pause in milliseconds
+#   elevenlabs   <break time="..."/> - the same idea, their syntax
+#   openai       no such control, so the comma stays and the delivery
+#                instructions carry it
+#
+# WELCOME_PAUSE: short (default) | natural | none
 speech_pace() {
-  [ "$WELCOME_TIGHTEN_SPEECH" = "1" ] || { printf '%s' "$1"; return 0; }
-  printf '%s' "$1" \
-    | sed -E 's/,([^0-9])/\1/g; s/,$//' \
-    | sed -E 's/ +[-–—] +/ /g' \
-    | sed -E 's/\.\.\.+/ /g' \
-    | sed -E 's/;/./g' \
-    | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//'
+  local text="$1" backend="${2:-$(tts_backend)}"
+
+  case "$WELCOME_PAUSE" in
+    natural) printf '%s' "$text"; return 0 ;;
+  esac
+
+  # Tidy first, whatever the setting: a semicolon is a full stop out loud,
+  # a spaced dash and an ellipsis are both dead air.
+  text="$(printf '%s' "$text" \
+    | sed -E 's/ +[-–—] +/ /g; s/\.\.\.+/ /g; s/;/./g' \
+    | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')"
+
+  if [ "$WELCOME_PAUSE" = "none" ]; then
+    # The old behaviour, kept for anyone who preferred it: no commas at
+    # all. A comma between digits still stays, or 1,000 loses its zero.
+    printf '%s' "$text" | sed -E 's/,([^0-9])/\1/g; s/,$//'
+    return 0
+  fi
+
+  case "$backend" in
+    say)
+      # A tenth of a second instead of the engine's own long breath.
+      printf '%s' "$text" | sed -E "s/,([^0-9])/ [[slnc $WELCOME_PAUSE_MS]]\1/g" ;;
+    elevenlabs)
+      printf '%s' "$text" \
+        | sed -E "s#,([^0-9])#<break time=\"$(printf '%s' "$WELCOME_PAUSE_MS" | awk '{printf "%.2f", $1/1000}')s\" />\1#g" ;;
+    *)
+      # OpenAI has no pause control. The comma stays and the delivery
+      # instructions do the work - deleting it here would cost the
+      # phrasing for nothing.
+      printf '%s' "$text" ;;
+  esac
 }
 
 # Sentence case. The briefing is assembled from fragments, and a voice

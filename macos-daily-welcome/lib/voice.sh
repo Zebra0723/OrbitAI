@@ -45,6 +45,11 @@ _installed_voices() {
 
 # First voice from WELCOME_VOICES that's installed; empty = system default.
 resolve_voice() {
+  # "system" means: pass no -v at all, and let `say` use whatever voice is
+  # set in System Settings. That is the only way to reach the Siri voices,
+  # which are the best free ones on the Mac by a distance and which `say`
+  # will not select by name.
+  [ "$WELCOME_VOICE" = "system" ] && return 0
   if [ -n "$WELCOME_VOICE" ]; then printf '%s' "$WELCOME_VOICE"; return 0; fi
   have_cmd say || return 0
 
@@ -66,6 +71,7 @@ resolve_voice() {
 say_speak() {
   local text="$1" voice
   have_cmd say || return 1
+  text="$(speech_pace "$text" say)"
   voice="$(resolve_voice)"
   if [ -n "$voice" ]; then
     say -v "$voice" -r "$WELCOME_SPEAK_RATE" "$text" >/dev/null 2>&1

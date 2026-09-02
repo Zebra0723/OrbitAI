@@ -99,9 +99,20 @@
 : "${WELCOME_ELEVEN_KEY_FILE:=$HOME/.config/daily-welcome/elevenlabs-key}"
 
 # --- Apple `say`, used when ElevenLabs isn't reachable ---
-: "${WELCOME_SPEAK_RATE:=170}"
+# The built-in voices are not all the same. The default one that ships
+# turned on is the worst of them; the Premium downloads are markedly
+# better, and the Siri voices better still.
+#
+#   WELCOME_VOICE=""            pick the best installed, from the list below
+#   WELCOME_VOICE="system"      use the System Settings voice - the only
+#                               way to reach a Siri voice, which `say`
+#                               will not select by name
+#   WELCOME_VOICE="Ava (Premium)"   a specific one
+#
+# daily-welcome --mac-voices shows what is installed and how to get more.
+: "${WELCOME_SPEAK_RATE:=175}"
 : "${WELCOME_VOICE:=}"
-: "${WELCOME_VOICES:=Ava (Premium)|Zoe (Premium)|Allison (Premium)|Samantha (Enhanced)|Ava (Enhanced)|Zoe|Allison|Samantha|Susan}"
+: "${WELCOME_VOICES:=Ava (Premium)|Zoe (Premium)|Allison (Premium)|Nicky (Enhanced)|Ava (Enhanced)|Zoe (Enhanced)|Samantha (Enhanced)|Ava|Zoe|Allison|Nicky|Samantha|Susan}"
 
 # ------------------------------------------------------- voice commands
 
@@ -208,17 +219,14 @@
 #   WELCOME_TTS=openai       use OpenAI, reusing your existing key
 #   WELCOME_TTS=elevenlabs   ElevenLabs only
 #   WELCOME_TTS=say          no network at all
-# Strip the commas before the voice sees them. They are punctuation for a
-# reader; a speech model treats them as a full stop, and the constant
-# pausing is most of what makes a synthetic voice sound synthetic. Set to
-# 0 to hand the voice exactly what is on screen.
-# Piper: a neural voice that runs locally, with no key and no cost. The
-# model is one .onnx file; --setup-piper fetches one and fills this in.
-: "${WELCOME_PIPER_BIN:=}"
-: "${WELCOME_PIPER_MODEL:=$HOME/.config/daily-welcome/piper/voice.onnx}"
-: "${WELCOME_PIPER_LENGTH:=0.95}"
-
-: "${WELCOME_TIGHTEN_SPEECH:=1}"
+# How long the voice rests at a comma.
+#
+#   short    (default) keep the comma, shorten the pause - the engines
+#            stop hard at one, and that is what sounds synthetic
+#   natural  leave the text exactly as written
+#   none     remove the commas altogether
+: "${WELCOME_PAUSE:=short}"
+: "${WELCOME_PAUSE_MS:=110}"
 
 : "${WELCOME_OPENAI_VOICE:=nova}"
 : "${WELCOME_OPENAI_TTS_MODEL:=gpt-4o-mini-tts}"
