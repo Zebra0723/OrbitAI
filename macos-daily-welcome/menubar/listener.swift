@@ -314,6 +314,9 @@ final class OrbitListener: NSObject {
         // that flag left the recorder off, and enrolment then waited
         // forty-five seconds for a file nothing was ever going to write.
         guard keepUtteranceAudio || enrolling, !utterancePath.isEmpty else { return }
+        // A tap can hand over an empty buffer, and asking for a buffer of
+        // zero frames is not a request that makes sense.
+        guard buffer.frameLength > 0 else { return }
         guard let copy = AVAudioPCMBuffer(pcmFormat: buffer.format,
                                           frameCapacity: buffer.frameLength) else { return }
         copy.frameLength = buffer.frameLength
@@ -362,7 +365,14 @@ final class OrbitListener: NSObject {
         if present && !enrolling {
             enrolling = true
             // Nothing is captured if the engine is not running.
-            if !engine.isRunning { beginSession() }
+            // beginSession starts a recognition task of its own, so the
+            // one at the end of this block would only throw away a task a
+            // few lines old - and SFSpeechRecognizer counts those.
+            var freshlyStarted = false
+            if !engine.isRunning {
+                beginSession()
+                freshlyStarted = engine.isRunning
+            }
             // Anything already in the buffer is from before - including
             // whatever Orbit just said.
             flushRecent()
@@ -370,9 +380,16 @@ final class OrbitListener: NSObject {
             heard = ""
             greeted = true
             status("enrolling", "recording a voice sample, not listening for commands")
+            // Whatever tick rate we inherited - a call and a pause both
+            // leave it at one second - enrolment wants the normal one, or
+            // each phrase waits a second longer than it should.
+            silenceTimer?.invalidate()
+            silenceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) {
+                [weak self] _ in self?.checkSilence()
+            }
             setState(.capturing)
             lastHeardAt = Date()
-            restartRecognition()
+            if !freshlyStarted { restartRecognition() }
             return true
         }
 
@@ -380,9 +397,15 @@ final class OrbitListener: NSObject {
             enrolling = false
             heard = ""
             greeted = false
+            flushRecent()   // the sample is not conversation history
             status("listening", "waiting for \"\(wakeWord)\"")
-            setState(.idle)
-            restartRecognition()
+            if engine.isRunning {
+                setState(.idle)
+                restartRecognition()
+            } else {
+                // Enrolment may have been the only reason it was running.
+                beginSession()
+            }
             return true
         }
 
@@ -402,15 +425,83 @@ final class OrbitListener: NSObject {
 
     private func writeUtterance() {
         guard keepUtteranceAudio || enrolling, !utterancePath.isEmpty else { return }
-        audioQueue.async { [weak self] in
-            guard let self = self,
-                  let format = self.recentFormat,
-                  !self.recentAudio.isEmpty else { return }
+        // Synchronous, deliberately. The shell reads this file the moment
+        // plan() starts; a file finished a fraction later is the PREVIOUS
+        // thing that was said, which is worse than no file at all - it
+        // names the wrong person with full confidence. Writing eight
+        // seconds of audio takes a couple of milliseconds.
+        audioQueue.sync {
+            guard let format = self.recentFormat, !self.recentAudio.isEmpty else { return }
+
+            // Sixteen-bit PCM rather than the float the microphone hands
+            // over: every reader on the other side understands it, and
+            // AVAudioFile does the conversion on the way out. The file's
+            // processing format stays float, so the buffers still match.
+            let settings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatLinearPCM,
+                AVSampleRateKey: format.sampleRate,
+                AVNumberOfChannelsKey: format.channelCount,
+                AVLinearPCMBitDepthKey: 16,
+                AVLinearPCMIsFloatKey: false,
+                AVLinearPCMIsBigEndianKey: false,
+                AVLinearPCMIsNonInterleaved: false,
+            ]
+
+            // Written beside the real file and moved into place, so a
+            // reader sees the whole recording or nothing - never the first
+            // half of it.
             let url = URL(fileURLWithPath: self.utterancePath)
+            let partial = URL(fileURLWithPath: self.utterancePath + ".part")
+            try? FileManager.default.removeItem(at: partial)
+            // Held as an optional and never bound to a second name: the
+            // only way to close an AVAudioFile is to let go of it, and a
+            // stray `let` would keep it open past the point where that
+            // matters.
+            var file = try? AVAudioFile(forWriting: partial, settings: settings)
+
+            // write(from:) raises rather than throws when the formats
+            // disagree, and a raise here takes the whole app down.
+            guard let want = file?.processingFormat else { return }
+            var wrote = false
+            for buffer in self.recentAudio where buffer.format == want {
+                do {
+                    try file?.write(from: buffer)
+                    wrote = true
+                } catch {
+                    continue
+                }
+            }
+            // Dropped on purpose, and before the move. A WAV's header says
+            // how long the audio is, and that is only filled in when the
+            // file is closed - which for AVAudioFile means when the last
+            // reference to it goes. Move it while it is still open and
+            // what lands is a header claiming no audio at all, which reads
+            // back as silence.
+            file = nil
+
+            guard wrote else {
+                try? FileManager.default.removeItem(at: partial)
+                // Nothing matched, so nothing was saved. Say so: this is
+                // the difference between "the microphone is off" and "the
+                // microphone works and the recording went nowhere", and
+                // from outside they look identical.
+                DispatchQueue.main.async {
+                    self.status("audio-unwritable",
+                                "microphone format \(format) cannot be saved")
+                }
+                return
+            }
+
+            // A rename inside one directory is atomic, so a reader sees
+            // either the previous recording or this one, never a file
+            // being filled in. Both calls happen before plan() runs, so
+            // the brief moment with no file at all is not observable.
             try? FileManager.default.removeItem(at: url)
-            guard let file = try? AVAudioFile(forWriting: url,
-                                              settings: format.settings) else { return }
-            for buffer in self.recentAudio { try? file.write(from: buffer) }
+            do {
+                try FileManager.default.moveItem(at: partial, to: url)
+            } catch {
+                try? FileManager.default.removeItem(at: partial)
+            }
         }
     }
 

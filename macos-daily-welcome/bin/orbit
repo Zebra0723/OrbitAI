@@ -1134,7 +1134,7 @@ case "${1:-}" in
           now="$(stat -f %m "$wav" 2>/dev/null || echo 0)"
           [ "$now" != "$before" ] && [ -s "$wav" ] && break
         done
-        if [ "$now" = "$before" ]; then
+        if [ "$now" = "$before" ] || [ ! -s "$wav" ]; then
           rm -f "$flag"
           echo "Recorded nothing in forty-five seconds." >&2
           echo >&2
@@ -1149,7 +1149,8 @@ case "${1:-}" in
           echo "  daily-welcome --reset-permissions" >&2
           exit 1
         fi
-        sleep 1   # let the writer finish
+        # The app writes the recording beside the real file and moves it
+        # into place, so what is there now is whole. Nothing to wait for.
         rm -f "$flag"
         trap - EXIT INT TERM
         if out="$(speaker_run enroll "$name" "$wav" 2>&1)"; then
