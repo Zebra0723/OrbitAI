@@ -397,12 +397,30 @@ case "$MODE" in
       echo "few hundred megabytes and takes a couple of minutes..."
       echo
       if ! "$venv/bin/pip" install --upgrade pip >/dev/null 2>&1; then : ; fi
-      if ! "$venv/bin/pip" install resemblyzer; then
+      # setuptools 81 dropped pkg_resources, and something in this
+      # dependency tree still imports it. Torch asks for setuptools>=77,
+      # so pinning below 81 keeps everyone happy. Installed in the same
+      # command as resemblyzer so pip resolves them together rather than
+      # pulling 84 and then being argued down.
+      if ! "$venv/bin/pip" install resemblyzer "setuptools<81"; then
         echo >&2
         echo "daily-welcome: pip could not install resemblyzer." >&2
         echo "The environment is at $venv if you want to look." >&2
         exit 1
       fi
+    fi
+
+    # An environment built before this was known will still have the
+    # newer setuptools in it, and reinstalling resemblyzer alone will not
+    # touch it.
+    if ! speaker_installed; then
+      case "$(speaker_run check 2>&1)" in
+        *pkg_resources*)
+          echo
+          echo "Fixing setuptools - 81 and later dropped pkg_resources..."
+          "$(speaker_venv)/bin/pip" install -q "setuptools<81" 2>&1 | tail -2
+          ;;
+      esac
     fi
 
     if ! speaker_installed; then
