@@ -10,6 +10,15 @@
 # ---------------------------------------------------------------- backend
 
 # Echoes the backend that will actually be used: elevenlabs or say.
+# Plays an already-rendered file. Both speech backends produce mp3s, so
+# playback stopped belonging to either of them.
+play_file() {
+  local file="$1"
+  [ -s "$file" ] || return 1
+  have_cmd afplay || return 1
+  afplay -v "$WELCOME_VOLUME" "$file" 2>/dev/null
+}
+
 tts_backend() {
   case "$WELCOME_TTS" in
     say) printf 'say' ;;
@@ -177,7 +186,10 @@ speak_async() {
 
   (
     case "$(tts_backend)" in
-      elevenlabs) eleven_speak "$text" || say_speak "$text" ;;
+      # Each step down is a real voice before it is a robot one: a hosted
+      # service refusing is not a reason to give up on the other one.
+      elevenlabs) eleven_speak "$text" || openai_speak "$text" || say_speak "$text" ;;
+      openai)     openai_speak "$text" || say_speak "$text" ;;
       *)          say_speak "$text" ;;
     esac
   ) >/dev/null 2>&1 &

@@ -129,6 +129,25 @@ Email replies are **drafted first**. Orbit writes them into Mail, tells you how
 many, and sends only on your yes. Delete a draft before answering and that one
 stays unsent.
 
+### Which voice speaks
+
+Two hosted services and a local fallback. `auto` prefers ElevenLabs, drops
+to OpenAI, then to the best built-in macOS voice - so a service having a bad
+day costs you the voice and never the briefing.
+
+```
+daily-welcome --voice-provider openai       speak through OpenAI
+daily-welcome --voices                      what each service offers
+daily-welcome --use-voice nova              pick one
+daily-welcome --test-voice                  hear it, and see which said it
+```
+
+OpenAI reuses the key already set for understanding what you say, so
+switching costs nothing extra. Its voices are `alloy ash ballad coral echo
+fable nova onyx sage shimmer`; `nova`, `coral` and `shimmer` are the
+American female ones. `WELCOME_OPENAI_TTS_INSTRUCTIONS` steers the delivery
+in plain English.
+
 ### While you're on a call
 
 Orbit shuts the microphone the moment another app starts using it, and opens

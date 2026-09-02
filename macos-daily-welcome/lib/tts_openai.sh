@@ -79,3 +79,13 @@ openai_tts_voices() {
   printf 'echo     even\nfable    British\nnova     clear, American female\nonyx     deep\n'
   printf 'sage     calm\nshimmer  light, American female\n'
 }
+
+# Renders and plays in one go, the counterpart to eleven_speak.
+openai_speak() {
+  local text="$1" file
+  file="$(openai_tts_cache_path "$text")"
+  if [ ! -s "$file" ]; then
+    openai_tts_synthesize "$text" "$file" || return 1
+  fi
+  afplay -v "$WELCOME_VOLUME" "$file" 2>/dev/null
+}

@@ -29,6 +29,7 @@ welcome_load_user_config
 . "$ROOT/lib/speech_text.sh"
 # shellcheck source=../lib/tts_eleven.sh
 . "$ROOT/lib/tts_eleven.sh"
+. "$ROOT/lib/nlu_openai.sh"
 . "$ROOT/lib/tts_openai.sh"
 # shellcheck source=../lib/voice.sh
 . "$ROOT/lib/voice.sh"
@@ -59,6 +60,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --set-openai-key   store an OpenAI key, for understanding commands
   daily-welcome --test-voice    say one line now, and report which voice said it
   daily-welcome --voices        available voices, and which one it will use
+  daily-welcome --voice-provider openai | elevenlabs | say | auto
   daily-welcome --hush          stop talking right now
   daily-welcome --mute-today    skip the rest of today
   daily-welcome --reset         forget that today's greeting happened
@@ -98,6 +100,7 @@ while [ $# -gt 0 ]; do
     --reset-permissions) MODE=resetperms ;;
     --voices)     MODE=voices ;;
     --use-voice)  MODE=usevoice; shift; VOICE_ARG="${1:-}" ;;
+    --voice-provider) MODE=provider; shift; VOICE_ARG="${1:-}" ;;
     --mute-today) MODE=mute ;;
     --reset)      MODE=reset ;;
     -h|--help)    usage; exit 0 ;;
@@ -277,31 +280,83 @@ case "$MODE" in
     backend="$(tts_backend)"
     line="Welcome back, $WELCOME_NAME. $(_greeting_word). It's $(now_words), on $(today_words). Voice check complete."
     echo "Backend: $backend"
-    if [ "$backend" = "elevenlabs" ]; then
-      echo "Voice:   $WELCOME_ELEVEN_VOICE_NAME${WELCOME_ELEVEN_VOICE_ID:+ ($WELCOME_ELEVEN_VOICE_ID)}"
-    else
-      local_voice="$(resolve_voice)"
-      echo "Voice:   ${local_voice:-system default}"
-    fi
+    case "$backend" in
+      elevenlabs) echo "Voice:   $WELCOME_ELEVEN_VOICE_NAME${WELCOME_ELEVEN_VOICE_ID:+ ($WELCOME_ELEVEN_VOICE_ID)}" ;;
+      openai)     echo "Voice:   $WELCOME_OPENAI_VOICE ($WELCOME_OPENAI_TTS_MODEL)" ;;
+      *)          local_voice="$(resolve_voice)"
+                  echo "Voice:   ${local_voice:-system default}" ;;
+    esac
     echo "Saying:  $line"
-    if [ "$backend" = "elevenlabs" ]; then
-      if ! eleven_speak "$line" 2> "$WELCOME_STATE_DIR/last-voice-error"; then
+
+    case "$backend" in
+      elevenlabs)
+        if ! eleven_speak "$line" 2> "$WELCOME_STATE_DIR/last-voice-error"; then
+          echo
+          echo "ElevenLabs didn't speak. What it said about it:"
+          sed 's/^/  /' "$WELCOME_STATE_DIR/last-voice-error" 2>/dev/null | tail -5
+          echo
+          echo "Most likely: the voice isn't in your account (--voices lists what is),"
+          echo "or the key is wrong (--set-key)."
+          if openai_tts_available; then
+            echo "Trying OpenAI instead."
+            file="$(openai_tts_cache_path "$line")"
+            if openai_tts_synthesize "$line" "$file" && play_file "$file"; then exit 0; fi
+          fi
+          echo "Falling back to the built-in voice."
+          say_speak "$line"
+        fi ;;
+      openai)
+        file="$(openai_tts_cache_path "$line")"
+        if ! openai_tts_synthesize "$line" "$file" || ! play_file "$file"; then
+          echo
+          echo "OpenAI didn't speak. What it said about it:"
+          sed 's/^/  /' "$WELCOME_STATE_DIR/last-voice-error" 2>/dev/null | tail -5
+          echo
+          echo "Most likely the key (--set-openai-key) or the voice name (--voices)."
+          echo "Falling back to the built-in voice."
+          say_speak "$line"
+        fi ;;
+      *)
         echo
-        echo "ElevenLabs didn't speak. What it said about it:"
-        sed 's/^/  /' "$WELCOME_STATE_DIR/last-voice-error" 2>/dev/null | tail -5
-        echo
-        echo "Most likely: the voice isn't in your account (--voices lists what is),"
-        echo "or the key is wrong (--set-key). Falling back to the built-in voice."
-        say_speak "$line"
-      fi
-    else
-      echo
-      echo "This is the built-in macOS voice, not your ElevenLabs one."
-      if ! eleven_api_key >/dev/null 2>&1; then
-        echo "No API key is set. Run: daily-welcome --set-key"
-      fi
-      say_speak "$line"
+        echo "This is the built-in macOS voice."
+        if ! eleven_api_key >/dev/null 2>&1 && ! openai_api_key >/dev/null 2>&1; then
+          echo "No speech key is set. Either:"
+          echo "  daily-welcome --set-key           ElevenLabs"
+          echo "  daily-welcome --set-openai-key    OpenAI"
+        fi
+        say_speak "$line" ;;
+    esac
+    exit 0
+    ;;
+  provider)
+    # Switching which service speaks, without opening a config file.
+    cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+    mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+    case "${VOICE_ARG:-}" in
+      openai)
+        if ! openai_api_key >/dev/null 2>&1; then
+          echo "daily-welcome: no OpenAI key yet. Run: daily-welcome --set-openai-key" >&2
+          exit 1
+        fi ;;
+      elevenlabs)
+        if ! eleven_api_key >/dev/null 2>&1; then
+          echo "daily-welcome: no ElevenLabs key yet. Run: daily-welcome --set-key" >&2
+          exit 1
+        fi ;;
+      say|auto) : ;;
+      *)
+        echo "daily-welcome --voice-provider openai | elevenlabs | say | auto" >&2
+        exit 2 ;;
+    esac
+    grep -v '^WELCOME_TTS=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+    { cat "$cfg.tmp"; printf 'WELCOME_TTS="%s"\n' "$VOICE_ARG"; } > "$cfg"
+    rm -f "$cfg.tmp"
+    export WELCOME_TTS="$VOICE_ARG"
+    echo "Voice provider set to $VOICE_ARG (now: $(tts_backend))."
+    if [ "$VOICE_ARG" = "openai" ]; then
+      echo "Voice: $WELCOME_OPENAI_VOICE   (change it: daily-welcome --use-voice nova)"
     fi
+    echo "Hear it: daily-welcome --test-voice"
     exit 0
     ;;
   voices)
@@ -331,11 +386,41 @@ case "$MODE" in
       echo "  Add one with: daily-welcome --set-key"
     fi
     echo
+    if openai_tts_available; then
+      echo "OpenAI voices (daily-welcome --voice-provider openai to switch):"
+      openai_tts_voices | sed 's/^/  /'
+      echo "  in use: $WELCOME_OPENAI_VOICE"
+    else
+      echo "OpenAI speech is not set up. Add a key: daily-welcome --set-openai-key"
+    fi
+    echo
     voice="$(resolve_voice)"
     echo "Local fallback voice: ${voice:-system default}"
     exit 0
     ;;
   usevoice)
+    if [ "$(tts_backend)" = "openai" ]; then
+      if [ -z "${VOICE_ARG:-}" ]; then
+        echo "daily-welcome: --use-voice needs a name, e.g. --use-voice nova" >&2
+        openai_tts_voices | sed 's/^/  /' >&2
+        exit 2
+      fi
+      wanted="$(printf '%s' "$VOICE_ARG" | tr '[:upper:]' '[:lower:]')"
+      if ! openai_tts_voices | awk '{print $1}' | grep -qx "$wanted"; then
+        echo "daily-welcome: OpenAI has no voice called \"$VOICE_ARG\". It has:" >&2
+        openai_tts_voices | sed 's/^/  /' >&2
+        exit 1
+      fi
+      cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+      mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+      grep -v '^WELCOME_OPENAI_VOICE=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+      { cat "$cfg.tmp"; printf 'WELCOME_OPENAI_VOICE="%s"\n' "$wanted"; } > "$cfg"
+      rm -f "$cfg.tmp"
+      echo "OpenAI voice set to $wanted."
+      echo "Hear it: daily-welcome --test-voice"
+      exit 0
+    fi
+
     if ! eleven_available; then
       echo "daily-welcome: set your ElevenLabs key first (--set-key)." >&2
       exit 1
