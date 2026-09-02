@@ -182,6 +182,32 @@ EOT
   emit "$(num_word "$drafted") $(_plural "$drafted" reply replies) drafted and waiting in Mail.$extra Send $(_plural "$drafted" it them)?" true "$token"
 }
 
+# A new email. Drafted now, sent only on your spoken yes - the same rule
+# every other outgoing thing follows.
+plan_mail_send() {
+  local who="$1" body="$2" address token subject
+  body="$(emoji_expand "$body")"
+
+  if ! address="$(contact_email "$who")"; then
+    emit "I don't have an email address for $who. Add one to your contacts file and ask me again." false ""
+    return 0
+  fi
+
+  # A subject people would actually accept: the first few words of what
+  # you said, which beats "(no subject)" and beats inventing something.
+  subject="$(printf '%s' "$body" | cut -d' ' -f1-6 | sed -E 's/[[:space:]]+$//')"
+  [ -z "$subject" ] && subject="Quick note"
+
+  if ! mail_compose "$address" "$subject" "$body"; then
+    emit "I couldn't get Mail to write that. Check Automation permission for Mail." false ""
+    return 0
+  fi
+
+  token="$(new_token)"
+  save_plan "$token" "INTENT=mail_send" "ADDRESS=$address" "SUBJECT=$subject" "WHO=$who"
+  emit "Email to $who: $body. It's in your drafts. Send it?" true "$token"
+}
+
 plan_call() {
   local who="$1" kind="$2" handle token label
 
@@ -402,6 +428,16 @@ run_plan() {
       rm -f "$file"
       emit "Claude is on it. I'll tell you what happened in your next briefing." false ""
       ;;
+    mail_send)
+      local result
+      result="$(mail_send_composed "$ADDRESS" "$SUBJECT")"
+      rm -f "$file"
+      if [ "$result" = "sent" ]; then
+        emit "Sent to $WHO." false ""
+      else
+        emit "That draft isn't in Mail any more, so I left it alone." false ""
+      fi
+      ;;
     mail_reply)
       local sent=0 missing=0 result subject address
       while IFS="$(printf '\t')" read -r tag subject address _; do
@@ -473,6 +509,9 @@ case "${1:-}" in
       message)    plan_message "$arg1" "$arg2" ;;
       claude)     plan_claude "$arg1" "$arg2" ;;
       mail_reply) plan_mail_reply "$arg1" ;;
+      mail_send)  plan_mail_send "$arg1" "$arg2" ;;
+      message_ask)
+        emit "What should I say to $arg1?" false "" ;;
       call)       plan_call "$arg1" "$arg2" ;;
       system)     plan_system "$arg1" "$arg2" "$arg3" ;;
       readback)   plan_readback "$arg1" ;;
@@ -871,6 +910,26 @@ case "${1:-}" in
       took=$(( $(date '+%s') - start ))
       printf '  %-30s %2ds  %s\n' "\"$probe\"" "$took" "$(printf '%s' "$line" | cut -c1-70)"
     done
+
+    printf '\n--- mail ---\n'
+    if have_cmd osascript; then
+      t0="$(date '+%s')"
+      count="$(run_with_timeout 10 _mail_unread_count 2>/dev/null | tr -cd '0-9')"
+      printf '  unread count:   %s  (%ss)\n' "${count:-<no answer>}" "$(( $(date '+%s') - t0 ))"
+      t0="$(date '+%s')"
+      rows="$(src_mail 2>/dev/null)"
+      listed="$(printf '%s\n' "$rows" | grep -vc '^#note' 2>/dev/null)"
+      printf '  scan listed:    %s row(s) in %ss\n' "$listed" "$(( $(date '+%s') - t0 ))"
+      note="$(printf '%s\n' "$rows" | awk -F'\t' '$1 == "#note" { print $2; exit }')"
+      [ -n "$note" ] && printf '  note:           %s\n' "$note"
+      printf '%s\n' "$rows" | grep -v '^#note' | grep . | head -3 | sed 's/^/    /'
+      if [ -n "$count" ] && [ "$count" != "0" ] && [ "$listed" = "0" ]; then
+        printf '  >>> Mail reports %s unread but listed none - that is either\n' "$count"
+        printf '      Automation permission for Mail, or a mailbox not reached.\n'
+      fi
+    else
+      printf '  osascript missing\n'
+    fi
 
     printf '\n--- last turns ---\n'
     "$0" log 12 2>&1 | sed 's/^/  /'

@@ -49,6 +49,46 @@ end run
 APPLESCRIPT
 }
 
+# The email address, specifically. contact_handle prefers a phone number,
+# which is right for a message and wrong for mail.
+_contacts_email_applescript() {
+  local name="$1"
+  osascript - "$name" <<'APPLESCRIPT' 2>/dev/null
+on run argv
+  set wantName to item 1 of argv
+  tell application "Contacts"
+    launch
+    set matches to (every person whose name contains wantName)
+    if (count of matches) is 0 then return ""
+    set thePerson to item 1 of matches
+    try
+      if (count of emails of thePerson) > 0 then
+        return (value of first email of thePerson)
+      end if
+    end try
+  end tell
+  return ""
+end run
+APPLESCRIPT
+}
+
+contact_email() {
+  local want="$1" resolved found
+
+  # An alias that is already an address needs no lookup at all.
+  resolved="$(_contacts_alias "$want")" && [ -n "$resolved" ] || resolved="$want"
+  case "$resolved" in
+    *@*.*) printf '%s' "$resolved"; return 0 ;;
+  esac
+
+  found="$(run_with_timeout 10 _contacts_email_applescript "$resolved")"
+  found="$(printf '%s' "$found" | tr -d '\n\r' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+  case "$found" in
+    *@*.*) printf '%s' "$found"; return 0 ;;
+  esac
+  return 1
+}
+
 # Contacts is slow to answer and slower to launch, and the same few people
 # get messaged over and over, so a resolved name is remembered.
 _contacts_cache_file() { printf '%s/contacts-cache' "$WELCOME_STATE_DIR"; }

@@ -54,8 +54,44 @@ _trim_that() {
 # ---------------------------------------------------------------- intents
 
 _try_message() {
-  local text="$1" rest pair
-  rest="$(_strip_prefix "$text" "^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?(send[[:space:]]+(a[[:space:]]+)?)?(message|text|imessage|write)[[:space:]]+(to[[:space:]]+)?")" || return 1
+  local text="$1" rest pair who body flipped
+
+  # "send mama a message saying hi" - the name BEFORE the noun. Checked
+  # first, because the prefix form below bails out immediately on this
+  # word order, and the sentence then reached the readback rule, which saw
+  # the word "message" and read the inbox out instead of sending anything.
+  flipped="$(printf '%s' "$text" | sed -nE 's/^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?(send|shoot|drop|fire|write|text)[[:space:]]+([a-z0-9'"'"'._-]+)[[:space:]]+(a|an|the)[[:space:]]+(message|text|imessage|note)[[:space:]]+(.*)$/\4\t\7/Ip')"
+  if [ -n "$flipped" ]; then
+    who="$(printf '%s' "$flipped" | cut -f1)"
+    body="$(printf '%s' "$flipped" | cut -f2-)"
+    body="$(printf '%s' "$body" | sed -E 's/^(saying that|saying|that says|and say|telling them)[[:space:]]*//I')"
+    if [ -n "$who" ] && [ -n "$body" ]; then
+      printf 'message\t%s\t%s\n' "$who" "$body"
+      return 0
+    fi
+  fi
+
+  # "tell mama I'm running late" / "let mama know I'm on my way". Both are
+  # how people actually phrase it, and both landed as nothing. Guarded so
+  # "tell Claude to..." and "tell me the time" stay where they belong.
+  flipped="$(printf '%s' "$text" | sed -nE 's/^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?tell[[:space:]]+([a-z0-9'"'"'._-]+)[[:space:]]+(.*)$/\3\t\4/Ip')"
+  [ -z "$flipped" ] && flipped="$(printf '%s' "$text" | sed -nE 's/^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?let[[:space:]]+([a-z0-9'"'"'._-]+)[[:space:]]+know[[:space:]]+(that[[:space:]]+)?(.*)$/\3\t\5/Ip')"
+  if [ -n "$flipped" ]; then
+    who="$(printf '%s' "$flipped" | cut -f1)"
+    body="$(printf '%s' "$flipped" | cut -f2-)"
+    case "$who" in
+      claude|me|him|her|them|us|everyone|somebody|someone|him|it) ;;   # not a contact
+      *)
+        body="$(printf '%s' "$body" | sed -E 's/^(that|to say|i said)[[:space:]]+//I')"
+        if [ -n "$body" ]; then
+          printf 'message\t%s\t%s\n' "$who" "$body"
+          return 0
+        fi ;;
+    esac
+  fi
+
+  rest="$(_strip_prefix "$text" "^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?(send[[:space:]]+(an?[[:space:]]+)?)?(message|text|imessage|write)[[:space:]]+(to[[:space:]]+)?")" || return 1
+
   if pair="$(_split_on "$rest" " saying that | saying | that says | telling them | and say |: ")"; then
     printf 'message\t%s\n' "$pair"
     return 0
@@ -63,13 +99,16 @@ _try_message() {
 
   # No "saying" anywhere. People drop it constantly - "text Priya dinner at
   # eight" - and refusing those made a plain instruction land as nothing.
-  # First word is who, the rest is the message; a name that matches no
-  # contact is reported rather than guessed at, so a wrong split is not
-  # silent.
-  local who body
+  # A name that matches no contact is reported rather than guessed at, so a
+  # wrong split is never silent.
   who="$(printf '%s' "$rest" | awk '{print $1}')"
   body="$(printf '%s' "$rest" | cut -d' ' -f2-)"
-  [ -n "$who" ] && [ -n "$body" ] && [ "$who" != "$body" ] || return 1
+  if [ -n "$who" ] && { [ -z "$body" ] || [ "$who" = "$body" ]; }; then
+    # A recipient and no message. Asking is better than a dead end.
+    printf 'message_ask\t%s\t\n' "$who"
+    return 0
+  fi
+  [ -n "$who" ] && [ -n "$body" ] || return 1
   printf 'message\t%s\t%s\n' "$who" "$body"
 }
 
@@ -455,9 +494,46 @@ _try_social() {
   esac
 }
 
+# Sending mail. Without this every "email Priya saying..." fell through to
+# the readback rule, which matched the word "email" and read the inbox out
+# instead - the single most confusing thing it did.
+_try_mail_send() {
+  local text="$1" rest pair who body
+
+  rest="$(_strip_prefix "$text" "^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?(send[[:space:]]+(an?[[:space:]]+)?)?(email|e-mail|mail)[[:space:]]+(to[[:space:]]+)?")" || {
+    # "send priya an email saying hi" - name before the noun again.
+    rest="$(printf '%s' "$text" | sed -nE 's/^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?(send|shoot|drop|write)[[:space:]]+([a-z0-9'"'"'._-]+)[[:space:]]+(an?|the)[[:space:]]+(email|e-mail|mail)[[:space:]]+(.*)$/\4 \7/Ip')"
+    [ -n "$rest" ] || return 1
+  }
+
+  # "email the team about the launch" reads as a subject, not a body.
+  if pair="$(_split_on "$rest" " saying that | saying | that says | and say | about |: ")"; then
+    who="$(printf '%s' "$pair" | cut -f1)"
+    body="$(printf '%s' "$pair" | cut -f2-)"
+  else
+    who="$(printf '%s' "$rest" | awk '{print $1}')"
+    body="$(printf '%s' "$rest" | cut -d' ' -f2-)"
+  fi
+
+  [ -n "$who" ] && [ -n "$body" ] && [ "$who" != "$body" ] || return 1
+  printf 'mail_send\t%s\t%s\n' "$who" "$body"
+}
+
 _try_readback() {
   local lower
   lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+
+  # A readback is a question about your things. An instruction to send
+  # something merely MENTIONS them, and matching on the mention alone is
+  # how "email Priya saying dinner at eight" turned into a recital of the
+  # inbox. If it looks outgoing, it is not a readback.
+  case "$lower" in
+    *" saying "*|*" that says "*|*" and say "*|*" telling them "*|\
+    "send "*|"email "*|"e-mail "*|"text "*|"message "*|"reply "*|"forward "*|\
+    "shoot "*|"drop "*|*" reply to "*)
+      return 1 ;;
+  esac
+
   case "$lower" in
     *"brief me"*|*"my briefing"*|*"what's my day"*|*"whats my day"*|*"how's my day"*)
       printf 'readback\tbriefing\n' ;;
@@ -527,12 +603,40 @@ _try_ask() {
 }
 
 # parse_intent "<transcript>" -> intent <TAB> arg1 <TAB> arg2
+# Speech is not writing. It comes with "um", with false starts, and with
+# the same word twice while you think - and every one of those made the
+# rules miss a sentence they would otherwise have matched.
+#
+# Deliberately conservative: only fillers that are never content on their
+# own. "Like" and "right" are left alone ("play something like jazz",
+# "turn right"), and so is anything that would change what was asked for.
+_scrub_disfluency() {
+  printf '%s' "$1" | sed -E '
+    # Fillers, wherever they appear.
+    s/(^|[[:space:],])(um+|uh+|erm+|er+|hmm+|mmm+)([[:space:],]|$)/\1/Ig
+    s/(^|[[:space:]])(you know|i mean|sort of|kind of|kinda|basically)[[:space:],]+/\1/Ig
+    # A false start: "can you, can you send" - the same words again.
+    s/(^|[[:space:]])([a-z]+ [a-z]+)[[:space:],]+\2([[:space:]]|$)/\1\2\3/Ig
+    # A stutter, or a word said twice: "the the", "s-s-send".
+    s/(^|[[:space:]])([a-z]+)([[:space:],]+\2)+([[:space:]]|$)/\1\2\4/Ig
+    s/(^|[[:space:]])([a-z])[- ]\2[- ]?([a-z]+)/\1\3/Ig
+    # Trailing throat-clearing.
+    s/[[:space:],]+(please|thanks|thank you)[[:space:].!?]*$//I
+    s/^[[:space:],]*(so|ok|okay|right|well|yeah|and)[[:space:],]+//I
+    s/[[:space:]]+/ /g
+    s/^[[:space:]]+|[[:space:]]+$//g
+  '
+}
+
 parse_intent() {
   local text
   text="$(printf '%s' "$1" \
     | tr '()[]' '    ' \
     | sed -E 's/(saying|says|say|tell(ing)? (them|him|her))[[:space:]]*:/\1/Ig' \
     | sed -E 's/^[[:space:]]+|[[:space:]]+$//g; s/[[:space:]]+/ /g')"
+  [ -z "$text" ] && { printf 'none\n'; return 0; }
+
+  text="$(_scrub_disfluency "$text")"
   [ -z "$text" ] && { printf 'none\n'; return 0; }
 
   # Drop the wake word if the recognizer kept it.
@@ -558,6 +662,7 @@ parse_intent() {
   _try_message "$text"     && return 0
   _try_claude "$text"      && return 0
   _try_mail_reply "$text"  && return 0
+  _try_mail_send "$text"   && return 0
   _try_call "$text"        && return 0
   _try_system "$text"      && return 0
   # The rules have had their go. Anything they could not place is handed
