@@ -208,10 +208,16 @@
 #   WELCOME_TTS=openai       use OpenAI, reusing your existing key
 #   WELCOME_TTS=elevenlabs   ElevenLabs only
 #   WELCOME_TTS=say          no network at all
+# Strip the commas before the voice sees them. They are punctuation for a
+# reader; a speech model treats them as a full stop, and the constant
+# pausing is most of what makes a synthetic voice sound synthetic. Set to
+# 0 to hand the voice exactly what is on screen.
+: "${WELCOME_TIGHTEN_SPEECH:=1}"
+
 : "${WELCOME_OPENAI_VOICE:=nova}"
 : "${WELCOME_OPENAI_TTS_MODEL:=gpt-4o-mini-tts}"
 # Delivery notes, for the models that accept them. Empty is fine.
-: "${WELCOME_OPENAI_TTS_INSTRUCTIONS:=Speak with calm confidence, like a capable assistant. Natural pace, no rising question intonation at the end of statements.}"
+: "${WELCOME_OPENAI_TTS_INSTRUCTIONS:=Speak with calm confidence, like a capable assistant who is already halfway through the task. Keep phrases connected and do not pause between them; run clauses together the way people do in conversation. Brisk, even pace. No rising intonation at the end of statements.}"
 
 : "${ORBIT_SLOT_TTL_SECONDS:=120}"
 

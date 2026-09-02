@@ -172,6 +172,8 @@ eleven_synthesize() {
   local text="$1" out="$2"
   local key voice code attempt
 
+  text="$(speech_pace "$text")"
+
   key="$(eleven_api_key)" || return 1
   voice="$(eleven_voice_id)" || return 1
 

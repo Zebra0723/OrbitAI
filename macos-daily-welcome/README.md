@@ -142,6 +142,11 @@ daily-welcome --use-voice nova              pick one
 daily-welcome --test-voice                  hear it, and see which said it
 ```
 
+Commas are stripped before the text reaches the voice. A comma is
+punctuation for a reader; a speech model treats it as a full stop, and the
+constant pausing is most of what makes a synthetic voice sound synthetic.
+What you see on screen keeps them. `WELCOME_TIGHTEN_SPEECH=0` turns it off.
+
 OpenAI reuses the key already set for understanding what you say, so
 switching costs nothing extra. Its voices are `alloy ash ballad coral echo
 fable nova onyx sage shimmer`; `nova`, `coral` and `shimmer` are the

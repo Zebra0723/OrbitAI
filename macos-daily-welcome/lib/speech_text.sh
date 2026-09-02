@@ -128,6 +128,27 @@ speech_clean() {
     | cut -c1-120
 }
 
+# Punctuation for the ear, not the page.
+#
+# A comma tells a reader to breathe and tells a speech model to STOP, and
+# the hosted ones stop hard - "Welcome back, Arjun. Good morning, sir." is
+# three sentences of content and five pauses, which is most of what makes
+# a synthetic voice sound synthetic. The text you read keeps its commas;
+# the text the voice is handed does not.
+#
+# Only the ones that buy nothing aloud are removed. A comma between digits
+# stays (1,000), and full stops stay, because the pause at the end of a
+# sentence is the one a person actually makes.
+speech_pace() {
+  [ "$WELCOME_TIGHTEN_SPEECH" = "1" ] || { printf '%s' "$1"; return 0; }
+  printf '%s' "$1" \
+    | sed -E 's/,([^0-9])/\1/g; s/,$//' \
+    | sed -E 's/ +[-–—] +/ /g' \
+    | sed -E 's/\.\.\.+/ /g' \
+    | sed -E 's/;/./g' \
+    | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//'
+}
+
 # Sentence case. The briefing is assembled from fragments, and a voice
 # reading "three reminders due today" as a sentence opener sounds like it
 # lost its place.
