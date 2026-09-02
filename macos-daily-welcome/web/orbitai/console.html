@@ -31,8 +31,10 @@
       Nothing about your assistant is stored here, and no request passes
       through this site.</p>
     <div class="say">
-      <input type="text" id="bridgeUrl" placeholder="http://127.0.0.1:7717">
-      <input type="password" id="bridgeToken" placeholder="pairing token">
+      <input type="text" id="bridgeUrl" aria-label="Bridge address"
+             placeholder="http://127.0.0.1:7717">
+      <input type="password" id="bridgeToken" aria-label="Pairing token"
+             placeholder="pairing token">
       <button data-act="pair">Connect</button>
     </div>
     <pre id="pairOut"></pre>

@@ -571,14 +571,15 @@ the interpretation without running it.
 ## Tests
 
 ```
-tests/run              everything, about four seconds
+tests/run              everything, about ten seconds
 tests/run intents      just the suites whose names match
 daily-welcome --test   the same thing, from anywhere
 ```
 
 No network, no keys, no Mac: everything runs against a throwaway state
 directory with the rules-only parser, so it is quick enough to run without
-thinking about it. Every case in there is something that actually went
+thinking about it. The website is driven in a real browser when Playwright
+is installed, and skipped with a note when it is not. Every case in there is something that actually went
 wrong once - `"did the pain go away?"` used to close the microphone, and
 `"set a timer for two hours"` used to run for two minutes. `tests/README.md`
 covers what each suite protects and how to add one.

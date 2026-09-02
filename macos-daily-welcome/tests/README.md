@@ -1,15 +1,23 @@
 # Tests
 
 ```
-tests/run              everything, about four seconds
+tests/run              everything, about ten seconds
 tests/run intents      just the suites whose names match
 daily-welcome --test   the same thing, from anywhere
 ```
 
 No network, no API keys, no Mac. Every test runs against a throwaway
 state directory with `ORBIT_NLU=rules`, so nothing here touches your real
-Orbit or reaches a model. That is deliberate: a test suite only earns its
-keep if it is quick enough to run without thinking about it.
+Orbit or reaches a model, and the browser suite is cut off from the
+network entirely. That is deliberate: a test suite only earns its keep if
+it is quick enough to run without thinking about it.
+
+The one optional part is `web`, which needs Playwright and a copy of
+Chromium. Without them it says so and everything else still runs:
+
+```
+npm install -g playwright && npx playwright install chromium
+```
 
 Exit status is 0 when everything passes, 1 when something does not, 2 when
 the name you gave matches no suite.
@@ -30,6 +38,7 @@ the name you gave matches no suite.
 | `plans` | `orbit plan` and `orbit run` agree on the field names |
 | `prompts` | every prompt reaches its own last line |
 | `sourcing` | every function called is one that exists and is loaded |
+| `web` | every page and control, in a real browser |
 
 ## Writing one
 
@@ -49,8 +58,10 @@ succeeds "what this proves" some-command --with args
 Suites are sourced into the runner's own shell, so give local variables
 names nobody else would pick.
 
-A Python suite is `tests/<name>.py`, run on its own, printing failures to
-stdout and ending with a line `TALLY <passed> <failed>`.
+A Python suite is `tests/<name>.py` and a Node one `tests/<name>.mjs`,
+each run on its own, printing failures to stdout and ending with a line
+`TALLY <passed> <failed>`. A suite that reports `TALLY 0 0` is treated as
+skipped rather than passed.
 
 ## The rule
 

@@ -73,6 +73,26 @@ async function api(path, body) {
   return response.json();
 }
 
+// One settings row, drawn the same way on every page.
+//
+// The label used to be a span sitting next to the control and nothing
+// more, so a screen reader announced "edit text, blank" for every setting
+// on the page. aria-label ties the two together. Both pages drew their
+// own near-identical copy of this; now there is one.
+function settingRow(setting) {
+  const name = esc(setting.label);
+  const control = setting.kind === "toggle"
+    ? `<button class="switch" role="switch" aria-label="${name}"
+               aria-checked="${setting.value === "1"}"
+               data-act="toggle" data-arg="${esc(setting.key)}"></button>`
+    : `<input type="${setting.kind === "number" ? "number" : "text"}" step="0.05"
+              aria-label="${name}" value="${esc(setting.value)}"
+              data-change="save" data-arg="${esc(setting.key)}">`;
+  return `<div class="row"><div><span>${name}</span>
+    <span class="help">${esc(setting.help)}</span></div>
+    <div class="control">${control}</div></div>`;
+}
+
 function esc(value) {
   return String(value ?? "").replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));

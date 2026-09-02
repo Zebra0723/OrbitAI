@@ -67,12 +67,21 @@ for f in ${files[@]+"${files[@]}"}; do
          "$(( (PASS - _run_before_pass) + (FAIL - _run_before_fail) ))"
 done
 
-# The Python suites run on their own and report a tally at the end.
-for f in "$HERE"/*.py; do
+# The Python and Node suites run on their own and report a tally at the end.
+for f in "$HERE"/*.py "$HERE"/*.mjs; do
   [ -f "$f" ] || continue
-  _run_name="$(basename "$f" .py)"
+  _run_name="$(basename "$(basename "$f" .py)" .mjs)"
   [ $# -gt 0 ] && ! printf '%s\n' "$@" | grep -qF "$_run_name" && continue
-  _run_out="$(cd "$HERE/.." && python3 "$f" 2>&1)"
+  case "$f" in
+    *.mjs)
+      if command -v node >/dev/null 2>&1; then
+        _run_out="$(cd "$HERE/.." && node "$f" 2>&1)"
+      else
+        printf '  skip  %-14s node is not installed\n' "$_run_name"
+        continue
+      fi ;;
+    *) _run_out="$(cd "$HERE/.." && python3 "$f" 2>&1)" ;;
+  esac
   _run_tally="$(printf '%s' "$_run_out" | grep '^TALLY ' | tail -1)"
   _run_pass="$(printf '%s' "$_run_tally" | cut -d' ' -f2)"
   _run_fail="$(printf '%s' "$_run_tally" | cut -d' ' -f3)"
@@ -86,7 +95,12 @@ for f in "$HERE"/*.py; do
   PASS=$((PASS + _run_pass))
   FAIL=$((FAIL + _run_fail))
   [ "$_run_fail" -gt 0 ] && FAILURES+=("$(printf '%s' "$_run_out" | grep -v '^TALLY ')")
-  report "$_run_name" "$_run_fail" "$((_run_pass + _run_fail))"
+  if [ "$((_run_pass + _run_fail))" -eq 0 ]; then
+    printf '  skip  %-14s %s\n' "$_run_name" \
+      "$(printf '%s' "$_run_out" | grep -m1 'skipped' | sed 's/.*skipped - //')"
+  else
+    report "$_run_name" "$_run_fail" "$((_run_pass + _run_fail))"
+  fi
 done
 
 echo

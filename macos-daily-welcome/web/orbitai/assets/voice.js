@@ -14,16 +14,8 @@ async function load() {
 window.onConnected = () => load().catch((error) => out("voiceOut", explain(error)));
 
 function draw(target, keys) {
-  $(target).innerHTML = state.settings.filter(s => keys.includes(s.key)).map((setting) => {
-    const control = setting.kind === "toggle"
-      ? `<button class="switch" role="switch" aria-checked="${setting.value === "1"}"
-                 data-act="toggle" data-arg="${esc(setting.key)}"></button>`
-      : `<input type="${setting.kind === "number" ? "number" : "text"}" step="0.05"
-                value="${esc(setting.value)}" data-change="save" data-arg="${esc(setting.key)}">`;
-    return `<div class="row"><div><span>${esc(setting.label)}</span>
-      <span class="help">${esc(setting.help)}</span></div>
-      <div class="control">${control}</div></div>`;
-  }).join("");
+  $(target).innerHTML =
+    state.settings.filter(s => keys.includes(s.key)).map(settingRow).join("");
 }
 
 on("set-key", () => setKey());

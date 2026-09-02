@@ -53,16 +53,7 @@ function drawHeard() {
 }
 
 function drawSettings() {
-  $("settings").innerHTML = state.settings.map((setting) => {
-    const control = setting.kind === "toggle"
-      ? `<button class="switch" role="switch" aria-checked="${setting.value === "1"}"
-                 data-act="toggle" data-arg="${esc(setting.key)}"></button>`
-      : `<input type="${setting.kind === "number" ? "number" : "text"}" step="0.05"
-                value="${esc(setting.value)}" data-change="save" data-arg="${esc(setting.key)}">`;
-    return `<div class="row"><div><span>${esc(setting.label)}</span>
-      <span class="help">${esc(setting.help)}</span></div>
-      <div class="control">${control}</div></div>`;
-  }).join("");
+  $("settings").innerHTML = state.settings.map(settingRow).join("");
 }
 
 on("listen", (action) => listen(action));
