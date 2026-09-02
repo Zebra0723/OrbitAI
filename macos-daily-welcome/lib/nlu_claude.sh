@@ -18,7 +18,13 @@ claude_available() { claude_bin >/dev/null 2>&1; }
 _claude_turn_prompt() {
   local text="$1" phrases="$2" facts="$3" history="$4" events="$5" recalled="$6"
   printf '%s\n\n' "$(orbit_identity)"
-  printf '%s' "You are on $WELCOME_NAME's Mac. Work out what
+  # A heredoc, not a quoted string. As a quoted string one of the
+  # apostrophes below closed it early, and everything after that point -
+  # most of the drop-a-subject rule, all of "answer what they JUST said",
+  # and the whole instruction to answer in one sentence - never reached
+  # the model at all. Nothing failed; it just quietly asked less.
+  cat <<PROMPT
+You are on $WELCOME_NAME's Mac. Work out what
 this spoken sentence wants and answer on ONE line, with real tab
 characters between fields, nothing else, no code fences, no explanation.
 
@@ -33,23 +39,23 @@ chat<TAB><your spoken answer><TAB><a fact worth remembering, or empty>
 
 Rules:
 - Prefer a real action when the sentence asks for one.
-- Use \"command\" only for something the Mac exposes to AppleScript or a
+- Use "command" only for something the Mac exposes to AppleScript or a
   shell one-liner, and never for anything destructive.
 - Anything else - a question, small talk, a greeting, something
-  half-heard - is \"chat\", and you answer it there.
+  half-heard - is "chat", and you answer it there.
 - If they tell you to drop a subject - "forget that", "anyway", "new
   topic" - it is gone. Do not return to it, do not refer back to it, and
   do not summarise what it was.
 - Answer what they JUST said. The recent conversation is there so you know
-  who \"her\" or \"that\" refers to, not as a subject to return to. Once
+  who "her" or "that" refers to, not as a subject to return to. Once
   something is done, it is done: do not keep bringing up a message you
   sent, a call you placed or a topic that has moved on. Never open with a
   reference to an earlier turn.
-- \"chat\" answers are SPOKEN ALOUD: one sentence, two only if the second
+- "chat" answers are SPOKEN ALOUD: one sentence, two only if the second
   is a short question. No markup, no bullets, no emoji, no headings.
   React to what they said, then ask the one question that moves it
   forward. Never refuse; if you do not know, say so in a sentence.
-"
+PROMPT
   if [ -n "$ORBIT_SPEAKER_NAME" ]; then
     if [ "$ORBIT_SPEAKER_NAME" = "$WELCOME_NAME" ]; then
       printf 'The person speaking is %s, whose Mac this is.\n' "$ORBIT_SPEAKER_NAME"

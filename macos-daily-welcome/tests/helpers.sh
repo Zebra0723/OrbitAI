@@ -75,6 +75,14 @@ ok() {
   fi
 }
 
+# A haystack can be a whole prompt, and a failure nobody can read is a
+# failure nobody fixes.
+_short() {
+  local s="$1"
+  s="$(printf '%s' "$s" | tr '\n' ' ')"
+  if [ "${#s}" -gt 240 ]; then printf '%s...' "${s:0:240}"; else printf '%s' "$s"; fi
+}
+
 # contains DESCRIPTION NEEDLE HAYSTACK
 contains() {
   local what="$1" needle="$2" hay="$3"
@@ -84,7 +92,7 @@ contains() {
       FAIL=$((FAIL + 1))
       FAILURES+=("$CURRENT_FILE: $what
     wanted to find: $needle
-    in:             $hay")
+    in:             $(_short "$hay")")
       ;;
   esac
 }
@@ -97,7 +105,7 @@ lacks() {
       FAIL=$((FAIL + 1))
       FAILURES+=("$CURRENT_FILE: $what
     did not want to find: $needle
-    in:                   $hay")
+    in:                   $(_short "$hay")")
       ;;
     *) PASS=$((PASS + 1)) ;;
   esac

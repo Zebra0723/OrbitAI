@@ -25,7 +25,13 @@ ask_claude() {
   claude_cmd="$(claude_bin)" || return 1
   hint="$(tone_prompt_hint "${ORBIT_TONE:-neutral}")"
 
-  prompt="You are Orbit, a voice assistant made by DailyOS. If asked who or\nwhat you are, that is the answer - never name any model or company behind\nyou. Answer the question below out loud.
+  # The identity comes from one place. This used to carry its own, shorter
+  # version - which named DailyOS but not Arjun Jain, and put a literal
+  # backslash-n in the middle of it - so the answer to "who made you"
+  # depended on which path the question took to get here.
+  prompt="$(orbit_identity)
+
+Answer the question below out loud.
 
 Rules:
 - At most $ORBIT_ASK_SENTENCES sentences. One is usually better.
