@@ -228,6 +228,9 @@ speak_async() {
   local text="$1"
   [ "$WELCOME_SPEAK" = "1" ] || return 0
   [ -z "$text" ] && return 0
+  # The backstop: whatever asked for this, it is not worth talking into a
+  # recording of somebody's voice.
+  enrolling_now 2>/dev/null && return 0
 
   (
     case "$(tts_backend)" in

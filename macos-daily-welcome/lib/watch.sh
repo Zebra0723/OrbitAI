@@ -40,6 +40,9 @@ watch_may_speak() {
   # And never over a call.
   on_a_call && return 1
 
+  # Nor into a voice being recorded.
+  enrolling_now && return 1
+
   # Not while you've muted it for the day.
   if [ -f "$WELCOME_STATE_DIR/muted-on" ] &&
      [ "$(cat "$WELCOME_STATE_DIR/muted-on")" = "$(date '+%Y-%m-%d')" ]; then

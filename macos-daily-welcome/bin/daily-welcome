@@ -829,6 +829,9 @@ if [ "$FROM_AGENT" -eq 1 ] && [ "$FORCE" -ne 1 ]; then
   if on_a_call; then
     exit 0   # you're on a call; the greeting keeps until you aren't
   fi
+  if enrolling_now; then
+    exit 0   # a voice is being recorded; do not talk into it
+  fi
 fi
 
 # One greeting at a time, even if the agent and a manual run collide.

@@ -1080,13 +1080,26 @@ case "${1:-}" in
           exit 1
         fi
         wav="$(speaker_utterance)"
-        # Enrolling happens by TALKING, reusing the audio the listener
-        # already keeps. That way there is no recorder to install, and
-        # the sample is captured through the same microphone and the same
-        # path as every command it will later be matched against.
+        flag="$WELCOME_STATE_DIR/enrolling"
+
+        # Orbit says NOTHING during this. It used to speak the prompt,
+        # which is the one moment it must not: its own voice lands in the
+        # rolling buffer and ends up inside the sample that is supposed to
+        # characterise yours. The flag also stops it acting on anything it
+        # hears, so a sentence said for the recording is not also taken as
+        # an instruction and answered.
+        hush 2>/dev/null
+        mkdir -p "$WELCOME_STATE_DIR"
+        : > "$flag"
+        # Whatever happens next, do not leave it deaf.
+        trap 'rm -f "$flag"' EXIT INT TERM
+
         before="$(stat -f %m "$wav" 2>/dev/null || echo 0)"
-        speak_async "Say a sentence or two, $name, so I know your voice."
-        echo "Listening. Say a couple of sentences - press Option-Space first if it is not already awake."
+        echo
+        echo "Recording. Say a couple of sentences in your ordinary voice -"
+        echo "what you had for breakfast, what you are working on, anything."
+        echo "It will not answer, and it is not listening for the wake word."
+        echo
         waited=0
         while [ "$waited" -lt 45 ]; do
           sleep 1; waited=$((waited + 1))
@@ -1094,10 +1107,14 @@ case "${1:-}" in
           [ "$now" != "$before" ] && [ -s "$wav" ] && break
         done
         if [ "$now" = "$before" ]; then
-          echo "Heard nothing in forty-five seconds. Is it listening? orbit listen status" >&2
+          rm -f "$flag"
+          echo "Heard nothing in forty-five seconds." >&2
+          echo "Is it listening at all?  orbit listen status" >&2
           exit 1
         fi
         sleep 1   # let the writer finish
+        rm -f "$flag"
+        trap - EXIT INT TERM
         if out="$(speaker_run enroll "$name" "$wav" 2>&1)"; then
           echo "Enrolled $name ($(printf '%s' "$out" | cut -f2) $(printf '%s' "$out" | cut -f2 | awk '{print ($1==1)?"sample":"samples"}'))."
           echo "Do it two or three more times, on different days, for a better match."

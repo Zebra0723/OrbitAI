@@ -139,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         listener.pausePath = stateDir + "/paused"
         listener.callPath = stateDir + "/on-call"
         listener.utterancePath = stateDir + "/utterance.wav"
+        listener.enrollPath = stateDir + "/enrolling"
         listener.keepUtteranceAudio = (shellConfig("speaker_id") ?? "0") != "0"
         listener.pauseOnCall = (shellConfig("pause_on_call") ?? "1") != "0"
         CallWatch.ignoredBundleIDs = Set((shellConfig("call_ignore") ?? "")

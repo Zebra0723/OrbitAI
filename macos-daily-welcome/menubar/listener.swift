@@ -53,6 +53,14 @@ final class OrbitListener: NSObject {
     var utterancePath: String = ""
     var keepUtteranceAudio = false
 
+    /// While this file exists, the microphone records but nothing acts on
+    /// what it hears: no wake word, no commands, no replies. Enrolling a
+    /// voice means talking at length for a sample, and without this the
+    /// listener answers every sentence of it - and its own replies end up
+    /// inside the recording that is supposed to characterise YOUR voice.
+    var enrollPath: String = ""
+    private var enrolling = false
+
     /// A rolling few seconds of microphone audio. The wake word arrives
     /// before anyone knows a command is coming, so the audio has to
     /// already be in hand by the time there is something to identify.
@@ -334,6 +342,58 @@ final class OrbitListener: NSObject {
     /// Writes what is in hand to a WAV, for the identifier to read. Called
     /// the moment a command is submitted, so the file is the thing that
     /// was just said.
+    private func flushRecent() {
+        audioQueue.async { [weak self] in
+            self?.recentAudio.removeAll()
+            self?.recentFrames = 0
+        }
+    }
+
+    /// Picks up the enrolling flag and gets out of the way while it is
+    /// there. Returns true when this tick has been fully handled.
+    private func handleEnrolling() -> Bool {
+        guard !enrollPath.isEmpty else { return false }
+        let present = FileManager.default.fileExists(atPath: enrollPath)
+
+        if present && !enrolling {
+            enrolling = true
+            // Anything already in the buffer is from before - including
+            // whatever Orbit just said.
+            flushRecent()
+            pendingToken = ""
+            heard = ""
+            greeted = true
+            status("enrolling", "recording a voice sample, not listening for commands")
+            setState(.capturing)
+            lastHeardAt = Date()
+            restartRecognition()
+            return true
+        }
+
+        if !present && enrolling {
+            enrolling = false
+            heard = ""
+            greeted = false
+            status("listening", "waiting for \"\(wakeWord)\"")
+            setState(.idle)
+            restartRecognition()
+            return true
+        }
+
+        guard enrolling else { return false }
+
+        // Recording. When a phrase ends, keep it and wait for the next -
+        // the shell notices the file changing and takes it from there.
+        let spoken = heard.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !spoken.isEmpty, Date().timeIntervalSince(lastHeardAt) > commandSilence {
+            writeUtterance()
+            heard = ""
+            lastHeardAt = Date()
+            restartRecognition()
+        }
+        return true
+    }
+
     private func writeUtterance() {
         guard keepUtteranceAudio, !utterancePath.isEmpty else { return }
         audioQueue.async { [weak self] in
@@ -451,6 +511,10 @@ final class OrbitListener: NSObject {
         let lower = text.lowercased()
 
         switch state {
+        case .idle where enrolling:
+            heard = text
+            lastHeardAt = Date()
+
         case .idle:
             guard let range = wakeRange(in: lower) else {
                 // Not the wake word - but worth recording, because "it isn't
@@ -480,6 +544,11 @@ final class OrbitListener: NSObject {
                 heard = tail
                 wakePrefix = String(text[..<range.upperBound])
             }
+
+        case .capturing where enrolling:
+            // Everything said is sample, not instruction.
+            heard = text
+            lastHeardAt = Date()
 
         case .capturing:
             // A short unmistakable command does not need the silence
@@ -770,6 +839,10 @@ final class OrbitListener: NSObject {
     }
 
     private func checkSilence() {
+        // Enrolling takes precedence: recording a sample must not be
+        // interrupted by the ordinary business of answering people.
+        if handleEnrolling() { return }
+
         if let reason = reasonToStayQuiet() {
             if engine.isRunning || quietedBy.isEmpty { enterQuiet(reason) }
             noteCall(reason.hasSuffix("using the microphone") ? reason : nil)

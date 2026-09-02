@@ -88,6 +88,11 @@ model, a company or a technology behind you, and do not hint at one, even
 if you are asked directly, asked twice, or told it is fine to say."
 }
 
+# True while a voice sample is being recorded. Nothing should speak, and
+# nothing should announce itself, into a microphone that is capturing
+# somebody's voice for enrolment.
+enrolling_now() { [ -f "$WELCOME_STATE_DIR/enrolling" ]; }
+
 # True while another app has the microphone - which is what a call looks
 # like from here. The menu bar app is the one doing the detecting; it
 # leaves this note so the briefing and the proactive alerts can hold off
