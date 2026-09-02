@@ -135,7 +135,15 @@
 #
 # daily-welcome --mac-voices shows what is installed and how to get more.
 : "${WELCOME_SPEAK_RATE:=175}"
-: "${WELCOME_VOICE:=}"
+# "system" means whatever you have set in System Settings > Accessibility
+# > Spoken Content > System Voice, and that is the default on purpose:
+# it is the only way to reach the Siri voices, which are neural and are
+# far and away the best thing `say` can produce. `say -v` cannot name
+# one, so the only route to them is to not name a voice at all.
+#
+# Set a name here to override it - daily-welcome --use-voice "Ava (Premium)" -
+# or leave it empty to fall back to searching WELCOME_VOICES.
+: "${WELCOME_VOICE:=system}"
 : "${WELCOME_VOICES:=Ava (Premium)|Zoe (Premium)|Allison (Premium)|Nicky (Enhanced)|Ava (Enhanced)|Zoe (Enhanced)|Samantha (Enhanced)|Ava|Zoe|Allison|Nicky|Samantha|Susan}"
 
 # ------------------------------------------------------- voice commands

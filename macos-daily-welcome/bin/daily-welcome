@@ -616,13 +616,6 @@ case "$MODE" in
       echo; echo "Hear it: daily-welcome --test-voice"; exit 0
     fi
 
-    if openai_tts_available 2>/dev/null; then
-      echo "  OpenAI voices are working. Expressive, and cheap rather than free."
-      "$0" --voice-provider openai >/dev/null 2>&1
-      echo "  Using it."
-      echo; echo "Hear it: daily-welcome --test-voice"; exit 0
-    fi
-
     if piper_available 2>/dev/null; then
       echo "  Piper is set up: neural, local, free, no account."
       "$0" --voice-provider piper >/dev/null 2>&1

@@ -44,6 +44,11 @@ welcome_load_user_config
 . "$ROOT/lib/slots.sh"
 . "$ROOT/lib/speaker.sh"
 
+# Who is speaking, once it has been worked out. Declared here because
+# save_plan records it and save_plan can be reached before anything has
+# asked, and under set -u an unset variable is not an empty one.
+SPEAKER=""
+
 PLAN_DIR="$WELCOME_STATE_DIR/plans"
 mkdir -p "$PLAN_DIR" 2>/dev/null
 
@@ -117,6 +122,8 @@ prune_plans() {
 
 save_plan() {
   local token="$1"; shift
+  # Who asked, so the yes can be required to come from the same person.
+  set -- "$@" "BY=${SPEAKER:-}"
   # One field per line, so a value containing a newline would split into
   # two fields and the second would be read as a key nobody knows. Voice
   # does not produce newlines, but a body that came from a model or a
@@ -128,6 +135,44 @@ save_plan() {
 }
 
 # --- planning --------------------------------------------------------------
+
+# Who is talking, and whether to take orders from them.
+#
+# Sets SPEAKER. Returns 1 having already spoken the refusal, so every
+# caller is one `speaker_check || exit 0` away from being safe.
+#
+# This lived inline in `plan` and nowhere else, which left the second
+# half of every turn wide open: `orbit run` is what a spoken "yes"
+# reaches, and it never asked who had said it. Somebody else in the room
+# could confirm your message while you were still deciding.
+speaker_check() {
+  SPEAKER=""
+  speaker_enabled || return 0
+
+  local line
+  line="$(speaker_identify 2>/dev/null)" || line=""
+  SPEAKER="$(printf '%s' "$line" | cut -f1)"
+
+  if [ "$(printf '%s' "$line" | cut -f3)" = "banned" ]; then
+    memory_log_event refused "Refused a command from $SPEAKER"
+    emit "$(speaker_refusal_banned)" false "" true
+    return 1
+  fi
+
+  # An unrecognised voice is turned away - but only when there is
+  # actually something to recognise and somebody to recognise it
+  # against. Being unable to VERIFY is not the same as failing
+  # verification: if the recording is missing or the recogniser is
+  # broken, letting the command through is the right error to make. The
+  # alternative is a locked assistant with no way back in.
+  if [ -z "$SPEAKER" ] && [ "$ORBIT_SPEAKER_REQUIRE_ENROLLED" = "1" ] &&
+     speaker_have_audio && [ "$(speaker_enrolled_count)" -gt 0 ]; then
+    memory_log_event refused "Turned away a voice it did not recognise"
+    emit "$(speaker_refusal_unknown)" false "" true
+    return 1
+  fi
+  return 0
+}
 
 plan_message() {
   local who="$1" body="$2" handle token
@@ -447,13 +492,19 @@ run_plan() {
     return 0
   fi
 
+  # A spoken "yes" arrives here, and until now nobody asked who had said
+  # it. Anyone in the room could confirm somebody else's message while
+  # they were still deciding. The plan file is deliberately left alone: a
+  # stranger answering for you must not also cancel what you asked for.
+  speaker_check || return 0
+
   # Every key save_plan can write has to be read back here. ADDRESS and
   # SUBJECT were not, so confirming an email reached "$ADDRESS" as an
   # unbound variable and, under set -u, took the whole run down without
   # sending anything and without saying why. tests/plans.test.sh now
   # compares the two lists.
   local INTENT="" HANDLE="" WHO="" BODY="" DIR="" TASK="" REPO="" ACTION="" ARG=""
-  local ADDRESS="" SUBJECT=""
+  local ADDRESS="" SUBJECT="" BY=""
   while IFS= read -r line; do
     case "$line" in
       INTENT=*)  INTENT="${line#INTENT=}" ;;
@@ -467,8 +518,20 @@ run_plan() {
       ARG=*)     ARG="${line#ARG=}" ;;
       ADDRESS=*) ADDRESS="${line#ADDRESS=}" ;;
       SUBJECT=*) SUBJECT="${line#SUBJECT=}" ;;
+      BY=*)      BY="${line#BY=}" ;;
     esac
   done < "$file"
+
+  # And it has to be the same person. Two enrolled people in one room is
+  # the ordinary case, not an attack: one asks, the other happens to say
+  # "yes" to something of their own, and the first one's message goes.
+  # Only checked when we know both names - an unknown speaker has already
+  # been dealt with above, or the feature is off.
+  if [ -n "$BY" ] && [ -n "$SPEAKER" ] && [ "$BY" != "$SPEAKER" ]; then
+    memory_log_event refused "$SPEAKER tried to confirm something $BY asked for"
+    emit "$BY asked for that, not you. $BY can say yes to it." false "" true
+    return 0
+  fi
 
   case "$INTENT" in
     message)
@@ -548,33 +611,7 @@ case "${1:-}" in
 
     plan_started="$(date '+%s')"
 
-    # Who is talking. Costs nothing when the feature is off, and an
-    # unrecognised voice is the ordinary case rather than a failure - it
-    # simply means the reply is not addressed to anyone in particular.
-    SPEAKER=""
-    if speaker_enabled; then
-      speaker_line="$(speaker_identify 2>/dev/null)" || speaker_line=""
-      SPEAKER="$(printf '%s' "$speaker_line" | cut -f1)"
-
-      if [ "$(printf '%s' "$speaker_line" | cut -f3)" = "banned" ]; then
-        memory_log_event refused "Refused a command from $SPEAKER"
-        emit "$(speaker_refusal_banned)" false "" true
-        exit 0
-      fi
-
-      # An unrecognised voice is turned away - but only when there is
-      # actually something to recognise and somebody to recognise it
-      # against. Being unable to VERIFY is not the same as failing
-      # verification: if the recording is missing or the recogniser is
-      # broken, letting the command through is the right error to make.
-      # The alternative is a locked assistant with no way back in.
-      if [ -z "$SPEAKER" ] && [ "$ORBIT_SPEAKER_REQUIRE_ENROLLED" = "1" ] &&
-         speaker_have_audio && [ "$(speaker_enrolled_count)" -gt 0 ]; then
-        memory_log_event refused "Turned away a voice it did not recognise"
-        emit "$(speaker_refusal_unknown)" false "" true
-        exit 0
-      fi
-    fi
+    speaker_check || exit 0
     export ORBIT_SPEAKER_NAME="$SPEAKER"
 
     # A question is outstanding, so this sentence is most likely its
@@ -1208,9 +1245,67 @@ case "${1:-}" in
           echo "Nobody has enrolled yet. Start with: orbit voice enroll <name>"
         fi
         ;;
+      refusals)
+        shift
+        howmany="${1:-8}"
+        export ORBIT_SPEAKER_UNKNOWN="" ORBIT_SPEAKER_REFUSAL=""
+        printf 'Unrecognised voices - %s different refusals:\n\n' \
+          "$(speaker_refusal_count unknown)"
+        i=0; while [ "$i" -lt "$howmany" ]; do
+          printf '  %s\n' "$(speaker_refusal_unknown)"; i=$((i + 1))
+        done
+        printf '\nBanned voices - %s different refusals:\n\n' \
+          "$(speaker_refusal_count banned)"
+        i=0; while [ "$i" -lt "$howmany" ]; do
+          printf '  %s\n' "$(speaker_refusal_banned)"; i=$((i + 1))
+        done
+        printf '\nAdd your own, or take the sharp ones out: lib/refusals.txt\n'
+        printf 'One fixed line instead: ORBIT_SPEAKER_UNKNOWN="..."\n'
+        exit 0
+        ;;
       ban|unban|forget)
         action="$1"; shift
         name="${1:-}"
+
+        # "orbit voice ban last" - ban whoever just spoke.
+        #
+        # Banning used to need a NAME, and the voices worth banning are
+        # exactly the ones that have no name: somebody says something in
+        # the room and you want it to stop happening. This enrols the
+        # last thing heard under a label and bans that, in one go, so the
+        # answer to "how do I ban a voice" is not "first enrol it".
+        if [ "$action" = "ban" ] && { [ "$name" = "last" ] || [ "$name" = "that" ]; }; then
+          shift 2>/dev/null || true
+          label="${1:-}"
+          if ! speaker_installed; then
+            echo "Voice recognition isn't set up. Run: daily-welcome --setup-speaker" >&2
+            exit 1
+          fi
+          wav="$(speaker_utterance)"
+          if [ ! -s "$wav" ]; then
+            echo "Nothing has been said for me to ban." >&2
+            echo "The last voice heard is what this bans, and there isn't one yet." >&2
+            exit 1
+          fi
+          # Already known? Then just ban them under the name they have.
+          known="$(speaker_name 2>/dev/null)"
+          if [ -n "$known" ]; then
+            label="$known"
+          else
+            [ -n "$label" ] || label="Unwelcome $(date '+%-d %b %H:%M')"
+            if ! out="$(speaker_run enroll "$label" "$wav" 2>&1)"; then
+              echo "Couldn't keep that voice: $out" >&2; exit 1
+            fi
+          fi
+          if out="$(speaker_run ban "$label" 2>&1)"; then
+            echo "Banned \"$label\" - that voice will be refused from now on."
+            echo "Undo it with: orbit voice unban \"$label\""
+          else
+            echo "$out" >&2; exit 1
+          fi
+          exit 0
+        fi
+
         [ -n "$name" ] || { echo "orbit voice $action <name>" >&2; exit 2; }
         if out="$(speaker_run "$action" "$name" 2>&1)"; then
           case "$action" in
@@ -1223,7 +1318,16 @@ case "${1:-}" in
         fi
         ;;
       *)
-        echo 'orbit voice [enroll <name>|who|list|ban <name>|unban <name>|forget <name>]' >&2
+        cat >&2 <<'USAGE'
+orbit voice enroll <name>     record a voice and learn it
+orbit voice who               who was that last voice
+orbit voice list              everyone enrolled, and who is banned
+orbit voice ban <name>        refuse that person from now on
+orbit voice ban last [label]  refuse whoever just spoke
+orbit voice unban <name>      allow them again
+orbit voice forget <name>     remove them entirely
+orbit voice refusals [n]      what it says to a voice it will not obey
+USAGE
         exit 2 ;;
     esac
     ;;

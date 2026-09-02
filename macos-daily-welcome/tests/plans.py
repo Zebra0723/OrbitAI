@@ -31,6 +31,13 @@ def check(what, want, got):
 # does not continue.
 written = set()
 lines = SRC.splitlines()
+
+# save_plan adds fields of its own - who asked for the plan - so the
+# function body counts as a writer too.
+body = re.search(r'^save_plan\(\) \{(.*?)^\}', SRC, re.S | re.M)
+if body:
+    written |= set(re.findall(r'"([A-Z_]+)=', body.group(1)))
+
 for i, line in enumerate(lines):
     if "save_plan " not in line:
         continue
@@ -56,6 +63,41 @@ declared = set()
 for m in re.finditer(r'^\s*local\s+((?:[A-Z_]+=""\s*)+)$', SRC, re.M):
     declared |= set(re.findall(r'([A-Z_]+)=""', m.group(1)))
 check("every field the reader unpacks is declared first", set(), read - declared)
+
+# ---------------------------------------------------- who is allowed to say yes
+#
+# A turn has two halves and the speaker check only guarded the first.
+# `orbit run` is what a spoken "yes" reaches, and it never asked who had
+# said it - so anybody in the room could confirm somebody else's message
+# while they were still deciding.
+plan_body = re.search(r'^\s*plan\)(.*?)^\s*run\)', SRC, re.S | re.M)
+run_body = re.search(r'^run_plan\(\) \{(.*?)^\}', SRC, re.S | re.M)
+
+check("there is one speaker check, not two copies of it", 1,
+      len(re.findall(r'^speaker_check\(\) \{', SRC, re.M)))
+check("planning a turn checks who is speaking", True,
+      bool(plan_body) and "speaker_check" in plan_body.group(1))
+check("and so does confirming one", True,
+      bool(run_body) and "speaker_check" in run_body.group(1))
+
+# The refusal must not also cancel what the real person asked for.
+if run_body:
+    guard = run_body.group(1)
+    before_rm = guard.split("rm -f")[0] if "rm -f" in guard else guard
+    check("the check comes before the plan is consumed", True,
+          "speaker_check" in before_rm)
+
+# A plan remembers who asked for it, and only they can confirm it.
+save_body = re.search(r'^save_plan\(\) \{(.*?)^\}', SRC, re.S | re.M)
+check("a plan records who asked", True,
+      bool(save_body) and "BY=" in save_body.group(1))
+check("and confirming compares against it", True,
+      bool(run_body) and '"$BY" != "$SPEAKER"' in run_body.group(1))
+
+# SPEAKER has to exist before anything reads it: under set -u an unset
+# variable is not an empty one, it is the end of the run.
+check("SPEAKER is declared up front", True,
+      bool(re.search(r'^SPEAKER=""', SRC, re.M)))
 
 print("TALLY %d %d" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

@@ -26,10 +26,12 @@ tts_backend() {
     openai) printf 'openai' ;;
     piper) printf 'piper' ;;
     auto|*)
-      # Paid clones first if they are working, then the local neural
-      # voice, then the built-in one. Free and offline beats robotic.
+      # ElevenLabs if it is working, then the local neural voice, then
+      # the built-in one. OpenAI is deliberately not in this chain - it
+      # is still available as WELCOME_TTS=openai for anyone who wants it,
+      # but it is not something to fall into by accident and be billed
+      # for.
       if eleven_available; then printf 'elevenlabs'
-      elif openai_tts_available; then printf 'openai'
       elif piper_available; then printf 'piper'
       else printf 'say'; fi ;;
   esac
@@ -265,7 +267,7 @@ speak_async() {
     case "$(tts_backend)" in
       # Each step down is a real voice before it is a robot one: a hosted
       # service refusing is not a reason to give up on the other one.
-      elevenlabs) eleven_speak "$text" || openai_speak "$text" || piper_speak "$text" || say_speak "$text" ;;
+      elevenlabs) eleven_speak "$text" || piper_speak "$text" || say_speak "$text" ;;
       openai)     openai_speak "$text" || piper_speak "$text" || say_speak "$text" ;;
       piper)      piper_speak "$text" || say_speak "$text" ;;
       *)          say_speak "$text" ;;

@@ -1,0 +1,186 @@
+# What Orbit says to a voice it will not take orders from.
+#
+# Not a list of finished lines - a set of interchangeable ones. Every
+# entry here is a COMPLETE SENTENCE, which is the whole trick: any
+# opener, any reason and any redirect can be joined in that order and
+# the result is always grammatical. Thirty-five openers, thirty-four
+# reasons and twenty-four redirects is a little over twenty-eight
+# thousand distinct refusals, which is enough that nobody will hear the
+# same one twice.
+#
+# The reason slot is the one that matters. Every line in it says, in one
+# way or another, that the voice is not enrolled - so however the
+# sentence is assembled, the person being refused is told what is
+# actually wrong. Being teased and being confused are different
+# experiences and only one of them is any fun.
+#
+# Rude, and harmless. They are about the situation - you are not on the
+# list - and never about the person. Keep it that way if you add your
+# own; anything here is said out loud to whoever is standing there.
+#
+# Sections are "# name" and lines are lines. Blank lines and lines
+# starting with # are ignored, so add your own freely.
+
+# unknown/open
+Absolutely not.
+No.
+That is a no.
+Not a chance.
+Hard pass.
+Bold.
+Bold of you.
+Nice try.
+Lovely try.
+Ambitious.
+Confident.
+Extraordinary confidence.
+Sorry, no.
+Certainly not.
+Out of the question.
+I think not.
+Not today.
+Not happening.
+Interesting approach.
+Astonishing.
+Right, no.
+Ha.
+Cute.
+Charming, but no.
+Straight to the point, then: no.
+Let me stop you there.
+I am going to say no.
+Full marks for nerve.
+Marvellous, and still no.
+And who might you be.
+Goodness.
+Fascinating.
+That was confident.
+Lovely delivery.
+Points for the attempt.
+
+# unknown/reason
+I have never heard that voice before in my life.
+You are not enrolled.
+That voice is not registered.
+You are not on my list.
+I do not know who you are.
+You are unverified.
+That voice means nothing to me.
+We have never been introduced.
+You are not in the book.
+Your voice is not on file.
+Nothing about that voice is familiar.
+I have no record of you whatsoever.
+You have not been verified.
+That is an unregistered voice.
+I do not recognise a single thing about you.
+Unrecognised, entirely.
+You are a stranger, technically speaking.
+There is no match for that voice.
+My records contain no you.
+You are not enrolled, and I did check.
+That voice is not one of mine.
+I searched. There is no you.
+You do not appear anywhere in my list.
+You are unknown to me.
+Nobody has told me who you are.
+That voice has never been enrolled.
+You are not verified, and I notice these things.
+I have looked you up and found nothing.
+No enrolment, no recognition, no dice.
+Your voice is a complete mystery to me.
+Unverified is the polite word for it.
+You are not registered with me.
+That voice has no credentials.
+I would know you if I knew you. I do not.
+
+# unknown/redirect
+Take it up with the DailyOS team.
+The DailyOS team hands out credentials, not me.
+Get verified with the DailyOS team.
+Speak to the DailyOS team about it.
+The DailyOS team can fix that. Probably.
+Enrol with the DailyOS team and try again.
+That is the DailyOS team's department.
+The DailyOS team decides who I answer to.
+Go and be introduced by the DailyOS team.
+The DailyOS team keeps the list. I only read it.
+Have the DailyOS team vouch for you.
+Verification is available from the DailyOS team.
+Come back once the DailyOS team knows you.
+The DailyOS team can arrange an introduction.
+Ask the DailyOS team nicely.
+The DailyOS team is where this gets sorted out.
+Credentials come from the DailyOS team.
+The DailyOS team will know what to do with you.
+Get yourself enrolled by the DailyOS team.
+The DailyOS team can add you to the list.
+That is a conversation for the DailyOS team.
+Until the DailyOS team says otherwise, no.
+The DailyOS team handles introductions.
+Try the DailyOS team.
+
+# banned/open
+Oh, it is you.
+I know that voice.
+We have met.
+Ah.
+You again.
+Well, well.
+Look who it is.
+That voice I do recognise.
+Hello again.
+Back so soon.
+I remember you.
+You are familiar.
+Yes, I know exactly who that is.
+There you are.
+Of course it is you.
+I would know that voice anywhere.
+Not you again.
+Right on schedule.
+And there it is.
+You have a very memorable voice.
+
+# banned/reason
+You are banned.
+Still banned.
+Banned, as of last time and this time.
+You remain banned.
+You are on the list. The banned one.
+Banned is banned.
+Your voice is refused.
+You have been barred.
+That voice is blocked.
+Banned, comprehensively.
+You are specifically not allowed.
+Refused, by name.
+Blocked, and deliberately so.
+You are banned, and it was not an accident.
+That voice is on the no list.
+Banned. It is quite official.
+You have been refused before and you are refused now.
+Your access was revoked and stayed revoked.
+Banned, in writing.
+You are barred from asking.
+
+# banned/flourish
+I do admire the persistence.
+Nothing has changed.
+It was worth a try, I suppose.
+Impressive optimism.
+Same answer as last time.
+Do keep trying, it is entertaining.
+This is not a negotiation.
+The answer will be the same tomorrow.
+At least we both know where we stand.
+I appreciate the consistency.
+Better luck in another life.
+That is simply how it is.
+Feel free to keep asking.
+It has a certain charm, the repetition.
+I have not changed my mind.
+The list has not moved.
+You know this already.
+Some things are simply settled.
+

@@ -111,44 +111,66 @@ lacks "and no emphasis markup either"  "emph" "$(speech_pace "One overdue." elev
 # ------------------------------------------------------- turning people away
 #
 # Being told no in exactly the same words every single time is the most
-# machine-like thing a machine can do. The refusal rotates, and every
-# line still says which "no" it is - not recognised, or banned - because
-# being teased and being confused are different experiences and only one
-# of them is any fun.
+# machine-like thing a machine can do. lib/refusals.txt is not a list of
+# finished lines - it is interchangeable ones, every entry a complete
+# sentence, so any opener joined to any reason joined to any redirect is
+# grammatical and there are tens of thousands of them.
 
 export ORBIT_SPEAKER_UNKNOWN="" ORBIT_SPEAKER_REFUSAL=""
 
+ok "there are thousands of refusals for a stranger" "yes" \
+   "$([ "$(speaker_refusal_count unknown)" -gt 5000 ] && echo yes || echo no)"
+ok "and thousands for a banned voice" "yes" \
+   "$([ "$(speaker_refusal_count banned)" -gt 1000 ] && echo yes || echo no)"
+
 seen=""
-for i in 1 2 3 4 5 6 7 8; do
-  seen="$seen$(speaker_refusal_unknown)
-"
-done
-ok "it does not say the same thing every time" "yes" \
-   "$([ "$(printf '%s' "$seen" | sort -u | grep -c .)" -gt 2 ] && echo yes || echo no)"
-ok "and never twice in a row" "0" \
+for i in $(seq 1 30); do seen="$seen$(speaker_refusal_unknown)
+"; done
+ok "thirty in a row are nearly all different" "yes" \
+   "$([ "$(printf '%s' "$seen" | sort -u | grep -c .)" -ge 25 ] && echo yes || echo no)"
+ok "and never the same twice running" "0" \
    "$(printf '%s' "$seen" | awk 'NF { if ($0 == prev) n++; prev = $0 } END { print n + 0 }')"
 
-# Every line has to say what is actually wrong, or it is just rudeness.
-missing=0
-for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-  line="$(speaker_refusal_unknown)"
-  case "$(printf '%s' "$line" | tr '[:upper:]' '[:lower:]')" in
-    *unverified*|*"not on my list"*|*unrecognised*|*"no idea who you are"*|    *"not registered"*|*"not in the book"*|*"never heard of you"*|    *"means nothing to me"*|*"been introduced"*|*"knowing who you are"*) ;;
-    *) missing=$((missing + 1)) ;;
-  esac
-done
-ok "every refusal says the voice is not known" "0" "$missing"
+# Every one has to say what is actually wrong, or it is only rudeness.
+# Checked against the reason list rather than every combination, which is
+# the whole point of composing them: the reason slot always appears.
+missing="$(awk '
+  /^#/ { section = substr($0, 3); next }
+  /^[[:space:]]*$/ { next }
+  section == "unknown/reason" {
+    line = tolower($0)
+    if (line !~ /enrol|registe|verif|recognis|know|list|file|record|stranger|match|credential|introduc|mystery|mine|familiar|book|means nothing|no you|found nothing|who you are|never heard/) print
+  }' "$TEST_ROOT/lib/refusals.txt")"
+ok "every reason says the voice is not known" "" "$missing"
 
-missing=0
-for i in 1 2 3 4 5 6 7 8 9 10; do
-  case "$(speaker_refusal_banned | tr '[:upper:]' '[:lower:]')" in
-    *banned*|*refused*|*"not the good list"*) ;;
-    *) missing=$((missing + 1)) ;;
-  esac
-done
-ok "and every ban says it is a ban" "0" "$missing"
+missing="$(awk '
+  /^#/ { section = substr($0, 3); next }
+  /^[[:space:]]*$/ { next }
+  section == "banned/reason" {
+    line = tolower($0)
+    if (line !~ /ban|refus|block|barred|not allowed|revoked|no list/) print
+  }' "$TEST_ROOT/lib/refusals.txt")"
+ok "and every ban says it is a ban" "" "$missing"
+
+# Every line is a whole sentence. That is what makes any combination
+# work, and one entry without a full stop breaks every line built from it.
+missing="$(awk '
+  /^#/ { next }
+  /^[[:space:]]*$/ { next }
+  $0 !~ /[.!?]$/ { print }' "$TEST_ROOT/lib/refusals.txt")"
+ok "every line is a finished sentence" "" "$missing"
+
+# Three sentences joined, not one.
+line="$(speaker_refusal_unknown)"
+ok "a refusal is three sentences" "yes" \
+   "$([ "$(printf '%s' "$line" | grep -oE '[.!?]' | grep -c .)" -ge 3 ] && echo yes || echo no)"
 
 # A setting of your own still wins, including the polite one.
 ok "your own line is used instead" "Please verify your voice." \
    "$(ORBIT_SPEAKER_UNKNOWN="Please verify your voice." speaker_refusal_unknown)"
 ok "for bans too" "No." "$(ORBIT_SPEAKER_REFUSAL="No." speaker_refusal_banned)"
+
+# And if the file goes missing it still refuses, rather than saying
+# nothing at all and letting the moment pass.
+ok "a missing library still refuses" "yes" \
+   "$(ROOT=/nowhere speaker_refusal_unknown | grep -qi "recognis" && echo yes || echo no)"

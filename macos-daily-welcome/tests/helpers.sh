@@ -54,6 +54,11 @@ ORBIT_LIBS=(common sources messages mail contacts claude_jobs system freeform
             slots speaker)
 
 load_orbit() {
+  # The libraries find their data files relative to ROOT, which the entry
+  # points set before sourcing anything. A test that does not set it gets
+  # a lib looking for /lib/refusals.txt and quietly falling back.
+  ROOT="$TEST_ROOT"
+  export ROOT
   # shellcheck disable=SC1090
   . "$TEST_ROOT/lib/config.sh"
   welcome_load_user_config

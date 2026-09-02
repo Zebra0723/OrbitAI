@@ -32,6 +32,20 @@ walk() {
     printf ' END' ) 2>/dev/null
 }
 
+# OpenAI is no longer in the auto chain - it is still reachable as
+# WELCOME_TTS=openai, but nothing falls into it and gets billed for it.
+out="$(WELCOME_TTS=auto walk)"
+lacks "auto never lands on openai" "openai" "$out"
+body="$(declare -f tts_backend)"
+lacks "and does not even ask it" "openai_tts_available" "$body"
+
+# The system voice is the default, because it is the only way to reach a
+# Siri voice: `say -v` cannot name one, so the route is to name none.
+ok "the system voice is the default" "system" "$WELCOME_VOICE"
+ok "which resolves to naming no voice at all" "" "$(resolve_voice)"
+ok "and a named voice still wins" "Ava (Premium)" \
+   "$(WELCOME_VOICE="Ava (Premium)" resolve_voice)"
+
 for setting in auto say elevenlabs openai piper; do
   out="$(WELCOME_TTS="$setting" walk)"
   contains "WELCOME_TTS=$setting survives being asked" "END" "$out"
