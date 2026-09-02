@@ -1094,6 +1094,34 @@ case "${1:-}" in
         # Whatever happens next, do not leave it deaf.
         trap 'rm -f "$flag"' EXIT INT TERM
 
+        # The app is the only thing that can record, so if it is not
+        # running or not new enough to know about enrolling, say so now
+        # rather than after forty-five seconds of apparent deafness.
+        # -x matches the process NAME exactly. -f matches whole command
+        # lines, which means any shell that merely mentions the path -
+        # including the one asking - counts as a running app.
+        if ! pgrep -x DailyWelcome >/dev/null 2>&1; then
+          rm -f "$flag"
+          echo "The menu bar app isn't running, and it is the part that records." >&2
+          echo "  orbit listen restart" >&2
+          exit 1
+        fi
+
+        status_file="$WELCOME_STATE_DIR/listener-status"
+        waited=0
+        while [ "$waited" -lt 6 ]; do
+          sleep 1; waited=$((waited + 1))
+          [ "$(awk -F'\t' '$1 == "state" { print $2 }' "$status_file" 2>/dev/null)" = "enrolling" ] && break
+        done
+        if [ "$(awk -F'\t' '$1 == "state" { print $2 }' "$status_file" 2>/dev/null)" != "enrolling" ]; then
+          rm -f "$flag"
+          echo "The app did not go into recording mode, which means it is an older" >&2
+          echo "build that does not know how. Rebuild and restart it:" >&2
+          echo "  cd ~/vortex && ./macos-daily-welcome/install.sh" >&2
+          echo "  orbit listen restart" >&2
+          exit 1
+        fi
+
         before="$(stat -f %m "$wav" 2>/dev/null || echo 0)"
         echo
         echo "Recording. Say a couple of sentences in your ordinary voice -"
@@ -1108,8 +1136,17 @@ case "${1:-}" in
         done
         if [ "$now" = "$before" ]; then
           rm -f "$flag"
-          echo "Heard nothing in forty-five seconds." >&2
-          echo "Is it listening at all?  orbit listen status" >&2
+          echo "Recorded nothing in forty-five seconds." >&2
+          echo >&2
+          echo "It WAS in recording mode, so the microphone is the thing to look" >&2
+          echo "at. What the listener last reported:" >&2
+          sed 's/^/  /' "$status_file" 2>/dev/null >&2
+          echo >&2
+          echo "Most likely: Microphone or Speech Recognition permission was not" >&2
+          echo "granted to the app after the last rebuild - a rebuilt app is a new" >&2
+          echo "app as far as macOS is concerned." >&2
+          echo "  System Settings > Privacy & Security > Microphone" >&2
+          echo "  daily-welcome --reset-permissions" >&2
           exit 1
         fi
         sleep 1   # let the writer finish

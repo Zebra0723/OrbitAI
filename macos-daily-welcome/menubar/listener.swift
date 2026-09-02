@@ -309,7 +309,11 @@ final class OrbitListener: NSObject {
     /// buffer the tap hands over is reused by the engine, so it has to be
     /// copied rather than retained.
     private func remember(_ buffer: AVAudioPCMBuffer, format: AVAudioFormat) {
-        guard keepUtteranceAudio, !utterancePath.isEmpty else { return }
+        // Enrolling is itself a reason to keep audio. Requiring the
+        // config flag too meant that a setup which failed before writing
+        // that flag left the recorder off, and enrolment then waited
+        // forty-five seconds for a file nothing was ever going to write.
+        guard keepUtteranceAudio || enrolling, !utterancePath.isEmpty else { return }
         guard let copy = AVAudioPCMBuffer(pcmFormat: buffer.format,
                                           frameCapacity: buffer.frameLength) else { return }
         copy.frameLength = buffer.frameLength
@@ -357,6 +361,8 @@ final class OrbitListener: NSObject {
 
         if present && !enrolling {
             enrolling = true
+            // Nothing is captured if the engine is not running.
+            if !engine.isRunning { beginSession() }
             // Anything already in the buffer is from before - including
             // whatever Orbit just said.
             flushRecent()
@@ -395,7 +401,7 @@ final class OrbitListener: NSObject {
     }
 
     private func writeUtterance() {
-        guard keepUtteranceAudio, !utterancePath.isEmpty else { return }
+        guard keepUtteranceAudio || enrolling, !utterancePath.isEmpty else { return }
         audioQueue.async { [weak self] in
             guard let self = self,
                   let format = self.recentFormat,
