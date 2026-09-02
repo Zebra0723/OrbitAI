@@ -129,6 +129,53 @@ Email replies are **drafted first**. Orbit writes them into Mail, tells you how
 many, and sends only on your yes. Delete a draft before answering and that one
 stays unsent.
 
+### Running it for free
+
+Nothing here needs a paid account.
+
+**Understanding and answering** already run through Claude Code, which is
+covered by your Claude subscription. With no OpenAI key set at all, every
+question, every bit of conversation and every command still works.
+
+For something faster, any service speaking the OpenAI chat-completions
+shape can stand in - two of them have free tiers:
+
+```
+ORBIT_OPENAI_BASE="https://api.groq.com/openai/v1"      console.groq.com
+ORBIT_OPENAI_MODEL="llama-3.3-70b-versatile"
+
+ORBIT_OPENAI_BASE="https://generativelanguage.googleapis.com/v1beta/openai"
+ORBIT_OPENAI_MODEL="gemini-2.0-flash"                   aistudio.google.com
+
+ORBIT_OPENAI_BASE="http://localhost:11434/v1"           entirely offline
+ORBIT_OPENAI_MODEL="llama3.2"
+```
+
+The key goes in the same place whichever you pick: `daily-welcome
+--set-openai-key`.
+
+**The voice** has a free option too - `daily-welcome --setup-piper` fetches
+a neural voice that runs on this Mac, with no key and no per-word cost.
+
+### The web
+
+```
+search the web for the F1 results
+google the weather in London
+look up the population of Peru
+what is the latest on the election
+```
+
+Paste or say a link and it reads the page instead:
+
+```
+summarise https://example.com
+what does https://news.site/article say
+```
+
+Both take longer than an ordinary answer because they are doing real work.
+"Open <link>" still just opens it in the browser.
+
 ### Which voice speaks
 
 Two hosted services and a local fallback. `auto` prefers ElevenLabs, drops

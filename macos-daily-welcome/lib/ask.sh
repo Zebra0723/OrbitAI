@@ -122,3 +122,44 @@ They said: $text"
   chat_remember "$text" "$reply" 2>/dev/null
   printf '%s' "$reply"
 }
+
+# --------------------------------------------------------------- the web
+#
+# Claude Code can search and can read a page; it just has to be told it is
+# allowed to. Both are slower than an ordinary answer because they are
+# doing real work, so they are only used when the sentence asks for it.
+
+ask_web() {
+  local query="$1" claude_cmd answer
+  claude_cmd="$(claude_bin)" || return 1
+
+  local prompt
+  prompt="Search the web and answer in ONE spoken sentence, two only if the
+second is a short question. No markup, no bullets, no citations, no URLs -
+this is read aloud. If the answer is a number or a name, lead with it.
+
+Question: $query"
+
+  answer="$(run_with_timeout "$ORBIT_WEB_TIMEOUT" "$claude_cmd" -p "$prompt" \
+    --allowedTools WebSearch 2>/dev/null)" || return 1
+  answer="$(printf '%s' "$answer" | sed -E '/^Sources:/,$d' | grep . | head -3)"
+  [ -n "$answer" ] || return 1
+  printf '%s' "$answer"
+}
+
+ask_page() {
+  local url="$1" question="${2:-What is this page about?}" claude_cmd answer
+  claude_cmd="$(claude_bin)" || return 1
+
+  local prompt
+  prompt="Read $url and answer in at most two spoken sentences. No markup,
+no bullets, no URLs - this is read aloud.
+
+Question: $question"
+
+  answer="$(run_with_timeout "$ORBIT_WEB_TIMEOUT" "$claude_cmd" -p "$prompt" \
+    --allowedTools WebFetch 2>/dev/null)" || return 1
+  answer="$(printf '%s' "$answer" | sed -E '/^Sources:/,$d' | grep . | head -3)"
+  [ -n "$answer" ] || return 1
+  printf '%s' "$answer"
+}

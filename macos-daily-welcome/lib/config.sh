@@ -212,6 +212,12 @@
 # reader; a speech model treats them as a full stop, and the constant
 # pausing is most of what makes a synthetic voice sound synthetic. Set to
 # 0 to hand the voice exactly what is on screen.
+# Piper: a neural voice that runs locally, with no key and no cost. The
+# model is one .onnx file; --setup-piper fetches one and fills this in.
+: "${WELCOME_PIPER_BIN:=}"
+: "${WELCOME_PIPER_MODEL:=$HOME/.config/daily-welcome/piper/voice.onnx}"
+: "${WELCOME_PIPER_LENGTH:=0.95}"
+
 : "${WELCOME_TIGHTEN_SPEECH:=1}"
 
 : "${WELCOME_OPENAI_VOICE:=nova}"
@@ -256,6 +262,23 @@
 # gpt-4o-mini is the fast one. A larger model understands more and takes
 # noticeably longer to start talking, which on a voice assistant is the
 # thing you feel.
+# Any service that speaks the OpenAI chat-completions shape works here,
+# which includes two with free tiers that are far faster than booting
+# Claude Code for every sentence:
+#
+#   Groq    ORBIT_OPENAI_BASE="https://api.groq.com/openai/v1"
+#           ORBIT_OPENAI_MODEL="llama-3.3-70b-versatile"      console.groq.com
+#   Gemini  ORBIT_OPENAI_BASE="https://generativelanguage.googleapis.com/v1beta/openai"
+#           ORBIT_OPENAI_MODEL="gemini-2.0-flash"             aistudio.google.com
+#   Ollama  ORBIT_OPENAI_BASE="http://localhost:11434/v1"
+#           ORBIT_OPENAI_MODEL="llama3.2"                     entirely offline
+#
+# The key goes in the same place either way: daily-welcome --set-openai-key
+# Searching the web and reading a page are real work, so they get a longer
+# leash than an ordinary answer.
+: "${ORBIT_WEB_TIMEOUT:=45}"
+
+: "${ORBIT_OPENAI_BASE:=https://api.openai.com/v1}"
 : "${ORBIT_OPENAI_MODEL:=gpt-4o-mini}"
 # A model that has not answered in this long is not going to save the
 # conversation - falling through to Claude or to the rules is quicker than

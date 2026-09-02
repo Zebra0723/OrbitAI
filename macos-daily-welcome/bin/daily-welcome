@@ -31,6 +31,7 @@ welcome_load_user_config
 . "$ROOT/lib/tts_eleven.sh"
 . "$ROOT/lib/nlu_openai.sh"
 . "$ROOT/lib/tts_openai.sh"
+. "$ROOT/lib/tts_piper.sh"
 # shellcheck source=../lib/voice.sh
 . "$ROOT/lib/voice.sh"
 
@@ -60,7 +61,8 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --set-openai-key   store an OpenAI key, for understanding commands
   daily-welcome --test-voice    say one line now, and report which voice said it
   daily-welcome --voices        available voices, and which one it will use
-  daily-welcome --voice-provider openai | elevenlabs | say | auto
+  daily-welcome --voice-provider openai | elevenlabs | piper | say | auto
+  daily-welcome --setup-piper   a free neural voice that runs on this Mac
   daily-welcome --hush          stop talking right now
   daily-welcome --mute-today    skip the rest of today
   daily-welcome --reset         forget that today's greeting happened
@@ -101,6 +103,7 @@ while [ $# -gt 0 ]; do
     --voices)     MODE=voices ;;
     --use-voice)  MODE=usevoice; shift; VOICE_ARG="${1:-}" ;;
     --voice-provider) MODE=provider; shift; VOICE_ARG="${1:-}" ;;
+    --setup-piper) MODE=setuppiper ;;
     --mute-today) MODE=mute ;;
     --reset)      MODE=reset ;;
     -h|--help)    usage; exit 0 ;;
@@ -283,6 +286,7 @@ case "$MODE" in
     case "$backend" in
       elevenlabs) echo "Voice:   $WELCOME_ELEVEN_VOICE_NAME${WELCOME_ELEVEN_VOICE_ID:+ ($WELCOME_ELEVEN_VOICE_ID)}" ;;
       openai)     echo "Voice:   $WELCOME_OPENAI_VOICE ($WELCOME_OPENAI_TTS_MODEL)" ;;
+      piper)      echo "Voice:   $(basename "$WELCOME_PIPER_MODEL") (local, free)" ;;
       *)          local_voice="$(resolve_voice)"
                   echo "Voice:   ${local_voice:-system default}" ;;
     esac
@@ -302,6 +306,23 @@ case "$MODE" in
             file="$(openai_tts_cache_path "$line")"
             if openai_tts_synthesize "$line" "$file" && play_file "$file"; then exit 0; fi
           fi
+          if piper_available; then
+            echo "Trying the local voice instead."
+            file="$(piper_cache_path "$line")"
+            if piper_synthesize "$line" "$file" && play_file "$file"; then exit 0; fi
+          fi
+          echo "Falling back to the built-in voice."
+          say_speak "$line"
+        fi ;;
+      piper)
+        file="$(piper_cache_path "$line")"
+        if ! piper_synthesize "$line" "$file" || ! play_file "$file"; then
+          echo
+          echo "Piper didn't speak. What it said about it:"
+          sed 's/^/  /' "$WELCOME_STATE_DIR/last-voice-error" 2>/dev/null | tail -5
+          echo
+          echo "Check the model: $WELCOME_PIPER_MODEL"
+          echo "Or set it up again: daily-welcome --setup-piper"
           echo "Falling back to the built-in voice."
           say_speak "$line"
         fi ;;
@@ -328,6 +349,57 @@ case "$MODE" in
     esac
     exit 0
     ;;
+  setuppiper)
+    # A free neural voice, in two steps, without hunting through docs.
+    dir="$HOME/.config/daily-welcome/piper"
+    model="$dir/voice.onnx"
+    base="https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US"
+    # amy-medium: American, clear, and small enough to fetch in seconds.
+    voice_path="amy/medium/en_US-amy-medium.onnx"
+
+    if ! piper_bin >/dev/null 2>&1; then
+      echo "Piper isn't installed. Get it with:"
+      echo "  brew install piper-tts"
+      echo
+      echo "Then run this again."
+      exit 1
+    fi
+
+    if [ -s "$model" ]; then
+      echo "Voice model already here: $model"
+    else
+      mkdir -p "$dir" || exit 1
+      echo "Fetching a voice (about 60MB)..."
+      if ! curl -fsSL --retry 2 -o "$model" "$base/$voice_path"; then
+        rm -f "$model"
+        echo "daily-welcome: couldn't download the voice model." >&2
+        echo "Get any .onnx from huggingface.co/rhasspy/piper-voices and put it at:" >&2
+        echo "  $model" >&2
+        echo "with its .onnx.json alongside." >&2
+        exit 1
+      fi
+      if ! curl -fsSL --retry 2 -o "$model.json" "$base/$voice_path.json"; then
+        rm -f "$model" "$model.json"
+        echo "daily-welcome: got the voice but not its settings file." >&2
+        exit 1
+      fi
+      echo "Saved to $model"
+    fi
+
+    cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+    mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+    grep -v '^WELCOME_\(TTS\|PIPER_MODEL\)=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+    {
+      cat "$cfg.tmp"
+      printf 'WELCOME_PIPER_MODEL="%s"\n' "$model"
+      printf 'WELCOME_TTS="piper"\n'
+    } > "$cfg"
+    rm -f "$cfg.tmp"
+    echo
+    echo "Voice provider set to piper. No key, no cost, nothing leaves this Mac."
+    echo "Hear it: daily-welcome --test-voice"
+    exit 0
+    ;;
   provider)
     # Switching which service speaks, without opening a config file.
     cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
@@ -343,9 +415,14 @@ case "$MODE" in
           echo "daily-welcome: no ElevenLabs key yet. Run: daily-welcome --set-key" >&2
           exit 1
         fi ;;
+      piper)
+        if ! piper_available; then
+          echo "daily-welcome: piper isn't set up yet. Run: daily-welcome --setup-piper" >&2
+          exit 1
+        fi ;;
       say|auto) : ;;
       *)
-        echo "daily-welcome --voice-provider openai | elevenlabs | say | auto" >&2
+        echo "daily-welcome --voice-provider openai | elevenlabs | piper | say | auto" >&2
         exit 2 ;;
     esac
     grep -v '^WELCOME_TTS=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"

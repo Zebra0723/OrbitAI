@@ -29,6 +29,7 @@ welcome_load_user_config
 . "$ROOT/lib/speech_text.sh"
 . "$ROOT/lib/tts_eleven.sh"
 . "$ROOT/lib/tts_openai.sh"
+. "$ROOT/lib/tts_piper.sh"
 . "$ROOT/lib/voice.sh"
 . "$ROOT/lib/intents.sh"
 . "$ROOT/lib/context.sh"
@@ -37,6 +38,7 @@ welcome_load_user_config
 . "$ROOT/lib/macros.sh"
 . "$ROOT/lib/watch.sh"
 . "$ROOT/lib/nlu_openai.sh"
+. "$ROOT/lib/nlu_claude.sh"
 . "$ROOT/lib/emoji.sh"
 . "$ROOT/lib/memory.sh"
 . "$ROOT/lib/slots.sh"
@@ -576,6 +578,12 @@ case "${1:-}" in
       call)       plan_call "$arg1" "$arg2" ;;
       system)     plan_system "$arg1" "$arg2" "$arg3" ;;
       readback)   plan_readback "$arg1" ;;
+      web_search)
+        text="$(ask_web "$arg1")" || text="I couldn't get an answer from the web for that."
+        emit "$(tone_shape "$ORBIT_TONE" "$text")" false "" ;;
+      web_page)
+        text="$(ask_page "$arg1" "$arg2")" || text="I couldn't read that page."
+        emit "$(tone_shape "$ORBIT_TONE" "$text")" false "" ;;
       *)
         # Not a command, so talk. An assistant that only answers the
         # sentences it was written for is a parser with a microphone.

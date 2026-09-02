@@ -522,6 +522,36 @@ _try_mail_send() {
   printf 'mail_send\t%s\t%s\n' "$who" "$body"
 }
 
+# The web. An explicit search, or a link to read.
+_try_web() {
+  local text="$1" lower url rest
+  lower="$(printf '%s' "$text" | tr '[:upper:]' '[:lower:]')"
+
+  # A link in the sentence is a request to read it, whatever else is said.
+  url="$(printf '%s' "$text" | grep -oE '(https?://|www\.)[^[:space:]]+' | head -1)"
+  if [ -n "$url" ]; then
+    case "$url" in www.*) url="https://$url" ;; esac
+    # "open" is a browser instruction, not a request to summarise.
+    case "$lower" in
+      "open "*|"go to "*|"visit "*) return 1 ;;
+    esac
+    rest="$(printf '%s' "$text" | sed -E 's#(https?://|www\.)[^[:space:]]+##' \
+      | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+    printf 'web_page\t%s\t%s\n' "$url" "$rest"
+    return 0
+  fi
+
+  rest="$(_strip_prefix "$text" "^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?(search[[:space:]]+(the[[:space:]]+)?(web|internet|online)[[:space:]]+(for[[:space:]]+)?|google[[:space:]]+|look[[:space:]]+up[[:space:]]+|search[[:space:]]+for[[:space:]]+)")" || {
+    case "$lower" in
+      *"latest on "*|*"news about "*|*"news on "*)
+        rest="$(printf '%s' "$text" | sed -E 's/^.*(latest on|news about|news on)[[:space:]]+//I')" ;;
+      *) return 1 ;;
+    esac
+  }
+  [ -n "$rest" ] || return 1
+  printf 'web_search\t%s\t\n' "$rest"
+}
+
 _try_readback() {
   local lower
   lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
@@ -666,6 +696,7 @@ parse_intent() {
   _try_claude "$text"      && return 0
   _try_mail_reply "$text"  && return 0
   _try_mail_send "$text"   && return 0
+  _try_web "$text"         && return 0
   _try_call "$text"        && return 0
   _try_system "$text"      && return 0
   # The rules have had their go. Anything they could not place is handed
@@ -677,19 +708,14 @@ parse_intent() {
 
   _try_readback "$text"    && return 0
   _try_ask "$text"         && return 0
+  # One Claude call for the three jobs that used to take three: classify
+  # it, write a command for it, or answer it. Two of the three were always
+  # thrown away, and each one costs four seconds of Claude Code starting
+  # up. Its "chat" answer arrives with it, so replying costs nothing more.
   case "$ORBIT_NLU" in
     rules|off) ;;
-    *) _try_claude_nlu "$text" && return 0 ;;
+    *) claude_intent "$text" && return 0 ;;
   esac
-
-  # Nothing recognised it: let Claude write the command, to be confirmed
-  # out loud before anything happens.
-  local free
-  if free="$(freeform_plan "$text")"; then
-    printf 'system\tfreeform\t%s\t%s\n' \
-      "$(printf '%s' "$free" | cut -f2)" "$(printf '%s' "$free" | cut -f1)"
-    return 0
-  fi
 
   printf 'none\n'
 }

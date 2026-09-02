@@ -18,6 +18,13 @@ import urllib.error
 import urllib.request
 
 MODEL = os.environ.get("ORBIT_OPENAI_MODEL", "gpt-4o-mini")
+
+# The endpoint is a setting, not a constant. Groq, Google's Gemini and a
+# local Ollama all speak this same chat-completions shape, and two of
+# those are free - which matters more than brand loyalty when the whole
+# point is a fast answer that costs nothing.
+BASE = os.environ.get("ORBIT_OPENAI_BASE", "https://api.openai.com/v1").rstrip("/")
+ENDPOINT = BASE + "/chat/completions"
 # A second inside the shell's own timeout, so a slow reply is reported as
 # a slow reply rather than as a killed process.
 TIMEOUT = max(3.0, float(os.environ.get("ORBIT_OPENAI_TIMEOUT", "7")) - 1)
@@ -127,7 +134,7 @@ def chat():
     }).encode()
 
     request = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
+        ENDPOINT,
         data=body,
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
     )
@@ -183,7 +190,7 @@ def main():
     }).encode()
 
     request = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
+        ENDPOINT,
         data=body,
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
     )

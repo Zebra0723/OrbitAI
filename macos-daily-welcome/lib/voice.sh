@@ -24,9 +24,13 @@ tts_backend() {
     say) printf 'say' ;;
     elevenlabs) printf 'elevenlabs' ;;
     openai) printf 'openai' ;;
+    piper) printf 'piper' ;;
     auto|*)
+      # Paid clones first if they are working, then the local neural
+      # voice, then the built-in one. Free and offline beats robotic.
       if eleven_available; then printf 'elevenlabs'
       elif openai_tts_available; then printf 'openai'
+      elif piper_available; then printf 'piper'
       else printf 'say'; fi ;;
   esac
 }
@@ -188,8 +192,9 @@ speak_async() {
     case "$(tts_backend)" in
       # Each step down is a real voice before it is a robot one: a hosted
       # service refusing is not a reason to give up on the other one.
-      elevenlabs) eleven_speak "$text" || openai_speak "$text" || say_speak "$text" ;;
-      openai)     openai_speak "$text" || say_speak "$text" ;;
+      elevenlabs) eleven_speak "$text" || openai_speak "$text" || piper_speak "$text" || say_speak "$text" ;;
+      openai)     openai_speak "$text" || piper_speak "$text" || say_speak "$text" ;;
+      piper)      piper_speak "$text" || say_speak "$text" ;;
       *)          say_speak "$text" ;;
     esac
   ) >/dev/null 2>&1 &
@@ -215,12 +220,21 @@ speak_to_file() {
       openai_tts_available || return 1
       ;;
     openai) ;;
+    piper)
+      file="$(piper_cache_path "$text")"
+      [ -s "$file" ] && { printf '%s' "$file"; return 0; }
+      piper_synthesize "$text" "$file" || return 1
+      printf '%s' "$file"; return 0 ;;
     *) return 1 ;;
   esac
 
   file="$(openai_tts_cache_path "$text")"
   [ -s "$file" ] && { printf '%s' "$file"; return 0; }
-  openai_tts_synthesize "$text" "$file" || return 1
+  if openai_tts_synthesize "$text" "$file"; then printf '%s' "$file"; return 0; fi
+  piper_available || return 1
+  file="$(piper_cache_path "$text")"
+  [ -s "$file" ] && { printf '%s' "$file"; return 0; }
+  piper_synthesize "$text" "$file" || return 1
   printf '%s' "$file"
 }
 

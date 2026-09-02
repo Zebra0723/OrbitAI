@@ -40,9 +40,15 @@ run_with_timeout() {
   "$@" >"$out" 2>"$err" </dev/null &
   pid=$!
 
+  # Poll in tenths, not whole seconds. A one-second sleep added up to a
+  # full second of pure waiting to every call that finished sooner - which
+  # on a fast endpoint was most of the turn.
+  local tick=0.1 ticks_per_sec=10
+  sleep 0.1 2>/dev/null || { tick=1; ticks_per_sec=1; }
+
   waited=0
   while kill -0 "$pid" 2>/dev/null; do
-    if [ "$waited" -ge "$secs" ]; then
+    if [ "$waited" -ge "$((secs * ticks_per_sec))" ]; then
       kill -TERM "$pid" 2>/dev/null
       sleep 1
       kill -KILL "$pid" 2>/dev/null
@@ -52,7 +58,7 @@ run_with_timeout() {
       rm -f "$out" "$err"
       return 124
     fi
-    sleep 1
+    sleep "$tick"
     waited=$((waited + 1))
   done
 
