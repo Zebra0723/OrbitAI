@@ -3,26 +3,30 @@
    it would cost more requests than it saves bytes. */
 
 :root {
-  /* Sitefold's palette: black, white, and the opacities in between.
-     Monochrome is the whole idea - the accent is white, not a colour. */
-  --void: #000000;
-  --panel: #0a0a0a;
-  --line: rgba(255,255,255,.10);
-  --text: #ffffff;
-  --dim: rgba(255,255,255,.55);
-  --faint: rgba(255,255,255,.40);
-  --accent: #ffffff;
-  --accent-dim: rgba(255,255,255,.32);
-  /* Status still has to read as status, so these keep just enough hue to
-     mean something at a glance without breaking the monochrome. */
-  --good: #b8e6d0;
-  --bad: #f0b8b2;
-  /* The DailyOS pairing: Fraunces, a warm old-style serif, for anything
-     with a voice; Inter for everything that is read rather than heard. */
-  --display: "Fraunces", Georgia, "Iowan Old Style", "Times New Roman", serif;
+  /* Sitefold's palette: warm paper, near-black ink, one rust accent, and
+     a black button. Light, not dark - the galaxy went with the rebrand. */
+  --paper: #f4f1ea;
+  --paper-2: #efebe2;
+  --panel: #faf8f4;
+  --line: #ded8cc;
+  --line-soft: #e8e3d8;
+  --ink: #191713;
+  --dim: #5d574d;
+  --faint: #8b8478;
+  --accent: #cc4415;
+  --accent-dim: #a83a13;
+  --button: #191713;
+  --button-ink: #f4f1ea;
+  --good: #2f6b4f;
+  --bad: #a8321f;
+
+  /* Instrument Serif is Sitefold's brand serif - the DailyOS repo says so
+     where it recreates their wordmark. Inter carries everything read
+     rather than displayed; the mono is for the letterspaced eyebrows. */
+  --display: "Instrument Serif", Georgia, "Times New Roman", serif;
   --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
-  --wrap: 1000px;
+  --wrap: 1100px;
 }
 
 * { box-sizing: border-box; }
@@ -30,46 +34,37 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--void);
-  color: var(--text);
+  background: var(--paper);
+  color: var(--ink);
   font: 15px/1.65 var(--sans);
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
 }
 
 /* The sky: nebulae that drift, stars that don't. */
-.sky { position: fixed; inset: 0; z-index: -1; overflow: hidden;
-  background: var(--void);
-}
+.sky { position: fixed; inset: 0; z-index: -1; background: var(--paper); }
+/* The faint ruled grid, as on their own pages. */
 .sky::after {
-  content: ""; position: absolute; inset: -50%;
+  content: ""; position: absolute; inset: 0;
   background-image:
-    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.7) 50%, transparent),
-    radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,.5) 50%, transparent),
-    radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,.6) 50%, transparent),
-    radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,.4) 50%, transparent),
-    radial-gradient(1px 1px at 15% 85%, rgba(255,255,255,.5) 50%, transparent),
-    radial-gradient(2px 2px at 33% 15%, rgba(255,255,255,.35) 50%, transparent),
-    radial-gradient(2px 2px at 78% 82%, rgba(255,255,255,.3) 50%, transparent);
-  background-size: 480px 480px, 620px 620px, 540px 540px, 700px 700px,
-                   560px 560px, 900px 900px, 820px 820px;
-  animation: drift 260s linear infinite; opacity: .35;
+    linear-gradient(to right, rgba(25,23,19,.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(25,23,19,.045) 1px, transparent 1px);
+  background-size: 96px 96px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
 }
-@keyframes drift { to { transform: translate3d(-180px, -140px, 0); } }
-@media (prefers-reduced-motion: reduce) { .sky::after { animation: none; } }
 
 /* Navigation */
 .nav {
   position: sticky; top: 0; z-index: 10;
   backdrop-filter: blur(16px);
-  background: rgba(0,0,0,.72);
+  background: rgba(244,241,234,.82);
   border-bottom: 1px solid var(--line);
 }
 .nav-inner {
   max-width: var(--wrap); margin: 0 auto; padding: 14px 28px;
   display: flex; align-items: center; gap: 28px;
 }
-.brand { display: flex; align-items: center; gap: 11px; text-decoration: none; color: var(--text); }
+.brand { display: flex; align-items: center; gap: 11px; text-decoration: none; color: var(--ink); }
 .ring {
   width: 20px; height: 20px; border: 1px solid var(--accent);
   border-radius: 50%; position: relative; flex: none;
@@ -87,11 +82,11 @@ body {
   color: var(--dim); text-decoration: none; font-size: 13.5px;
   padding: 4px 0; border-bottom: 1px solid transparent;
 }
-.nav a.link:hover { color: var(--text); }
+.nav a.link:hover { color: var(--ink); }
 .nav a.link[aria-current=page] { color: var(--accent); border-bottom-color: var(--accent-dim); }
 .nav .spacer { flex: 1; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
-.dot.on { background: var(--good); box-shadow: 0 0 8px rgba(184,230,208,.5); }
+.dot.on { background: var(--good); box-shadow: 0 0 8px rgba(47,107,79,.35); }
 .dot.off { background: var(--bad); }
 .nav .state { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--faint); }
 
@@ -100,24 +95,29 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 56px 28px 110px; }
 /* Type */
 h1 {
   font-family: var(--display);
-  font-size: 46px; line-height: 1.1; font-weight: 500;
-  letter-spacing: -.01em; margin: 0 0 20px;
-  font-variation-settings: "SOFT" 20, "WONK" 1;
+  font-size: 62px; line-height: 1.02; font-weight: 400;
+  letter-spacing: -.015em; margin: 0 0 22px;
   text-wrap: balance;
 }
-h2 { font-size: 11px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
-     color: var(--faint); margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+h2 {
+  font-family: var(--mono);
+  font-size: 11px; font-weight: 400; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--faint); margin: 0 0 18px; padding-bottom: 11px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 14px;
+}
+h2::before {
+  content: ""; width: 26px; height: 1px; background: var(--faint); flex: none;
+}
 h3 {
   font-family: var(--display);
-  font-size: 18px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 8px;
-  font-variation-settings: "SOFT" 20;
+  font-size: 22px; font-weight: 400; letter-spacing: -.01em; margin: 0 0 9px;
 }
 p { margin: 0 0 16px; }
 .lede {
-  font-family: var(--display);
-  font-size: 19.5px; line-height: 1.6; font-weight: 400;
-  color: var(--dim); max-width: 60ch;
-  font-variation-settings: "SOFT" 30;
+  font-family: var(--sans);
+  font-size: 17.5px; line-height: 1.65; font-weight: 400;
+  color: var(--dim); max-width: 56ch;
 }
 .muted { color: var(--dim); }
 .note { color: var(--faint); font-size: 12.5px; margin-top: 14px; }
@@ -126,7 +126,7 @@ section { margin-bottom: 52px; }
 
 /* Surfaces */
 .panel {
-  background: rgba(255,255,255,.03);
+  background: var(--panel);
   border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px;
   backdrop-filter: blur(12px);
 }
@@ -135,19 +135,19 @@ section { margin-bottom: 52px; }
 .grid.three { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 
 .card { border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px;
-        background: rgba(255,255,255,.025); }
-.card h3 { color: var(--text); }
+        background: var(--panel); }
+.card h3 { color: var(--ink); }
 .card p { color: var(--dim); font-size: 13.5px; margin: 0; }
 
 /* Rows and controls */
 .row { display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
-       padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+       padding: 13px 0; border-bottom: 1px solid var(--line-soft); }
 .row:last-child { border-bottom: 0; }
 .row .help { display: block; color: var(--faint); font-size: 12.5px; margin-top: 3px; }
 .row .control { flex: none; }
 
 input[type=text], input[type=number], input[type=password], select, textarea {
-  background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--text);
+  background: #fffdf9; border: 1px solid var(--line); color: var(--ink);
   padding: 8px 11px; border-radius: 7px; font: 13px var(--mono); min-width: 230px;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-dim); }
@@ -157,24 +157,24 @@ textarea { width: 100%; min-height: 90px; resize: vertical; }
    that nesting is invalid and browsers disagree about whether the click
    ever reaches the href. */
 button, .btn {
-  background: rgba(255,255,255,.08); border: 1px solid var(--accent-dim); color: var(--accent);
+  background: var(--button); border: 1px solid var(--button); color: var(--button-ink);
   padding: 8px 16px; border-radius: 7px; font: 500 13px inherit; cursor: pointer;
   transition: background .15s, border-color .15s, color .15s;
 }
 .btn { display: inline-flex; align-items: center; text-decoration: none; }
-button:hover, .btn:hover { background: rgba(255,255,255,.16); border-color: var(--accent); }
+button:hover, .btn:hover { background: #2c2822; border-color: var(--accent); }
 button.quiet, .btn.quiet { border-color: var(--line); color: var(--dim); background: transparent; }
-button.quiet:hover, .btn.quiet:hover { color: var(--text); border-color: var(--faint); }
+button.quiet:hover, .btn.quiet:hover { color: var(--ink); border-color: var(--faint); }
 button.big, .btn.big { padding: 11px 22px; font-size: 14px; }
 button:focus-visible, .btn:focus-visible, .switch:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 
 .switch { width: 42px; height: 24px; border-radius: 12px; border: 1px solid var(--line);
-          background: rgba(255,255,255,.04); position: relative; cursor: pointer; padding: 0; }
+          background: #fffdf9; position: relative; cursor: pointer; padding: 0; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
                  border-radius: 50%; background: var(--faint); transition: transform .18s, background .18s; }
-.switch[aria-checked=true] { border-color: var(--accent-dim); background: rgba(255,255,255,.14); }
+.switch[aria-checked=true] { border-color: var(--accent-dim); background: var(--button); }
 .switch[aria-checked=true]::after { transform: translateX(18px); background: var(--accent); }
 
 .bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
@@ -193,7 +193,7 @@ button:focus-visible, .btn:focus-visible, .switch:focus-visible {
 .tile .v.on { color: var(--good); }
 .tile .v.off { color: var(--bad); }
 
-pre { background: rgba(0,0,0,.5); border: 1px solid var(--line); border-radius: 10px;
+pre { background: var(--paper-2); border: 1px solid var(--line); border-radius: 10px;
       padding: 16px 18px; font: 12.5px/1.65 var(--mono); color: var(--dim);
       overflow-x: auto; white-space: pre-wrap; margin: 16px 0 0; }
 pre:empty { display: none; }
@@ -212,14 +212,14 @@ td input { width: 100%; min-width: 0; }
 
 .cmd-list { display: grid; gap: 10px; }
 .cmd { border: 1px solid var(--line); border-radius: 9px; padding: 13px 16px;
-       background: rgba(255,255,255,.025); }
-.cmd .phrase { font: 13.5px var(--mono); color: var(--text); }
+       background: var(--panel); }
+.cmd .phrase { font: 13.5px var(--mono); color: var(--ink); }
 .cmd .what { color: var(--faint); font-size: 12.5px; margin-top: 4px; }
 .cmd .tag { float: right; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
             color: var(--accent-dim); }
 
 .offline { opacity: .35; pointer-events: none; }
-.banner { border: 1px solid var(--accent-dim); background: rgba(255,255,255,.06);
+.banner { border: 1px solid var(--accent-dim); background: var(--panel);
           border-radius: 10px; padding: 14px 18px; color: var(--dim); font-size: 13px;
           margin-bottom: 28px; }
 .hero { padding: 40px 0 20px; }
@@ -229,41 +229,46 @@ footer { border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5
 
 /* Fraunces is a variable face; without it the serif fallbacks still read
    correctly, they just lose the optical sizing. */
-@supports not (font-variation-settings: normal) {
-  h1, h3, .lede, .tile .v { font-variation-settings: normal; }
-}
-
 @media (max-width: 620px) {
   .nav-inner { gap: 16px; padding: 12px 18px; flex-wrap: wrap; }
   main { padding: 36px 18px 80px; }
-  h1 { font-size: 32px; }
+  h1 { font-size: 38px; }
   .row { flex-direction: column; align-items: stretch; gap: 8px; }
   input[type=text], input[type=number], input[type=password] { min-width: 0; width: 100%; }
 }
 
 
-/* -------------------------------------------------- the DailyOS wordmark
-   Sitefold sets its name in Instrument Serif beside a folded-sheet mark,
-   large and monochrome. The same treatment here, at footer scale, so the
-   family resemblance is the point rather than a coincidence. */
+/* ------------------------------------------------- "A DailyOS company"
+   Set the way Sitefold sets it in their own header: the sentence in
+   small letterspaced caps, the wordmark itself left in DailyOS's own
+   type - blue "Daily", ink "OS", bold and tight - beside the brand
+   glyph. The words around it are quiet so the name is the thing you
+   read. */
 .affiliate {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  margin-top: 30px; padding-top: 26px; border-top: 1px solid var(--line);
-  color: var(--faint); font-size: 13px; letter-spacing: .01em;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--sans);
+  font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--faint); white-space: nowrap;
 }
 .affiliate a {
-  display: inline-flex; align-items: center; gap: 9px;
-  color: var(--text); text-decoration: none;
-  transition: opacity .15s;
+  display: inline-flex; align-items: center; gap: 7px;
+  text-decoration: none; transition: opacity .15s;
 }
-.affiliate a:hover, .affiliate a:focus-visible { opacity: .7; }
-.affiliate a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 3px; }
-.affiliate svg { width: 19px; height: 19px; flex: none; }
+.affiliate a:hover, .affiliate a:focus-visible { opacity: .72; }
+.affiliate a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+.affiliate svg { width: 17px; height: 17px; flex: none; }
 .affiliate .name {
-  font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
-  font-size: 25px; line-height: 1; letter-spacing: 0;
+  font-size: 14.5px; font-weight: 700; letter-spacing: -.02em; text-transform: none;
 }
+.affiliate .name .d { color: #1976a8; }
+.affiliate .name .os { color: var(--ink); }
 
-@media (max-width: 620px) {
-  .affiliate { flex-direction: column; gap: 12px; text-align: center; }
+/* In the nav it sits behind a hairline, as theirs does. */
+.nav .affiliate {
+  padding-left: 22px; border-left: 1px solid var(--line);
+}
+footer .affiliate { margin-top: 14px; }
+
+@media (max-width: 860px) {
+  .nav .affiliate { display: none; }   /* it lives in the footer on narrow screens */
 }
