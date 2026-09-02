@@ -45,6 +45,7 @@ the name you gave matches no suite.
 | `prompts` | every prompt reaches its own last line |
 | `sourcing` | every function called is one that exists and is loaded |
 | `web` | every page and control, in a real browser |
+| `bridge` | who the console bridge lets in, and what it runs |
 
 ## Writing one
 

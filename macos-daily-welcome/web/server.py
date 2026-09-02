@@ -90,8 +90,18 @@ def origin_allowed(origin):
             return True
     # Vercel gives every deployment its own subdomain, so the project is
     # matched rather than one exact host.
+    # Vercel gives every deployment its own subdomain, so the project is
+    # matched rather than one exact host: the project itself, plus its
+    # previews, which are the name followed by dashes and a deployment
+    # hash. It was "[a-z0-9-]*", which also matched orbitai-anything, and
+    # names on vercel.app are there for the taking - so this is narrower
+    # now. It is still not a boundary anybody should lean on: a matching
+    # origin is only allowed to ASK, and every request from one still has
+    # to carry the pairing token. If you want a boundary, name the exact
+    # host in ORBIT_CONSOLE_ORIGINS and leave this unset.
     project = os.environ.get("ORBIT_CONSOLE_VERCEL", "").strip()
-    if project and re.fullmatch(rf"https://{re.escape(project)}[a-z0-9-]*\.vercel\.app", origin):
+    if project and re.fullmatch(
+            rf"https://{re.escape(project)}(-[a-z0-9]+)*\.vercel\.app", origin):
         return True
     return False
 
@@ -214,7 +224,42 @@ class Console(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Private-Network", "true")
 
     def authorised(self):
-        """Same-origin needs no token; anything else must present one."""
+        """Same-origin needs no token; anything else must present one.
+
+        The rule used to be "no Origin header means it is fine", and a
+        browser leaves that header off exactly the requests a page makes
+        without asking permission first. `<img src="http://127.0.0.1:7717
+        /api/briefing">` on any page you happened to visit therefore made
+        this Mac read the briefing out loud - the site could not see the
+        answer, but it did not need to. /api/selftest was the same, and it
+        runs things.
+
+        So the Sec-Fetch headers decide it. Every browser still receiving
+        security updates sends them, and they say what the request is FOR:
+        a fetch from a script is Dest: empty, Mode: cors or same-origin. An
+        image, a script tag, a stylesheet, an iframe or a form submission
+        is none of those, and none of them has any business here.
+        """
+        dest = self.headers.get("Sec-Fetch-Dest", "")
+        mode = self.headers.get("Sec-Fetch-Mode", "")
+        site = self.headers.get("Sec-Fetch-Site", "")
+
+        if dest or mode or site:
+            # A browser. It has told us what kind of request this is.
+            if dest and dest != "empty":
+                return False          # an image, a frame, a form - not an API call
+            if mode == "no-cors":
+                return False          # a request made without asking permission
+            if site in ("same-origin", "none"):
+                return True           # the console this server served, or a typed URL
+            # Anywhere else has to be allowed AND carry the token.
+            if not origin_allowed(self.headers.get("Origin", "")):
+                return False
+            return secrets.compare_digest(self.headers.get("X-Orbit-Token", ""), token())
+
+        # No Sec-Fetch headers at all: not a browser. curl, or a script on
+        # this Mac, which could read the token file anyway - the server is
+        # bound to the loopback address and nothing else can reach it.
         origin = self.headers.get("Origin", "")
         if not origin or origin.startswith("http://127.0.0.1") or origin.startswith("http://localhost"):
             return True
@@ -238,9 +283,16 @@ class Console(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    # A settings page does not send megabytes. Reading whatever length a
+    # request claims is a way to be handed one.
+    MAX_BODY = 1 << 20
+
     def body(self):
-        length = int(self.headers.get("Content-Length") or 0)
-        if not length:
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return {}
+        if not length or length > self.MAX_BODY:
             return {}
         try:
             return json.loads(self.rfile.read(length))
