@@ -40,6 +40,8 @@ the name you gave matches no suite.
 | `freeform` | the denylist on model-written commands, and its wiring |
 | `backend` | choosing how to speak, without dying in the attempt |
 | `unbound` | every variable read is one something declares |
+| `install` | build before replace; every Swift file and usage string |
+| `doctor` | it names the voice you will hear, and every fix is doable |
 | `static` | every file parses; Swift balances; no inline `onclick` |
 | `plans` | `orbit plan` and `orbit run` agree on the field names |
 | `prompts` | every prompt reaches its own last line |

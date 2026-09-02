@@ -23,6 +23,7 @@ welcome_load_user_config
 . "$ROOT/lib/tts_openai.sh"
 . "$ROOT/lib/tts_piper.sh"
 . "$ROOT/lib/voice.sh"
+. "$ROOT/lib/speaker.sh"
 
 LABEL="${DAILY_WELCOME_LABEL:-com.arjun.dailywelcome}"
 APP_DIR="$HOME/Applications/DailyWelcome.app"
@@ -33,7 +34,11 @@ PROBLEMS=0
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 bad()  { printf '  \033[31m✗\033[0m %s\n' "$1"; PROBLEMS=$((PROBLEMS + 1)); }
 warn() { printf '  \033[33m!\033[0m %s\n' "$1"; }
+# A fix is something you can run. An explanation is not a fix, and
+# putting one behind the same arrow means the arrows stop meaning
+# anything.
 fix()  { printf '      → %s\n' "$1"; }
+bad_note() { printf '    %s\n' "$1"; }
 head_() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 head_ "Machine"
@@ -52,8 +57,8 @@ if command -v swiftc >/dev/null 2>&1; then
   ok "swiftc is installed ($(swiftc --version 2>/dev/null | head -1 | cut -c1-48))"
 else
   bad "swiftc is missing, so the menu bar app was never built."
+  bad_note "This is the usual reason there's no icon and no permission prompts."
   fix "xcode-select --install     (then re-run ./install.sh)"
-  fix "This is the usual reason there's no icon and no permission prompts."
 fi
 
 if [ -d "$APP_DIR" ]; then
@@ -135,8 +140,40 @@ else
   fix "daily-welcome --set-key"
 fi
 
+if openai_tts_available 2>/dev/null; then
+  ok "OpenAI voice available ($WELCOME_OPENAI_VOICE)"
+elif [ -n "${WELCOME_OPENAI_API_KEY:-}" ] || [ -n "${OPENAI_API_KEY:-}" ]; then
+  warn "An OpenAI key is set but the voice is not usable - usually no credit."
+  fix "daily-welcome --test-voice   (it prints what OpenAI actually said)"
+fi
+
+if piper_available 2>/dev/null; then
+  ok "Piper is set up ($(basename "$WELCOME_PIPER_MODEL")) - free, local, no key"
+elif have_cmd piper || [ -x "$WELCOME_PIPER_BIN" ]; then
+  warn "Piper is installed but has no voice model."
+  fix "daily-welcome --setup-piper"
+else
+  warn "Piper is not installed - the free neural voice that runs on this Mac."
+  fix "daily-welcome --setup-piper"
+fi
+
 local_voice="$(resolve_voice)"
 ok "Fallback voice: ${local_voice:-system default}"
+
+# The one that matters: after all of the above, this is what you hear.
+# Every other line here is a reason, and the reasons are only useful
+# once you know which one won.
+speaking_with="$(tts_backend)"
+case "$speaking_with" in
+  say)
+    if [ "$local_voice" = "" ] || [ "$local_voice" = "system default" ]; then
+      warn "It will speak with the system voice, which is the plainest one there is."
+      fix "daily-welcome --mac-voices   (a Premium voice is a free download and much better)"
+    else
+      ok "It will speak with: $local_voice (built in)"
+    fi ;;
+  *) ok "It will speak with: $speaking_with" ;;
+esac
 
 # ------------------------------------------------------------ permissions
 
@@ -165,7 +202,8 @@ probe() {
 
   if [ "$rc" -eq 124 ]; then
     bad "$name didn't answer in fifteen seconds."
-    fix "Open $name once by hand - a first launch can take longer than that."
+    bad_note "A first launch can take longer than that."
+    fix "open -a \"$name\"     (once by hand, then run this again)"
     return
   fi
 
@@ -176,20 +214,22 @@ probe() {
   # be specific instead of a list of things to try.
   case "$reason" in
     *"Not authorized"*|*"not allowed"*|*"-1743"*)
-      fix "This is the Automation permission."
+      bad_note "This is the Automation permission."
       fix "Privacy & Security > Automation > ${ASKER:-your terminal} > turn on $name"
-      fix "Not listed there? A past refusal is cached: daily-welcome --reset-permissions" ;;
+      bad_note "Not listed there? A past refusal is cached."
+      fix "daily-welcome --reset-permissions" ;;
     *"isn't running"*|*"is not running"*|*"-600"*)
-      fix "$name isn't running. Open it once, then run this again." ;;
+      bad_note "$name isn't running, so it cannot answer."
+      fix "open -a \"$name\"     (then run this again)" ;;
     *"-1728"*|*"Can't get"*)
-      fix "$name answered but the query didn't fit this macOS version."
-      fix "Worth reporting - the exact text above is the useful part." ;;
+      bad_note "$name answered, but the query did not fit this macOS version."
+      bad_note "Worth reporting - the exact text above is the useful part." ;;
     *"-10004"*)
-      fix "A privilege violation, which usually means this shell has no UI session."
-      fix "Run it from Terminal.app rather than over ssh or from a script." ;;
+      bad_note "A privilege violation, which usually means this shell has no UI session."
+      bad_note "Run it from Terminal.app rather than over ssh or from a script." ;;
     *)
       fix "Privacy & Security > Automation > ${ASKER:-your terminal} > turn on $name"
-      fix "If that's already on, the text above is the real reason." ;;
+      bad_note "If that is already on, the text above is the real reason." ;;
   esac
 }
 
@@ -248,21 +288,22 @@ if [ -f "$STATUS_FILE" ]; then
       fix "Privacy & Security > Microphone > turn on DailyWelcome" ;;
     audio-failed)
       bad "The audio engine wouldn't start: $l_detail"
-      fix "Check an input device is selected in System Settings > Sound > Input" ;;
+      fix "System Settings > Sound > Input     (check a device is selected)" ;;
     no-recognizer)
       bad "$l_detail"
       fix "System Settings > Keyboard > Dictation - turn it on once to install the model" ;;
     asking)
       warn "It asked for permission and is still waiting for an answer."
-      fix "Look for the prompt, or: daily-welcome --reset-permissions" ;;
+      bad_note "Look for the prompt macOS should be showing."
+      fix "daily-welcome --reset-permissions" ;;
     *)
       ok "Listener state: $l_state" ;;
   esac
 
   if on_a_call; then
     warn "Listening is on hold: $(on_a_call_app) is using the microphone."
-    fix "That is deliberate - it comes back by itself when the call ends."
-    fix "To switch the behaviour off: ORBIT_PAUSE_ON_CALL=0"
+    bad_note "That is deliberate - it comes back by itself when the call ends."
+    bad_note "To switch the behaviour off, set ORBIT_PAUSE_ON_CALL=0"
   fi
 
   if [ -n "$l_heard" ]; then
@@ -273,11 +314,11 @@ if [ -f "$STATUS_FILE" ]; then
 else
   if pgrep -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" >/dev/null 2>&1; then
     warn "The app is running but has never written a listening status."
-    fix "Older build, or listening is off. Re-run ./install.sh, then check"
-    fix "the menu: the \"Listening for...\" item should have a tick."
+    bad_note "Either an older build, or listening is switched off."
+    fix "./install.sh     (then check the menu: \"Listening for...\" should be ticked)"
   else
     bad "Nothing is listening - the app isn't running."
-    fix "See the Menu bar app section above."
+    bad_note "The Menu bar app section above says why."
   fi
 fi
 
@@ -306,6 +347,27 @@ if command -v blueutil >/dev/null 2>&1; then
 else
   warn "No blueutil - Bluetooth commands are off."
   fix "brew install blueutil"
+fi
+
+# Recognising who is speaking. Off unless it was turned on deliberately,
+# and there are three separate ways for it to be half-on.
+if [ "$ORBIT_SPEAKER_ID" != "1" ]; then
+  ok "Voice recognition is off (nothing records, nothing is stored)"
+elif ! speaker_installed; then
+  bad "Voice recognition is on, but the recogniser will not load."
+  fix "daily-welcome --setup-speaker   (it prints the real error)"
+else
+  enrolled="$(speaker_enrolled_count)"
+  if [ "${enrolled:-0}" -eq 0 ]; then
+    warn "Voice recognition is on, but nobody has enrolled - it lets everyone through."
+    fix "orbit voice enroll <your name>"
+  else
+    ok "Voice recognition: $enrolled enrolled"
+    if ! speaker_have_audio; then
+      warn "No recording to identify from - the app may be an older build."
+      fix "cd ~/vortex && ./macos-daily-welcome/install.sh && orbit listen restart"
+    fi
+  fi
 fi
 
 # ----------------------------------------------------------------- repos

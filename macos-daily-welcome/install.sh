@@ -98,14 +98,40 @@ if [ "$WANT_APP" -eq 1 ]; then
       BUILT_APP=1
     else
     say_step "Building the menu bar app"
-    rm -rf "$APP_DIR"
-    mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 
-    swiftc -O -o "$APP_DIR/Contents/MacOS/DailyWelcome" \
+    # Built beside the installed app and moved into place only once it
+    # compiles. It used to delete the app first: a Swift file that did not
+    # build then left you with no menu bar app at all, no listening, and a
+    # script that had already stopped - the working thing destroyed by a
+    # change that never worked.
+    BUILD_DIR="$APP_DIR.building"
+    rm -rf "$BUILD_DIR"
+    mkdir -p "$BUILD_DIR/Contents/MacOS" "$BUILD_DIR/Contents/Resources"
+    trap 'rm -rf "$BUILD_DIR"' EXIT
+
+    if ! swiftc -O -o "$BUILD_DIR/Contents/MacOS/DailyWelcome" \
       "$ROOT/menubar/main.swift" "$ROOT/menubar/listener.swift" \
-      "$ROOT/menubar/eventkit.swift" "$ROOT/menubar/callwatch.swift"
+      "$ROOT/menubar/eventkit.swift" "$ROOT/menubar/callwatch.swift"; then
+      rm -rf "$BUILD_DIR"
+      trap - EXIT
+      echo >&2
+      echo "install.sh: the menu bar app did not compile - see the errors above." >&2
+      if [ -x "$APP_DIR/Contents/MacOS/DailyWelcome" ]; then
+        # It was stopped a moment ago to make way for the new build, and
+        # there is no new build. Put it back, or a compile error leaves
+        # the Mac with no assistant until somebody notices.
+        echo "The app you already had is untouched; starting it again." >&2
+        # It was booted out a moment ago to make way for a build that did
+        # not happen, so it has to be bootstrapped back in before it can
+        # be kicked. Opening the bundle is the fallback.
+        [ -f "$PLIST" ] && launchctl bootstrap "gui/$(id -u)" "$PLIST" >/dev/null 2>&1
+        launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1 \
+          || open -a "$APP_DIR" >/dev/null 2>&1 || true
+      fi
+      exit 1
+    fi
 
-    cat > "$APP_DIR/Contents/Info.plist" <<PLIST
+    cat > "$BUILD_DIR/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -145,8 +171,14 @@ PLIST
     # Ad-hoc signature keeps the app's identity stable, so the Reminders and
     # Calendar permissions you grant once aren't asked for again.
     if command -v codesign >/dev/null 2>&1; then
-      codesign --force --sign - "$APP_DIR" >/dev/null 2>&1 || true
+      codesign --force --sign - "$BUILD_DIR" >/dev/null 2>&1 || true
     fi
+
+    # Only now is the old one replaced.
+    rm -rf "$APP_DIR"
+    mv "$BUILD_DIR" "$APP_DIR"
+    trap - EXIT
+
     BUILT_APP=1
     NEW_BUILD=1
     fi
