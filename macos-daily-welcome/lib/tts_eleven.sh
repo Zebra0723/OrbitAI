@@ -54,8 +54,37 @@ eleven_store_key_file() {
   chmod 600 "$WELCOME_ELEVEN_KEY_FILE"
 }
 
+# A fingerprint of the key, so "this key was refused" can be remembered
+# without storing the key a second time.
+_eleven_key_fingerprint() {
+  eleven_api_key 2>/dev/null \
+    | (shasum -a 256 2>/dev/null || sha256sum 2>/dev/null) \
+    | awk '{print $1}' | cut -c1-16
+}
+
+_eleven_rejected_file() { printf '%s/eleven-key-rejected' "$WELCOME_STATE_DIR"; }
+
+# Remember a key the service itself said no to. Not a timeout, not a
+# network blip - an actual 401.
+eleven_mark_rejected() {
+  mkdir -p "$WELCOME_STATE_DIR" 2>/dev/null
+  _eleven_key_fingerprint > "$(_eleven_rejected_file)" 2>/dev/null
+}
+
+eleven_clear_rejected() { rm -f "$(_eleven_rejected_file)" 2>/dev/null; }
+
+eleven_key_was_rejected() {
+  [ -s "$(_eleven_rejected_file)" ] || return 1
+  [ "$(cat "$(_eleven_rejected_file)" 2>/dev/null)" = "$(_eleven_key_fingerprint)" ]
+}
+
 eleven_available() {
-  have_cmd curl && have_cmd afplay && eleven_api_key >/dev/null 2>&1
+  have_cmd curl && have_cmd afplay && eleven_api_key >/dev/null 2>&1 || return 1
+  # An invalid key is worse than no key: "auto" kept choosing ElevenLabs,
+  # waiting for the refusal, and only then falling back - on every single
+  # thing it said. Once the service has refused this exact key, stop
+  # preferring it until the key changes.
+  ! eleven_key_was_rejected
 }
 
 # Pulls "voice_id" / "name" pairs out of the voices response without
@@ -192,6 +221,7 @@ eleven_synthesize() {
     fi
     welcome_log "elevenlabs: HTTP $code"
     if [ "$code" = "401" ] || [ "$code" = "403" ]; then
+      eleven_mark_rejected
       break   # a bad key won't get better on retry
     fi
   done

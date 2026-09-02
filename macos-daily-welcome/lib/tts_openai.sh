@@ -9,8 +9,14 @@
 
 OPENAI_TTS_API="https://api.openai.com/v1/audio/speech"
 
+_openai_exhausted_file() { printf '%s/openai-out-of-credit' "$WELCOME_STATE_DIR"; }
+
+# Out of credit is temporary in a way a bad key is not, so this forgets
+# after an hour rather than until the key changes.
 openai_tts_available() {
-  have_cmd curl && have_cmd afplay && openai_api_key >/dev/null 2>&1
+  have_cmd curl && have_cmd afplay && openai_api_key >/dev/null 2>&1 || return 1
+  [ -f "$(_openai_exhausted_file)" ] || return 0
+  [ -z "$(find "$(_openai_exhausted_file)" -mmin -60 2>/dev/null)" ]
 }
 
 _openai_tts_cache_key() {
@@ -61,6 +67,10 @@ openai_tts_synthesize() {
 
     [ "$code" = "200" ] && [ -s "$out" ] && return 0
     welcome_log "openai tts: HTTP $code"
+    if [ "$code" = "429" ]; then
+      mkdir -p "$WELCOME_STATE_DIR" 2>/dev/null
+      : > "$(_openai_exhausted_file)"
+    fi
     [ "$code" = "401" ] || [ "$code" = "403" ] && break
   done
 

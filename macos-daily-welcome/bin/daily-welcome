@@ -216,6 +216,11 @@ case "$MODE" in
       000|"") echo "Couldn't reach ElevenLabs to check it. Stored anyway." ;;
       *) echo "ElevenLabs answered HTTP $code. Stored; try --test-voice." ;;
     esac
+    # A new key deserves a fresh hearing, whatever the last one did.
+    eleven_clear_rejected
+    case "$code" in
+      *) : ;;
+    esac
     exit 0
     ;;
   setopenai)
