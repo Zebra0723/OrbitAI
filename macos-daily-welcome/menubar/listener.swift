@@ -51,6 +51,9 @@ final class OrbitListener: NSObject {
     /// any - which is the default, because recording the room by habit is
     /// not something to switch on quietly.
     var utterancePath: String = ""
+    /// Written by `orbit` when somebody waves an unrecognised voice
+    /// through. Removed here when the conversation it was for ends.
+    var bypassPath: String = ""
     var keepUtteranceAudio = false
 
     /// While this file exists, the microphone records but nothing acts on
@@ -1145,6 +1148,14 @@ final class OrbitListener: NSObject {
         greeted = true          // no greeting mid-conversation
         heard = ""
         wakePrefix = ""
+
+        // A bypass is for ONE conversation. It has a clock on it as
+        // well, because a door propped open and forgotten is not a door,
+        // but the conversation ending is the thing it was actually
+        // scoped to and it should not outlive it.
+        if ended, !bypassPath.isEmpty {
+            try? FileManager.default.removeItem(atPath: bypassPath)
+        }
 
         if awaiting && !ended {
             inConversation = true

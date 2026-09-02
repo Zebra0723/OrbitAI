@@ -162,6 +162,11 @@
 # What it says when you use the wake word on its own, with no command
 # after it. $WELCOME_NAME is filled in.
 : "${ORBIT_GREETING:=Hi $WELCOME_NAME. What can I do for you today?}"
+# What it says to the wake word when it does not yet know who said it.
+# Two words is rarely enough voice to identify anybody, so this is the
+# ordinary case and not a refusal - it acknowledges without using a name,
+# and the command that follows is long enough to actually check.
+: "${ORBIT_GREETING_UNKNOWN:=Yes?}"
 
 # How long it keeps listening after that greeting before going quiet again.
 : "${ORBIT_FOLLOWUP_SECONDS:=9}"
@@ -312,6 +317,18 @@
 # is worth embedding. A second of voice embeds badly, and a wandering
 # vector is what lands a stranger next to somebody real.
 : "${ORBIT_SPEAKER_MIN_SECONDS:=1.6}"
+
+# Letting somebody in for one conversation.
+#
+# Saying "bypass <code>" waves through the voice that was just turned
+# away, for a few minutes. It has to be said by a voice that IS
+# recognised - the whole point is that the person being let in cannot
+# let themselves in - and `orbit voice bypass` does the same thing from
+# a terminal, so a bad day for the recogniser cannot lock anybody out.
+#
+# Change the code. This one is written in a public repository.
+: "${ORBIT_BYPASS_CODE:=727590}"
+: "${ORBIT_BYPASS_MINUTES:=10}"
 : "${ORBIT_SPEAKER_TIMEOUT:=12}"
 : "${ORBIT_SPEAKER_PYTHON:=}"
 # Who is speaking, for whatever is about to be asked. Set by orbit before

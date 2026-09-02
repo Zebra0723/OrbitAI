@@ -153,6 +153,13 @@ speaker_check() {
   line="$(speaker_identify 2>/dev/null)" || line=""
   SPEAKER="$(printf '%s' "$line" | cut -f1)"
 
+  # Somebody who is allowed to be here said so, a moment ago. A ban is
+  # still a ban - a bypass is for a voice that is not KNOWN, not for one
+  # that has been refused on purpose.
+  if [ -z "$SPEAKER" ] && bypass_active; then
+    return 0
+  fi
+
   if [ "$(printf '%s' "$line" | cut -f3)" = "banned" ]; then
     memory_log_event refused "Refused a command from $SPEAKER"
     emit "$(speaker_refusal_banned)" false "" true
@@ -611,6 +618,29 @@ case "${1:-}" in
 
     plan_started="$(date '+%s')"
 
+    # "bypass <code>" - let the voice that was just turned away in.
+    #
+    # Handled before the gate, because the sentence has to be heard even
+    # when the room has just been refused. Granting it still needs a
+    # voice that IS recognised: the person being let in must not be able
+    # to let themselves in, which is the entire point.
+    if bypass_code_said "$transcript"; then
+      bypass_speaker="$(speaker_identify 2>/dev/null | cut -f1)" || bypass_speaker=""
+      if ! speaker_enabled; then
+        emit "Voice recognition is off, so there is nobody to let in." false "" true
+      elif [ -n "$bypass_speaker" ]; then
+        bypass_grant "$bypass_speaker"
+        memory_log_event bypass "$bypass_speaker waved a voice through"
+        emit "Right. They are in for the next $(num_word "$ORBIT_BYPASS_MINUTES") minutes." false ""
+      else
+        # Said by a voice it does not know, which is the one case this
+        # must not work in.
+        memory_log_event refused "An unrecognised voice tried the bypass code"
+        emit "That is the right code and I do not know your voice, so no. $WELCOME_NAME can say it, or run orbit voice bypass." false "" true
+      fi
+      exit 0
+    fi
+
     speaker_check || exit 0
     export ORBIT_SPEAKER_NAME="$SPEAKER"
 
@@ -1026,7 +1056,40 @@ case "${1:-}" in
     ;;
   greeting)
     # The wake word on its own: acknowledge, then keep listening.
-    emit "$ORBIT_GREETING" false ""
+    #
+    # Three different acknowledgements, because the wake word alone does
+    # not establish who said it. "Hi Arjun, what can I do for you" said
+    # to whoever happens to be standing there is both wrong and a way of
+    # telling a stranger your name.
+    if ! speaker_enabled; then
+      emit "$ORBIT_GREETING" false ""
+      exit 0
+    fi
+
+    greet_line="$(speaker_identify 2>/dev/null)" || greet_line=""
+    greet_who="$(printf '%s' "$greet_line" | cut -f1)"
+
+    if [ "$(printf '%s' "$greet_line" | cut -f3)" = "banned" ]; then
+      memory_log_event refused "Refused a wake word from $greet_who"
+      emit "$(speaker_refusal_banned)" false "" true
+      exit 0
+    fi
+
+    if [ -n "$greet_who" ]; then
+      # Known, so it can be said by name.
+      if [ "$greet_who" = "$WELCOME_NAME" ]; then
+        emit "$ORBIT_GREETING" false ""
+      else
+        emit "$(printf '%s' "$ORBIT_GREETING" | sed "s/$WELCOME_NAME/$greet_who/")" false ""
+      fi
+      exit 0
+    fi
+
+    # Nobody recognised. Two words is rarely enough voice to identify
+    # anybody, so this is the ordinary case rather than a refusal - the
+    # answer is to acknowledge without a name and let the command that
+    # follows be long enough to go on. That command gets the full check.
+    emit "$ORBIT_GREETING_UNKNOWN" false ""
     ;;
   config)
     # One source of truth for settings: the menu bar app asks for these
@@ -1305,6 +1368,25 @@ case "${1:-}" in
           echo "$out" >&2; exit 1
         fi
         ;;
+      bypass)
+        shift
+        case "${1:-start}" in
+          end|stop|off)
+            bypass_end
+            echo "Bypass closed. Unrecognised voices are turned away again." ;;
+          status)
+            if bypass_active; then
+              echo "Open for another $(bypass_minutes_left) minute(s)."
+            else
+              echo "Closed. Unrecognised voices are turned away."
+            fi ;;
+          *)
+            bypass_grant "$(whoami)"
+            echo "Anyone can talk to it for the next $ORBIT_BYPASS_MINUTES minutes."
+            echo "Close it early with: orbit voice bypass end" ;;
+        esac
+        exit 0
+        ;;
       refusals)
         shift
         howmany="${1:-8}"
@@ -1386,6 +1468,7 @@ orbit voice ban <name>        refuse that person from now on
 orbit voice ban last [label]  refuse whoever just spoke
 orbit voice unban <name>      allow them again
 orbit voice forget <name>     remove them entirely
+orbit voice bypass [end]      let unrecognised voices in for a few minutes
 orbit voice refusals [n]      what it says to a voice it will not obey
 orbit voice test              score the last voice against everyone
 orbit voice check <name>      do their own recordings agree with each other

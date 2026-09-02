@@ -76,6 +76,74 @@ speaker_enrolled_count() {
 # same as an unrecognised voice, and must not be treated as one.
 speaker_have_audio() { [ -s "$(speaker_utterance)" ]; }
 
+# ------------------------------------------------------------------- the bypass
+#
+# One conversation's worth of "yes, I know, let them in".
+#
+# The situation it is for: somebody speaks, is not recognised, and is
+# turned away - and the person whose Mac it is wants them let through
+# anyway. They say "bypass <code>" and the next few minutes are open.
+#
+# A file with a timestamp rather than a flag, because the failure that
+# matters is the one where it never turns itself off again.
+
+_bypass_file() { printf '%s/bypass' "$WELCOME_STATE_DIR"; }
+
+# bypass_grant [WHO] - open the door for ORBIT_BYPASS_MINUTES.
+bypass_grant() {
+  mkdir -p "$WELCOME_STATE_DIR" 2>/dev/null
+  printf '%s\t%s\n' "$(date '+%s')" "${1:-someone}" > "$(_bypass_file)"
+}
+
+bypass_end() { rm -f "$(_bypass_file)" 2>/dev/null; }
+
+# True while a bypass is live. Expiring is the whole design: a door that
+# is propped open and forgotten is not a door.
+bypass_active() {
+  local file age
+  file="$(_bypass_file)"
+  [ -f "$file" ] || return 1
+  age="$(_file_age_seconds "$file")" || { bypass_end; return 1; }
+  if [ "${age:-0}" -gt $(( ORBIT_BYPASS_MINUTES * 60 )) ]; then
+    bypass_end
+    return 1
+  fi
+  return 0
+}
+
+# How much longer it lasts, in whole minutes, for saying out loud.
+bypass_minutes_left() {
+  local age
+  age="$(_file_age_seconds "$(_bypass_file)")" || { printf '0'; return; }
+  printf '%s' "$(( (ORBIT_BYPASS_MINUTES * 60 - age + 59) / 60 ))"
+}
+
+# Was that the code? Spoken digits arrive as words as often as figures,
+# and the recogniser puts spaces and commas through the middle of a long
+# number, so both are reduced to bare digits before comparing.
+_spoken_digits() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E '
+    s/(^|[^a-z])zero([^a-z]|$)/\10\2/g; s/(^|[^a-z])oh([^a-z]|$)/\10\2/g
+    s/(^|[^a-z])one([^a-z]|$)/\11\2/g;  s/(^|[^a-z])two([^a-z]|$)/\12\2/g
+    s/(^|[^a-z])three([^a-z]|$)/\13\2/g; s/(^|[^a-z])four([^a-z]|$)/\14\2/g
+    s/(^|[^a-z])five([^a-z]|$)/\15\2/g;  s/(^|[^a-z])six([^a-z]|$)/\16\2/g
+    s/(^|[^a-z])seven([^a-z]|$)/\17\2/g; s/(^|[^a-z])eight([^a-z]|$)/\18\2/g
+    s/(^|[^a-z])nine([^a-z]|$)/\19\2/g
+  ' | tr -cd '0-9'
+}
+
+# bypass_code_said "<transcript>" - true when the code is in there.
+bypass_code_said() {
+  local said want
+  want="$(_spoken_digits "$ORBIT_BYPASS_CODE")"
+  [ -n "$want" ] || return 1
+  said="$(_spoken_digits "$1")"
+  case "$said" in
+    *"$want"*) return 0 ;;
+  esac
+  return 1
+}
+
 # ---------------------------------------------------------- turning people away
 
 _refusals_file() { printf '%s/lib/refusals.txt' "$ROOT"; }
