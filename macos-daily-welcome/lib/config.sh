@@ -177,6 +177,12 @@
 # the query outlived its timeout and came back empty.
 : "${ORBIT_MAIL_SCAN:=60}"
 
+# How many of the newest drafts to look through when sending the one just
+# written. It was made seconds ago, so it is at the top; walking a mailbox
+# with hundreds of drafts asking each for its recipients is the same stall
+# in a worse place - right after you have said yes.
+: "${ORBIT_MAIL_DRAFT_SCAN:=40}"
+
 # Macros: one phrase, several commands.
 : "${ORBIT_MACROS_FILE:=$HOME/.config/daily-welcome/macros.conf}"
 

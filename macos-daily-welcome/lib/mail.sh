@@ -19,18 +19,26 @@
 _mail_unread_count() {
   osascript <<'APPLESCRIPT' 2>/dev/null
 on run
-  set n to 0
+  -- "inbox" is the unified inbox: it already covers every account. Adding
+  -- the accounts' own inboxes on top of it counted the same mail twice
+  -- and reported double. The larger of the two is taken rather than one
+  -- or the other, because undercounting is the dangerous direction - a
+  -- count of nought is the one thing that makes Orbit say "your inbox is
+  -- clear" without looking any further.
+  set unified to 0
+  set summed to 0
   tell application "Mail"
     try
-      set n to unread count of inbox
+      set unified to unread count of inbox
     end try
     repeat with acct in accounts
       try
-        if enabled of acct then set n to n + (unread count of (mailbox "INBOX" of acct))
+        if enabled of acct then set summed to summed + (unread count of (mailbox "INBOX" of acct))
       end try
     end repeat
   end tell
-  return n as string
+  if summed > unified then return summed as string
+  return unified as string
 end run
 APPLESCRIPT
 }
@@ -226,9 +234,14 @@ mail_awaiting_reply() {
 }
 
 # mail_draft_reply MESSAGE_ID BODY - saves a reply in Drafts, unsent.
-mail_draft_reply() {
+mail_draft_reply() { _mail_draft_reply "$@" >/dev/null 2>&1; }
+
+# Split from the above so a test can see the script it builds. The
+# redirect belongs to the caller, which wants the exit status and nothing
+# else; a function that throws its own output away cannot be checked.
+_mail_draft_reply() {
   local msg_id="$1" body="$2"
-  osascript - "$msg_id" "$body" <<'APPLESCRIPT' >/dev/null 2>&1
+  osascript - "$msg_id" "$body" <<'APPLESCRIPT' 
 on run argv
   set theId to (item 1 of argv) as integer
   set theBody to item 2 of argv
@@ -248,9 +261,11 @@ APPLESCRIPT
 
 # mail_compose ADDRESS SUBJECT BODY - a new message, saved to Drafts and
 # left there. Nothing in this file sends without a second ask.
-mail_compose() {
+mail_compose() { _mail_compose "$@" >/dev/null 2>&1; }
+
+_mail_compose() {
   local address="$1" subject="$2" body="$3"
-  osascript - "$address" "$subject" "$body" <<'APPLESCRIPT' >/dev/null 2>&1
+  osascript - "$address" "$subject" "$body" <<'APPLESCRIPT' 
 on run argv
   set theAddress to item 1 of argv
   set theSubject to item 2 of argv
@@ -267,23 +282,45 @@ APPLESCRIPT
 }
 
 # mail_send_composed ADDRESS SUBJECT - sends the draft matching both.
+#
+# Bounded twice over. Walking every draft asking for its recipients is one
+# Apple Event per draft per recipient, which on a mailbox with a few
+# hundred drafts is the same shape of stall that used to make listing
+# unread mail time out - and this one runs at the moment you have just
+# said yes, which is the worst possible moment to hang. The draft we want
+# was made seconds ago, so only the newest few are worth looking at, and
+# the whole thing gives up rather than waiting forever.
 mail_send_composed() {
   local address="$1" subject="$2"
-  osascript - "$address" "$subject" <<'APPLESCRIPT' 2>/dev/null
+  run_with_timeout "$ORBIT_MAIL_TIMEOUT" _mail_send_composed "$address" "$subject"
+}
+
+_mail_send_composed() {
+  local address="$1" subject="$2"
+  osascript - "$address" "$subject" "$ORBIT_MAIL_DRAFT_SCAN" <<'APPLESCRIPT' 2>/dev/null
 on run argv
   set wantAddress to item 1 of argv
   set wantSubject to item 2 of argv
+  set scan to (item 3 of argv) as integer
   tell application "Mail"
-    repeat with d in (messages of drafts mailbox)
-      set matched to false
-      try
-        repeat with r in (to recipients of d)
-          if (address of r) is wantAddress then set matched to true
-        end repeat
-      end try
-      if matched and (subject of d) is wantSubject then
-        send d
-        return "sent"
+    set drafts_ to messages of drafts mailbox
+    set total to (count of drafts_)
+    if total > scan then set total to scan
+    if total is 0 then return "missing"
+    -- Subjects for the whole list in one request; recipients are only
+    -- asked for on the handful whose subject already matches.
+    set subjList to subject of (items 1 thru total of drafts_)
+    repeat with i from 1 to total
+      if (item i of subjList) is wantSubject then
+        set d to item i of drafts_
+        try
+          repeat with r in (to recipients of d)
+            if (address of r) is wantAddress then
+              send d
+              return "sent"
+            end if
+          end repeat
+        end try
       end if
     end repeat
   end tell

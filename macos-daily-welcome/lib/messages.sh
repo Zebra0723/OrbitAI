@@ -25,7 +25,13 @@ LEFT JOIN chat_message_join cmj ON cmj.message_id = m.ROWID
 LEFT JOIN chat c ON c.ROWID = cmj.chat_id
 WHERE m.is_from_me = 0
   AND m.is_read = 0
-  AND m.date / 1000000000 + $_APPLE_EPOCH > strftime('%s', 'now', '-$since_days days')
+  -- CAST, and not for tidiness. strftime returns TEXT, and SQLite orders
+  -- every integer below every string, so "a number > that string" was
+  -- false for every message ever sent. The section was not empty because
+  -- there was nothing unread; it was empty because the question could
+  -- not be answered yes.
+  AND m.date / 1000000000 + $_APPLE_EPOCH >
+      CAST(strftime('%s', 'now', '-$since_days days') AS INTEGER)
 ORDER BY m.date DESC
 LIMIT $limit;
 SQL

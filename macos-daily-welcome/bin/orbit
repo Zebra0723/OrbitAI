@@ -117,7 +117,14 @@ prune_plans() {
 
 save_plan() {
   local token="$1"; shift
-  printf '%s\n' "$@" > "$(plan_file "$token")"
+  # One field per line, so a value containing a newline would split into
+  # two fields and the second would be read as a key nobody knows. Voice
+  # does not produce newlines, but a body that came from a model or a
+  # macro can, and a corrupt plan fails at the moment you say yes.
+  local field
+  for field in "$@"; do
+    printf '%s\n' "$(printf '%s' "$field" | tr '\n\r' '  ')"
+  done > "$(plan_file "$token")"
 }
 
 # --- planning --------------------------------------------------------------
@@ -1059,7 +1066,10 @@ case "${1:-}" in
       printf '  unread count:   %s  (%ss)\n' "${count:-<no answer>}" "$(( $(date '+%s') - t0 ))"
       t0="$(date '+%s')"
       rows="$(src_mail 2>/dev/null)"
-      listed="$(printf '%s\n' "$rows" | grep -vc '^#note' 2>/dev/null)"
+      # grep -vc counts LINES THAT DO NOT MATCH, and an empty result is
+      # still one empty line - so this reported "1 row" when nothing had
+      # been listed at all, and the warning below could never fire.
+      listed="$(printf '%s\n' "$rows" | grep -v '^#note' | grep -c . 2>/dev/null)"
       printf '  scan listed:    %s row(s) in %ss\n' "$listed" "$(( $(date '+%s') - t0 ))"
       note="$(printf '%s\n' "$rows" | awk -F'\t' '$1 == "#note" { print $2; exit }')"
       [ -n "$note" ] && printf '  note:           %s\n' "$note"

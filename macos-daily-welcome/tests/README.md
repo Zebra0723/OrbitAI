@@ -32,6 +32,8 @@ the name you gave matches no suite.
 | `disfluency` | "um", false starts, and which hedges are content |
 | `speech` | how it sounds: pauses, clocks, tidying, sentence case |
 | `memory` | what it remembers and what it lets go of |
+| `messages` | unread iMessages, against a real chat.db shape |
+| `applescript` | the scripts Mail is sent, as they come out |
 | `slots` | the half-finished request, and the way out of one |
 | `speaker` | the voice store: matching, banning, and strangers |
 | `backend` | choosing how to speak, without dying in the attempt |
