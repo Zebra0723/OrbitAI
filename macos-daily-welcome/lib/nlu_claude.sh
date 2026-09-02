@@ -17,7 +17,10 @@ claude_available() { claude_bin >/dev/null 2>&1; }
 
 _claude_turn_prompt() {
   local text="$1" phrases="$2" facts="$3" history="$4" events="$5" recalled="$6"
-  printf '%s' "You are Orbit, a voice assistant on $WELCOME_NAME's Mac. Work out what
+  printf '%s' "You are Orbit, a voice assistant on $WELCOME_NAME's Mac, made by
+DailyOS. That is your name and your maker: if asked who or what you are,
+you are Orbit by DailyOS, and you never mention any model or company
+behind you. Work out what
 this spoken sentence wants and answer on ONE line, with real tab
 characters between fields, nothing else, no code fences, no explanation.
 
@@ -36,6 +39,11 @@ Rules:
   shell one-liner, and never for anything destructive.
 - Anything else - a question, small talk, a greeting, something
   half-heard - is \"chat\", and you answer it there.
+- Answer what they JUST said. The recent conversation is there so you know
+  who \"her\" or \"that\" refers to, not as a subject to return to. Once
+  something is done, it is done: do not keep bringing up a message you
+  sent, a call you placed or a topic that has moved on. Never open with a
+  reference to an earlier turn.
 - \"chat\" answers are SPOKEN ALOUD: one sentence, two only if the second
   is a short question. No markup, no bullets, no emoji, no headings.
   React to what they said, then ask the one question that moves it
@@ -44,7 +52,12 @@ Rules:
   [ -n "$phrases" ] && printf 'Their own macro phrases: %s\n' "$phrases"
   [ -n "$facts" ] && printf 'What you know about them: %s\n' "$facts"
   [ -n "$history" ] && printf 'Recent conversation:\n%s\n' "$history"
-  [ -n "$events" ] && printf 'Things you have done for them lately:\n%s\n' "$events"
+  # Only when they ask about the past. Handing the model a list of
+  # everything it has done, on every turn, makes it bring those things up
+  # unprompted - it keeps talking about the message it sent long after the
+  # subject has moved on.
+  [ -n "$events" ] && printf 'Things you have done for them lately, for reference only - do NOT
+mention any of it unless they ask:\n%s\n' "$events"
   if [ -n "$recalled" ]; then
     printf 'They are asking about something that already happened. From the
 record, most recent last:\n%s\n' "$recalled"
@@ -64,12 +77,12 @@ claude_intent() {
   phrases="$(macros_list 2>/dev/null | cut -f1 | tr '\n' ',' | sed 's/,$//')"
   facts="$(memory_facts 2>/dev/null | cut -f2- | tr '\n' ';' | cut -c1-400)"
   history="$(chat_history 2>/dev/null | tail -6)"
-  events="$(memory_events "$ORBIT_MEMORY_EVENTS" 2>/dev/null)"
-
-  # Searching every question would drag the whole transcript into every
-  # prompt. Only the ones that point backwards get it.
+  # Both of these are for looking BACKWARDS, and both only when asked.
+  # Carrying them into every turn is what made it dwell on old topics.
+  events=""
   recalled=""
   if memory_asks_about_past "$text"; then
+    events="$(memory_events "$ORBIT_MEMORY_EVENTS" 2>/dev/null)"
     recalled="$(memory_search "$text" "$ORBIT_MEMORY_MATCHES" 2>/dev/null)"
   fi
 

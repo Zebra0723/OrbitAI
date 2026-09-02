@@ -90,7 +90,10 @@ _greeting_word() {
   fi
 }
 
-# Records -> "Call the bank, which is overdue." one per line.
+# Records -> "call the bank, which is overdue" - a CLAUSE, one per line,
+# with no full stop. Every item used to end in one, and a full stop is a
+# hard stop: a briefing made of four-word sentences reads out like a
+# telegram being dictated. The caller joins these into real sentences.
 _spoken_items() {
   local records="$1" max="$2" count=0 when title
   while IFS="$(printf '\t')" read -r when title _; do
@@ -98,17 +101,29 @@ _spoken_items() {
     [ -z "$title" ] && continue
     count=$((count + 1))
     [ "$count" -gt "$max" ] && break
-    title="$(speech_clean "$title")"
+    title="$(speech_clean "$title" | sed -E 's/[.[:space:]]+$//')"
     case "$when" in
-      OVERDUE)      printf '%s. That one is overdue.\n' "$title" ;;
-      flagged)      printf '%s. Flagged.\n' "$title" ;;
-      done|failed)  printf '%s\n' "$title" ;;   # already a full sentence
-      "")           printf '%s.\n' "$title" ;;
-      *)            printf '%s, at %s.\n' "$title" "$(time_words_relative "$when")" ;;
+      OVERDUE)      printf '%s, which is overdue\n' "$title" ;;
+      flagged)      printf '%s, flagged\n' "$title" ;;
+      done|failed)  printf '%s\n' "$title" ;;
+      "")           printf '%s\n' "$title" ;;
+      *)            printf '%s at %s\n' "$title" "$(time_words_relative "$when")" ;;
     esac
   done <<EOT
 $records
 EOT
+}
+
+# "a, b and c" - the way a person lists things out loud.
+_join_clauses() {
+  awk 'NF { n++; item[n] = $0 }
+       END {
+         for (i = 1; i <= n; i++) {
+           printf "%s", item[i]
+           if (i == n - 1) printf " and "
+           else if (i < n)  printf ", "
+         }
+       }'
 }
 
 # build_spoken_briefing REMINDERS CALENDAR TASKS MESSAGES MAIL CLAUDE
@@ -127,57 +142,68 @@ build_spoken_briefing() {
   local honorific=""
   [ -n "$WELCOME_HONORIFIC" ] && honorific=", $WELCOME_HONORIFIC"
 
-  # Short declaratives. "You have four reminders, and there are also two
-  # events" hedges; "Four reminders due today. Two events." doesn't.
-  text="Welcome back, $(speech_clean "$WELCOME_NAME"). "
-  text="${text}$(_greeting_word)${honorific}. "
-  text="${text}It's $(now_words), $(today_words). "
-
-  if [ "$n_rem" -gt 0 ]; then
-    parts="$(num_word "$n_rem") $(_plural "$n_rem" reminder reminders) due today"
-    if [ "$n_overdue" -gt 0 ]; then
-      parts="$parts, $(num_word "$n_overdue") overdue"
+  # Spoken, not printed. The old version was a stack of four-word
+  # declaratives - "Three reminders due today. Two events on the calendar.
+  # Four unread emails." - which reads crisply on a page and out loud
+  # sounds like a telegram: every full stop is a hard stop, and there were
+  # nine of them before the first real clause. These join into sentences.
+  local counts=""
+  {
+    if [ "$n_rem" -gt 0 ]; then
+      if [ "$n_overdue" -gt 0 ]; then
+        printf '%s %s due today, %s of them overdue\n' \
+          "$(num_word "$n_rem")" "$(_plural "$n_rem" reminder reminders)" "$(num_word "$n_overdue")"
+      else
+        printf '%s %s due today\n' "$(num_word "$n_rem")" "$(_plural "$n_rem" reminder reminders)"
+      fi
     fi
-    parts="$parts. "
-  fi
-  if [ "$n_cal" -gt 0 ]; then
-    parts="$parts$(num_word "$n_cal") $(_plural "$n_cal" event events) on the calendar. "
-  fi
-  if [ "$n_msg" -gt 0 ]; then
-    parts="$parts$(num_word "$n_msg") unread $(_plural "$n_msg" message messages). "
-  fi
-  if [ "$n_mail" -gt 0 ]; then
-    parts="$parts$(num_word "$n_mail") unread $(_plural "$n_mail" email emails). "
-  fi
-  if [ "$n_tsk" -gt 0 ] && [ -z "$parts" ]; then
-    parts="$(num_word "$n_tsk") open $(_plural "$n_tsk" task tasks). "
-  elif [ "$n_tsk" -gt 0 ]; then
-    parts="$parts$(num_word "$n_tsk") open $(_plural "$n_tsk" task tasks). "
+    [ "$n_cal" -gt 0 ] && printf '%s %s on the calendar\n' \
+      "$(num_word "$n_cal")" "$(_plural "$n_cal" event events)"
+    [ "$n_msg" -gt 0 ] && printf '%s unread %s\n' \
+      "$(num_word "$n_msg")" "$(_plural "$n_msg" message messages)"
+    [ "$n_mail" -gt 0 ] && printf '%s unread %s\n' \
+      "$(num_word "$n_mail")" "$(_plural "$n_mail" email emails)"
+    [ "$n_tsk" -gt 0 ] && printf '%s open %s\n' \
+      "$(num_word "$n_tsk")" "$(_plural "$n_tsk" task tasks)"
+    true
+  } > "$WELCOME_STATE_DIR/.counts.$$" 2>/dev/null
+  counts="$(_join_clauses < "$WELCOME_STATE_DIR/.counts.$$")"
+  rm -f "$WELCOME_STATE_DIR/.counts.$$"
+
+  # The greeting and the time run together as one sentence, because that
+  # is how someone would actually say it.
+  text="Welcome back, $(speech_clean "$WELCOME_NAME") - $(printf '%s' "$(_greeting_word)" | tr '[:upper:]' '[:lower:]')${honorific}. "
+  if [ -n "$counts" ]; then
+    text="${text}It's $(now_words) on $(today_words), and you have ${counts}. "
+  else
+    text="${text}It's $(now_words) on $(today_words), and the day is clear - nothing due, nothing scheduled. "
   fi
 
-  if [ -z "$parts" ] && [ "$n_cld" -eq 0 ]; then
-    text="${text}The day is clear. Nothing due, nothing scheduled. "
-  else
-    text="${text}${parts}"
-    local idx=0 line
+  local items
+  items="$( { _spoken_items "$cld" "$WELCOME_SPEAK_MAX_ITEMS"
+              _spoken_items "$rem" "$WELCOME_SPEAK_MAX_ITEMS"
+              _spoken_items "$cal" "$WELCOME_SPEAK_MAX_ITEMS"
+              if [ "$n_rem" -eq 0 ] && [ "$n_cal" -eq 0 ]; then
+                _spoken_items "$tsk" "$WELCOME_SPEAK_MAX_ITEMS"
+              fi
+              true; } | head -n "$WELCOME_SPEAK_MAX_ITEMS")"
+
+  if [ -n "$(printf '%s' "$items" | tr -d '[:space:]')" ]; then
+    # "First X, then Y, then Z" - one sentence, not three headings with
+    # colons after them.
+    local first rest joined idx=0 line
+    joined=""
     while IFS= read -r line; do
       [ -z "$line" ] && continue
       idx=$((idx + 1))
       case "$idx" in
-        1) text="${text}Top of the list: $line " ;;
-        2) text="${text}Next: $line " ;;
-        *) text="${text}After that: $line " ;;
+        1) joined="first, $line" ;;
+        *) joined="$joined, then $line" ;;
       esac
     done <<EOT
-$( { # What Claude did overnight is news; the rest you already half know.
-     _spoken_items "$cld" "$WELCOME_SPEAK_MAX_ITEMS"
-     _spoken_items "$rem" "$WELCOME_SPEAK_MAX_ITEMS"
-     _spoken_items "$cal" "$WELCOME_SPEAK_MAX_ITEMS"
-     if [ "$n_rem" -eq 0 ] && [ "$n_cal" -eq 0 ]; then
-       _spoken_items "$tsk" "$WELCOME_SPEAK_MAX_ITEMS"
-     fi
-     true; } | head -n "$WELCOME_SPEAK_MAX_ITEMS")
+$items
 EOT
+    [ -n "$joined" ] && text="${text}${joined}. "
   fi
 
   text="${text}$WELCOME_CLOSER"
