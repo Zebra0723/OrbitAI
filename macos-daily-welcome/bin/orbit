@@ -153,18 +153,26 @@ speaker_check() {
   line="$(speaker_identify 2>/dev/null)" || line=""
   SPEAKER="$(printf '%s' "$line" | cut -f1)"
 
-  # Somebody who is allowed to be here said so, a moment ago. A ban is
-  # still a ban - a bypass is for a voice that is not KNOWN, not for one
-  # that has been refused on purpose.
-  if [ -z "$SPEAKER" ] && bypass_active; then
+  # Somebody who is allowed to be here waved this voice through, a moment
+  # ago. Checked before everything else, including the ban.
+  #
+  # It used to apply only to a voice nobody recognised, on the reasoning
+  # that a ban is a decision rather than a failure. That reasoning is
+  # fine and it was still wrong: the voices worth waving through are
+  # mostly the banned ones, because a ban is what you did to them
+  # yesterday and today they are standing in your kitchen. Overriding a
+  # decision is exactly what an override is for. The ban itself survives
+  # - this lasts one conversation.
+  if bypass_active "$SPEAKER"; then
     return 0
   fi
 
   if [ "$(printf '%s' "$line" | cut -f3)" = "banned" ]; then
-    # A ban is a decision rather than a failure to recognise, so there is
-    # no window and no listening on afterwards. It ends the turn.
     memory_log_event refused "Refused a command from $SPEAKER"
-    emit "$(speaker_refusal_banned)" false "" true
+    # Listening on, like every other refusal: if the code cannot be said
+    # straight back, it may as well not exist.
+    bypass_window_start "$SPEAKER"
+    emit "$(speaker_refusal_banned)" false "" false true
     return 1
   fi
 
@@ -189,7 +197,7 @@ speaker_check() {
     # The microphone stays open. A refusal that closes it means the code
     # can only be said after the wake word, which is a lot to ask of
     # somebody standing in their own kitchen.
-    bypass_window_start
+    bypass_window_start ""
     emit "$(speaker_refusal_unknown)" false "" false true
     return 1
   fi
@@ -648,7 +656,10 @@ case "${1:-}" in
       if ! speaker_enabled; then
         emit "Voice recognition is off, so there is nobody to let in." false "" true
       elif [ -n "$bypass_speaker" ]; then
-        bypass_grant "$bypass_speaker"
+        # Waves through whoever was just turned away, by name when it
+        # knew them. Without that, a code said to let one person in
+        # would leave the door open to everybody.
+        bypass_grant "$bypass_speaker" "$(bypass_window_subject)"
         bypass_window_end
         memory_log_event bypass "$bypass_speaker waved a voice through"
         # Listening on, because the person just let in was halfway
@@ -1091,9 +1102,21 @@ case "${1:-}" in
     greet_line="$(speaker_identify 2>/dev/null)" || greet_line=""
     greet_who="$(printf '%s' "$greet_line" | cut -f1)"
 
+    # Somebody was waved through. Being greeted by name would be odd -
+    # they are a guest, not the owner - but being told off after having
+    # just been let in is worse, and it would end the turn and throw the
+    # bypass away with it.
+    if bypass_active "$greet_who"; then
+      emit "$ORBIT_GREETING_UNKNOWN" false ""
+      exit 0
+    fi
+
     if [ "$(printf '%s' "$greet_line" | cut -f3)" = "banned" ]; then
       memory_log_event refused "Refused a wake word from $greet_who"
-      emit "$(speaker_refusal_banned)" false "" true
+      # Listening on, so the code can be said straight back, and the
+      # turn does not end - ending it is what discards a bypass.
+      bypass_window_start "$greet_who"
+      emit "$(speaker_refusal_banned)" false "" false true
       exit 0
     fi
 
@@ -1403,7 +1426,7 @@ case "${1:-}" in
               echo "Closed. Unrecognised voices are turned away."
             fi ;;
           *)
-            bypass_grant "$(whoami)"
+            bypass_grant "$(whoami)" '*'
             echo "Anyone can talk to it for the next $ORBIT_BYPASS_MINUTES minutes."
             echo "Close it early with: orbit voice bypass end" ;;
         esac

@@ -40,6 +40,7 @@ the name you gave matches no suite.
 | `speaker` | the voice store: matching, banning, and strangers |
 | `freeform` | the denylist on model-written commands, and its wiring |
 | `bypass` | letting one voice in, and the greeting that names you |
+| `gate` | who actually gets in, driven through the real `orbit` |
 | `backend` | choosing how to speak, without dying in the attempt |
 | `unbound` | every variable read is one something declares |
 | `install` | build before replace; every Swift file and usage string |

@@ -89,18 +89,30 @@ speaker_have_audio() { [ -s "$(speaker_utterance)" ]; }
 
 _bypass_file() { printf '%s/bypass' "$WELCOME_STATE_DIR"; }
 
-# bypass_grant [WHO] - open the door for ORBIT_BYPASS_MINUTES.
+# bypass_grant GRANTER [SUBJECT] - open the door for ORBIT_BYPASS_MINUTES.
+#
+# SUBJECT is the voice being waved through: a name for somebody known and
+# banned, an empty string for a voice nobody recognised, or "*" for
+# everybody, which is what the terminal command means. Recording it keeps
+# the door narrow - waving one person through is not the same as leaving
+# the house open.
 bypass_grant() {
   mkdir -p "$WELCOME_STATE_DIR" 2>/dev/null
-  printf '%s\t%s\n' "$(date '+%s')" "${1:-someone}" > "$(_bypass_file)"
+  printf '%s\t%s\t%s\n' "$(date '+%s')" "${1:-someone}" "${2-}" > "$(_bypass_file)"
 }
 
 bypass_end() { rm -f "$(_bypass_file)" 2>/dev/null; }
 
-# True while a bypass is live. Expiring is the whole design: a door that
-# is propped open and forgotten is not a door.
+bypass_subject() {
+  awk -F'\t' 'NR == 1 { print $3 }' "$(_bypass_file)" 2>/dev/null
+}
+
+# bypass_active [SPEAKER] - is this voice allowed through right now?
+#
+# Expiring is half the design: a door propped open and forgotten is not a
+# door. Being about ONE voice is the other half.
 bypass_active() {
-  local file age
+  local file age subject
   file="$(_bypass_file)"
   [ -f "$file" ] || return 1
   age="$(_file_age_seconds "$file")" || { bypass_end; return 1; }
@@ -108,7 +120,14 @@ bypass_active() {
     bypass_end
     return 1
   fi
-  return 0
+
+  subject="$(bypass_subject)"
+  case "$subject" in
+    '*') return 0 ;;                       # everybody, from the terminal
+    '')  [ -z "${1-}" ] && return 0 ;;     # whoever it did not recognise
+    *)   [ "$subject" = "${1-}" ] && return 0 ;;
+  esac
+  return 1
 }
 
 # How much longer it lasts, in whole minutes, for saying out loud.
@@ -153,9 +172,18 @@ bypass_code_said() {
 
 _bypass_window_file() { printf '%s/bypass-window' "$WELCOME_STATE_DIR"; }
 
+# bypass_window_start [WHO] - remembers who was just turned away, so a
+# code said straight afterwards waves through THAT voice and not the next
+# person to walk in.
 bypass_window_start() {
   mkdir -p "$WELCOME_STATE_DIR" 2>/dev/null
-  date '+%s' > "$(_bypass_window_file)"
+  printf '%s\t%s\n' "$(date '+%s')" "${1-}" > "$(_bypass_window_file)"
+}
+
+# Who the last refusal was aimed at: a name, or empty for a voice nobody
+# recognised.
+bypass_window_subject() {
+  awk -F'\t' 'NR == 1 { print $2 }' "$(_bypass_window_file)" 2>/dev/null
 }
 
 bypass_window_end() { rm -f "$(_bypass_window_file)" 2>/dev/null; }

@@ -62,13 +62,17 @@ contains "and that refusal is recorded"           "memory_log_event refused" "$b
 contains "the phrase is heard before the gate can refuse it" "bypass_code_said" \
   "$(sed -n '/plan)/,/speaker_check || exit 0/p' "$TEST_ROOT/bin/orbit")"
 
-# A bypass is for a voice it does not KNOW. Somebody refused on purpose
-# stays refused.
+# The bypass is consulted before anything else, ban included. It used to
+# apply only to a voice with no name, which meant it never applied to the
+# voices most worth waving through - see tests/gate.test.sh, which drives
+# the whole thing for real rather than reading it.
 # speaker_check lives in bin/orbit, not a library, so it is read rather
 # than called.
 gate="$(sed -n '/^speaker_check() {/,/^}/p' "$TEST_ROOT/bin/orbit")"
-contains "a bypass only helps an unknown voice" '[ -z "$SPEAKER" ] && bypass_active' "$gate"
-ok "and the ban check still runs after it" "yes" \
+before_ban="$(printf '%s' "$gate" | sed -n '1,/= "banned"/p')"
+contains "the bypass is checked first" "bypass_active" "$before_ban"
+lacks "and not only for a nameless voice" '[ -z "$SPEAKER" ] && bypass_active' "$gate"
+ok "the ban check still runs after it" "yes" \
    "$(printf '%s' "$gate" | grep -q 'banned' && echo yes || echo no)"
 
 # The conversation it was scoped to ending should end it.
@@ -127,10 +131,11 @@ quiet="$(printf '%s' "$gate" | sed -n '/bypass_window_open; then/,/return 1/p')"
 contains "a second sentence gets silence" 'emit "" false "" false true' "$quiet"
 lacks "not the insult again"              "speaker_refusal_unknown"   "$quiet"
 
-# A ban is a decision, not a failure to recognise. No window, no waiting.
+# A ban is refused like anything else, and keeps listening like anything
+# else: a code that cannot be said straight back may as well not exist.
 banned="$(printf '%s' "$gate" | sed -n '/= "banned"/,/return 1/p')"
-contains "a ban ends the turn"    'emit "$(speaker_refusal_banned)" false "" true' "$banned"
-lacks "and opens no window"       "bypass_window"  "$banned"
+contains "a ban keeps listening too" 'emit "$(speaker_refusal_banned)" false "" false true' "$banned"
+contains "and remembers who it refused" 'bypass_window_start "$SPEAKER"' "$banned"
 
 # Somebody who belongs here talking means whatever that was is over.
 contains "a recognised voice closes the window" "bypass_window_end" "$gate"
