@@ -137,6 +137,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         listener.heardLogPath = stateDir + "/heard.log"
         listener.pausePath = stateDir + "/paused"
+        listener.callPath = stateDir + "/on-call"
+        listener.pauseOnCall = (shellConfig("pause_on_call") ?? "1") != "0"
+        CallWatch.ignoredBundleIDs = Set((shellConfig("call_ignore") ?? "")
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty })
         listener.wantsToListen = listeningWanted
         listener.onStateChange = { [weak self] state in
             self?.reflect(state)

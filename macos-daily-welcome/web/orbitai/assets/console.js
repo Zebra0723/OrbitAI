@@ -21,11 +21,14 @@ window.onConnected = () => load().catch((error) => out("out", explain(error)));
 
 function drawTiles() {
   const s = state.status;
-  const listening = s.listener.state || "never started";
+  // A call takes the microphone out of Orbit's hands, and from the outside
+  // that is indistinguishable from the ears having died.
+  const listening = s.on_call ? "on hold" : (s.listener.state || "never started");
   const alive = ["listening", "woken", "capturing", "speaking"].includes(listening);
   $("tiles").innerHTML = [
     ["App", s.app_running ? "Running" : "Not running", s.app_running],
     ["Ears", listening, alive],
+    ["Microphone", s.on_call ? s.on_call + " has it" : "free", !s.on_call],
     ["Last greeting", s.last_greeting || "none yet", !!s.last_greeting],
     ["Wake word", s.listener.wake || "hey orbit", true],
   ].map(([k, v, ok]) =>

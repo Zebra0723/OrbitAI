@@ -103,7 +103,7 @@ if [ "$WANT_APP" -eq 1 ]; then
 
     swiftc -O -o "$APP_DIR/Contents/MacOS/DailyWelcome" \
       "$ROOT/menubar/main.swift" "$ROOT/menubar/listener.swift" \
-      "$ROOT/menubar/eventkit.swift"
+      "$ROOT/menubar/eventkit.swift" "$ROOT/menubar/callwatch.swift"
 
     cat > "$APP_DIR/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

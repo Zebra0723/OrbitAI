@@ -52,6 +52,15 @@ final class OrbitListener: NSObject {
     /// back in.
     var pausePath: String = ""
 
+    /// Close the microphone while another app is using it - a call, in
+    /// other words. On by default: talking over your call, or listening
+    /// through it, are both worse than missing a command.
+    var pauseOnCall = true
+
+    /// A note left while a call is in progress, so the shell side holds
+    /// off too: no proactive alerts, no briefing read over the top.
+    var callPath: String = ""
+
     /// Where to leave a note about what the ears are doing. A menu bar app
     /// has nowhere to show an error, so `doctor` reads this instead.
     var statusPath: String = ""
@@ -135,6 +144,7 @@ final class OrbitListener: NSObject {
         // the app launching - so it clears "stop listening" too. Otherwise
         // a paused microphone would be a trap with no obvious way out.
         if !pausePath.isEmpty { try? FileManager.default.removeItem(atPath: pausePath) }
+        callOverrideUntil = Date().addingTimeInterval(60)
 
         guard recognizer != nil else {
             status("no-recognizer", "Speech recognition isn't available for en-US on this Mac")
@@ -178,7 +188,7 @@ final class OrbitListener: NSObject {
     }
 
     func stop() {
-        paused = false
+        quietedBy = ""
         silenceTimer?.invalidate()
         restartTimer?.invalidate()
         endRecognition()
@@ -238,15 +248,27 @@ final class OrbitListener: NSObject {
     /// True unless it has been switched off outright, as opposed to paused.
     var wantsToListen = true
 
-    /// True only between being asked to stop listening and being asked
-    /// back. The resume check keys off this rather than "the engine isn't
-    /// running", which is also true for half a dozen ordinary reasons.
-    private var paused = false
+    /// Why the microphone is currently shut, or "" when it is open. The
+    /// resume check keys off this rather than "the engine isn't running",
+    /// which is also true for half a dozen ordinary reasons.
+    private var quietedBy = ""
+
+    /// Asking CoreAudio is cheap but not free, and the silence timer runs
+    /// several times a second.
+    private var lastCallCheck = Date.distantPast
+    private var callSeen: String?
+
+    /// Pressing the hot key during a call means you want it anyway. A
+    /// guess about what you are doing must never outrank you saying so.
+    private var callOverrideUntil = Date.distantPast
 
     /// Skips the wake word - used by the menu item and the hot key. Also
     /// the way back from having been told to stop listening.
     func listenNow() {
         if !pausePath.isEmpty { try? FileManager.default.removeItem(atPath: pausePath) }
+        // Long enough for the command you pressed the key to give.
+        callOverrideUntil = Date().addingTimeInterval(60)
+        quietedBy = ""
         guard engine.isRunning else { start(); return }
         heard = ""
         greeted = false
@@ -598,6 +620,33 @@ final class OrbitListener: NSObject {
 
     /// Drops a pending confirmation without announcing it - used when you
     /// answer a question with a different command instead of yes or no.
+    /// Leaves (or clears) the note that says a call is in progress. The
+    /// shell reads it so the briefing and the proactive alerts don't talk
+    /// over the call either.
+    private func noteCall(_ reason: String?) {
+        guard !callPath.isEmpty else { return }
+        let fm = FileManager.default
+
+        guard let reason = reason else {
+            if fm.fileExists(atPath: callPath) { try? fm.removeItem(atPath: callPath) }
+            noteWrittenAt = Date.distantPast
+            noteSays = ""
+            return
+        }
+
+        // The shell treats a note nobody has touched in five minutes as
+        // debris from a crashed app rather than a call, so this has to be
+        // refreshed - but once every half minute, not once a second.
+        let app = reason.replacingOccurrences(of: " is using the microphone", with: "")
+        guard app != noteSays || Date().timeIntervalSince(noteWrittenAt) > 30 else { return }
+        try? app.write(toFile: callPath, atomically: true, encoding: .utf8)
+        noteSays = app
+        noteWrittenAt = Date()
+    }
+
+    private var noteWrittenAt = Date.distantPast
+    private var noteSays = ""
+
     private func dropPending() {
         let token = pendingToken
         pendingToken = ""
@@ -610,28 +659,57 @@ final class OrbitListener: NSObject {
         try? process.run()
     }
 
-    private func checkSilence() {
-        // Asked to go quiet: close the microphone, keep everything else.
+    /// Why the microphone should be shut right now, or nil for "no reason".
+    private func reasonToStayQuiet() -> String? {
         if !pausePath.isEmpty, FileManager.default.fileExists(atPath: pausePath) {
-            if engine.isRunning || !paused {
-                paused = true
-                status("paused", "asked to stop listening")
-                silenceTimer?.invalidate()
-                restartTimer?.invalidate()
-                endRecognition()
-                engine.stop()
-                engine.inputNode.removeTap(onBus: 0)
-                setState(.idle)
-                // Keep one timer alive, purely to notice being asked back.
-                silenceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
-                    [weak self] _ in self?.checkSilence()
-                }
-            }
+            return "asked to stop listening"
+        }
+        guard pauseOnCall, Date() > callOverrideUntil else { return nil }
+
+        // Throttled: the answer cannot change faster than a call can start.
+        if Date().timeIntervalSince(lastCallCheck) > 1.5 {
+            lastCallCheck = Date()
+            callSeen = CallWatch.appUsingMicrophone()
+        }
+        if let app = callSeen { return "\(app) is using the microphone" }
+        return nil
+    }
+
+    private func enterQuiet(_ reason: String) {
+        quietedBy = reason
+        status("paused", reason)
+
+        // A call starting mid-sentence is the one time it must stop
+        // talking without being asked.
+        player?.stop()
+        player = nil
+        speakingText = ""
+
+        silenceTimer?.invalidate()
+        restartTimer?.invalidate()
+        endRecognition()
+        if engine.isRunning {
+            engine.stop()
+            engine.inputNode.removeTap(onBus: 0)
+        }
+        setState(.idle)
+
+        // One timer stays alive, purely to notice the call ending.
+        silenceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
+            [weak self] _ in self?.checkSilence()
+        }
+    }
+
+    private func checkSilence() {
+        if let reason = reasonToStayQuiet() {
+            if engine.isRunning || quietedBy.isEmpty { enterQuiet(reason) }
+            noteCall(reason.hasSuffix("using the microphone") ? reason : nil)
             return
         }
-        if paused, wantsToListen {
-            paused = false
-            status("resuming", "asked to listen again")
+        noteCall(nil)
+        if !quietedBy.isEmpty, wantsToListen {
+            quietedBy = ""
+            status("resuming", "microphone free again")
             beginSession()
             return
         }

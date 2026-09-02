@@ -37,6 +37,9 @@ watch_may_speak() {
   # Not to an empty room, and not over a locked screen.
   screen_is_locked && return 1
 
+  # And never over a call.
+  on_a_call && return 1
+
   # Not while you've muted it for the day.
   if [ -f "$WELCOME_STATE_DIR/muted-on" ] &&
      [ "$(cat "$WELCOME_STATE_DIR/muted-on")" = "$(date '+%Y-%m-%d')" ]; then

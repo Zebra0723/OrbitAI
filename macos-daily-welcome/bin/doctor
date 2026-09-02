@@ -253,6 +253,12 @@ if [ -f "$STATUS_FILE" ]; then
       ok "Listener state: $l_state" ;;
   esac
 
+  if on_a_call; then
+    warn "Listening is on hold: $(on_a_call_app) is using the microphone."
+    fix "That is deliberate - it comes back by itself when the call ends."
+    fix "To switch the behaviour off: ORBIT_PAUSE_ON_CALL=0"
+  fi
+
   if [ -n "$l_heard" ]; then
     printf '\n  Last thing it heard: "%s"\n' "$l_heard"
     printf '  If that is what you said but it did not wake, the wake word is\n'

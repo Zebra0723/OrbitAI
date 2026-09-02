@@ -129,6 +129,31 @@ Email replies are **drafted first**. Orbit writes them into Mail, tells you how
 many, and sends only on your yes. Delete a draft before answering and that one
 stays unsent.
 
+### While you're on a call
+
+Orbit shuts the microphone the moment another app starts using it, and opens
+it again when that app stops. Nothing is announced either way - an assistant
+that says "going quiet" over your call has rather missed the point. If it was
+mid-sentence when the call started, it stops talking.
+
+It asks the only question that generalises: **is another process recording
+right now**. That covers a relayed iPhone call, FaceTime, Zoom, Meet in a
+browser tab, Teams, Discord, WhatsApp, a Slack huddle, and whatever gets
+written next - where a list of app names would have been out of date the week
+it was written. On macOS below 14.4 there is no per-process audio API, so it
+falls back to a list of known call apps, which is less exact.
+
+The daily briefing and the proactive alerts hold off too, so nothing talks
+over the call. A briefing you were owed is given once the call ends.
+
+Pressing Option-Space during a call overrides all of it for a minute: an
+explicit ask always beats a guess about what you are doing.
+
+```
+ORBIT_PAUSE_ON_CALL=0     never mind, keep listening through calls
+ORBIT_CALL_IGNORE=...     bundle ids that shouldn't count, comma separated
+```
+
 ### Driving the Mac
 
 | | |
@@ -136,6 +161,7 @@ stays unsent.
 | Sound | volume up / down / set volume to 40 / mute / louder |
 | Quiet | stop talking / be quiet / shut up - stops the voice, not the Mac's sound |
 | Ears | stop listening / leave me alone / go away, then wake up or listen again |
+| Calls | nothing to say - it stops listening on its own while you're on one |
 | Display | brighter, dimmer, dark mode, light mode |
 | Music | play, pause, next song, previous track |
 | Calls | call Mama, facetime Priya, call Mom on facetime audio, hang up |
@@ -295,6 +321,7 @@ orbit listen wake "..."    change the wake word
 orbit listen alias "..."   accept another mishearing as the wake word
 orbit listen pause         close the microphone (same as saying "stop listening")
 orbit listen resume        open it again
+orbit listen status        also says when a call has it on hold
 
 orbit plan "<command>"     what it would do, as JSON
 orbit run <token>          carry out a planned action

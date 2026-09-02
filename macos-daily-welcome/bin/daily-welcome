@@ -425,6 +425,9 @@ if [ "$FROM_AGENT" -eq 1 ] && [ "$FORCE" -ne 1 ]; then
   if [ "$WELCOME_REQUIRE_UNLOCKED" = "1" ] && screen_is_locked; then
     exit 0   # don't spend the greeting on the lock screen
   fi
+  if on_a_call; then
+    exit 0   # you're on a call; the greeting keeps until you aren't
+  fi
 fi
 
 # One greeting at a time, even if the agent and a manual run collide.

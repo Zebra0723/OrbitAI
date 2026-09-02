@@ -16,6 +16,7 @@ import secrets
 import shutil
 import subprocess
 import sys
+import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -50,6 +51,8 @@ SETTINGS = [
     ("ORBIT_PROACTIVE", "toggle", "Speak first", "Meetings starting, jobs finishing, mail from the list."),
     ("ORBIT_FREEFORM", "toggle", "Freeform commands", "Claude writes a command for anything not in the catalogue."),
     ("ORBIT_ONDEVICE", "toggle", "On-device recognition", "Keeps audio on this Mac. Hears invented names badly."),
+    ("ORBIT_PAUSE_ON_CALL", "toggle", "Pause while you're on a call", "Shuts the microphone whenever another app is recording."),
+    ("ORBIT_CALL_IGNORE", "text", "Never counts as a call", "Bundle ids to ignore, separated by commas."),
     ("ORBIT_CONFIRM_CALLS", "toggle", "Confirm calls", "Say the name back before dialling."),
     ("ORBIT_REQUIRE_UNLOCKED", "toggle", "Only when unlocked", "Ignore commands while the screen is locked."),
     ("ORBIT_VIPS", "text", "Interrupt for", "Names worth interrupting you for, separated by |."),
@@ -152,11 +155,19 @@ def status():
     if last_path.exists():
         last_run = last_path.read_text().strip()
 
+    # Written by the menu bar app while another app has the microphone.
+    # Stale notes are debris from an app that was killed mid-call.
+    on_call = ""
+    call_path = STATE / "on-call"
+    if call_path.exists() and (time.time() - call_path.stat().st_mtime) < 300:
+        on_call = call_path.read_text().strip()
+
     return {
         "app_running": running,
         "listener": listener,
         "heard": heard,
         "last_greeting": last_run,
+        "on_call": on_call,
     }
 
 

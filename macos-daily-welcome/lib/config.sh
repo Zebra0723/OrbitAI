@@ -194,6 +194,17 @@
 # the part most likely to fail; a key never mishears you.
 : "${ORBIT_HOTKEY:=1}"
 
+# Stop listening while another app is using the microphone - which is what
+# being on a call looks like from here, whether that is a relayed iPhone
+# call, FaceTime, Zoom, Meet in a browser tab, Teams or a Slack huddle.
+# Nothing is announced when it happens: an assistant that says "going
+# quiet" over your call has missed the point.
+: "${ORBIT_PAUSE_ON_CALL:=1}"
+
+# Bundle identifiers that should never count as a call, separated by
+# commas - a recorder you leave running, say.
+: "${ORBIT_CALL_IGNORE:=}"
+
 # Answering questions, and reading the screen.
 : "${ORBIT_ASK_TIMEOUT:=30}"
 : "${ORBIT_ASK_SENTENCES:=2}"

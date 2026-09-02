@@ -596,6 +596,10 @@ case "${1:-}" in
         echo "\"$1\" now counts as the wake word too."
         ;;
       status|*)
+        if [ -s "$WELCOME_STATE_DIR/on-call" ]; then
+          echo "Ears:     ON HOLD - $(cat "$WELCOME_STATE_DIR/on-call") is using the microphone"
+          echo "          Listening comes back by itself when the call ends."
+        fi
         # Paused reads as "not listening" from the outside, so say which.
         if [ -f "$WELCOME_STATE_DIR/paused" ]; then
           echo "Ears:     PAUSED - you asked it to stop listening"
@@ -697,6 +701,14 @@ case "${1:-}" in
     fail() { printf '  \033[31mno\033[0m   %s\n' "$1"; printf '       %s\n' "$2"; }
 
     printf '\nOrbit self-test\n\n'
+
+    if [ "$ORBIT_PAUSE_ON_CALL" != "1" ]; then
+      pass "Call detection off (ORBIT_PAUSE_ON_CALL=0)"
+    elif on_a_call; then
+      pass "Call detection working - $(on_a_call_app) has the microphone now"
+    else
+      pass "Call detection on - listening pauses while another app records"
+    fi
 
     if claude_bin >/dev/null 2>&1; then pass "Claude Code found at $(claude_bin)"
     else fail "Claude Code not found" "Questions, screen reading and repo jobs all need it"; fi
@@ -804,10 +816,7 @@ case "${1:-}" in
     shift
     case "${1:-}" in
       wake_word) printf '%s\n' "$ORBIT_WAKE_WORD" ;;
-      hush)
-    hush
-    ;;
-  listen)    printf '%s\n' "$ORBIT_LISTEN" ;;
+      listen)    printf '%s\n' "$ORBIT_LISTEN" ;;
       followup)  printf '%s\n' "$ORBIT_FOLLOWUP_SECONDS" ;;
       aliases)   printf '%s\n' "$ORBIT_WAKE_ALIASES" ;;
       conversation) printf '%s\n' "$ORBIT_CONVERSATION" ;;
@@ -815,7 +824,11 @@ case "${1:-}" in
       wake_threshold) printf '%s\n' "$ORBIT_WAKE_THRESHOLD" ;;
       ondevice)  printf '%s\n' "$ORBIT_ONDEVICE" ;;
       hotkey)    printf '%s\n' "$ORBIT_HOTKEY" ;;
-      *)         printf 'orbit config: wake_word | listen | followup | aliases\n' >&2; exit 2 ;;
+      pause_on_call) printf '%s\n' "$ORBIT_PAUSE_ON_CALL" ;;
+      call_ignore)   printf '%s\n' "$ORBIT_CALL_IGNORE" ;;
+      *)         printf 'orbit config: wake_word | listen | followup | aliases | hotkey |\n' >&2
+                 printf '             conversation | ondevice | pause_on_call | call_ignore\n' >&2
+                 exit 2 ;;
     esac
     ;;
   examples)

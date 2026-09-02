@@ -35,6 +35,8 @@ const COMMANDS = [
   ["Talking", "stop talking, be quiet, shut up", "Stops the voice - your Mac's own sound is left alone"],
   ["Talking", "stop listening, leave me alone, go away", "Closes the microphone until you ask for it back"],
   ["Talking", "wake up, listen again", "Opens it again - so do Option Space and the menu bar item"],
+  ["Calls", "(nothing to say)", "Listening stops on its own while another app is using the microphone"],
+  ["Calls", "Option Space during a call", "Overrides that for a minute, if you want it anyway"],
 ];
 
 function drawCommands(filter = "") {

@@ -57,6 +57,21 @@ run_with_timeout() {
   return "$rc"
 }
 
+# True while another app has the microphone - which is what a call looks
+# like from here. The menu bar app is the one doing the detecting; it
+# leaves this note so the briefing and the proactive alerts can hold off
+# too, rather than talking over the call the listener just stepped out of.
+on_a_call() {
+  [ "$ORBIT_PAUSE_ON_CALL" = "1" ] || return 1
+  [ -s "$WELCOME_STATE_DIR/on-call" ] || return 1
+  # Debris from an app that was killed mid-call would silence Orbit for
+  # good, so a note nobody has touched in five minutes is not a call.
+  [ -n "$(find "$WELCOME_STATE_DIR/on-call" -mmin -5 2>/dev/null)" ]
+}
+
+# Who is on the microphone, for a status line.
+on_a_call_app() { cat "$WELCOME_STATE_DIR/on-call" 2>/dev/null; }
+
 # True while the login session is locked (the key is only present when
 # the screen is actually locked).
 screen_is_locked() {
