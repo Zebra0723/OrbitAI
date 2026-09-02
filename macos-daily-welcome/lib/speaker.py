@@ -35,17 +35,51 @@ def _fail(message, code=1):
     raise SystemExit(code)
 
 
+def _compat():
+    """Put back the one name Resemblyzer needs and SciPy took away.
+
+    Resemblyzer 0.1.4 opens with `from scipy.ndimage.morphology import
+    binary_dilation`. SciPy deprecated that module in 1.10 and removed it
+    in 1.15, so on anything installed today the import fails on line one -
+    before Resemblyzer has done a thing. The function still exists, just
+    under scipy.ndimage, so the old name is aliased back.
+
+    This is the whole incompatibility: its librosa calls already use the
+    modern keyword form, and it uses none of the numpy aliases that numpy
+    2 removed. Checked against the 0.1.4 wheel rather than assumed.
+    """
+    import types
+    if "scipy.ndimage.morphology" in sys.modules:
+        return
+    try:
+        import scipy.ndimage.morphology  # noqa: F401
+        return
+    except ImportError:
+        pass
+    try:
+        import scipy.ndimage as ndimage
+    except ImportError:
+        return          # no scipy at all; let the real error surface
+    shim = types.ModuleType("scipy.ndimage.morphology")
+    for name in dir(ndimage):
+        if not name.startswith("_"):
+            setattr(shim, name, getattr(ndimage, name))
+    sys.modules["scipy.ndimage.morphology"] = shim
+
+
 def _encoder():
+    _compat()
     try:
         from resemblyzer import VoiceEncoder
-    except ImportError:
-        _fail("resemblyzer is not installed - run: daily-welcome --setup-speaker", 3)
+    except Exception as exc:
+        _fail("cannot load resemblyzer: %s: %s" % (type(exc).__name__, exc), 3)
     # cpu is explicit: the default probes for a GPU and says so on stderr,
     # which ends up in the middle of a spoken reply.
     return VoiceEncoder("cpu", verbose=False)
 
 
 def _embed(wav_path):
+    _compat()
     from resemblyzer import preprocess_wav
     wav = preprocess_wav(Path(wav_path))
     # Under about a second there is not enough voice to characterise.
@@ -132,12 +166,15 @@ def main():
         _save(data)
         print(sys.argv[2])
     elif command == "check":
-        # Is the library actually here? Used by doctor and by setup.
+        # Used by doctor and by setup. It reports the REAL error: saying
+        # "not installed" about a package that is plainly installed sends
+        # you looking in exactly the wrong place.
+        _compat()
         try:
             import resemblyzer  # noqa: F401
             print("ok")
-        except ImportError:
-            _fail("not installed", 3)
+        except Exception as exc:
+            _fail("%s: %s" % (type(exc).__name__, exc), 3)
     else:
         _fail(__doc__, 2)
 

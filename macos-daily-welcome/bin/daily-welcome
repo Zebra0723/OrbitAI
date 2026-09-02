@@ -406,8 +406,15 @@ case "$MODE" in
     fi
 
     if ! speaker_installed; then
-      echo "Installed, but I still cannot import it. Point at the right" >&2
-      echo "interpreter with ORBIT_SPEAKER_PYTHON=/path/to/python" >&2
+      echo >&2
+      echo "Installed, but it will not load. The reason:" >&2
+      speaker_run check 2>&1 | sed 's/^/  /' >&2
+      echo >&2
+      echo "Interpreter tried: $(_speaker_python)" >&2
+      echo "Environment:       $(speaker_venv)" >&2
+      echo >&2
+      echo "If that is the wrong interpreter, point at the right one with" >&2
+      echo "  ORBIT_SPEAKER_PYTHON=/full/path/to/python" >&2
       exit 1
     fi
 
