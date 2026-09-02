@@ -94,3 +94,49 @@ ok "the nameless greeting says nothing about anyone" "n" \
 
 # With recognition off entirely, nothing changes for anybody.
 contains "recognition off means the old greeting" "speaker_enabled" "$greet"
+
+
+# ------------------------------------------- still listening after the refusal
+#
+# A refusal used to close the microphone, so letting somebody in meant
+# saying the wake word again first. That is a lot to ask of somebody
+# standing in their own kitchen watching a friend be told off.
+
+ok "the window is shut to begin with" "1" "$(bypass_window_open; echo $?)"
+bypass_window_start
+ok "and opens when somebody is turned away" "0" "$(bypass_window_open; echo $?)"
+
+touch -d "$((ORBIT_BYPASS_LISTEN_SECONDS + 10)) seconds ago" \
+  "$WELCOME_STATE_DIR/bypass-window"
+ok "it does not stay open" "1" "$(bypass_window_open; echo $?)"
+ok "and tidies up after itself" "" "$(ls "$WELCOME_STATE_DIR/bypass-window" 2>/dev/null)"
+
+bypass_window_start; bypass_window_end
+ok "and closes on demand" "1" "$(bypass_window_open; echo $?)"
+
+# The refusal keeps the microphone open: end false, listen true.
+gate="$(sed -n '/^speaker_check() {/,/^}/p' "$TEST_ROOT/bin/orbit")"
+unknown="$(printf '%s' "$gate" | sed -n '/Turned away a voice/,/return 1/p')"
+contains "the refusal keeps listening" 'emit "$(speaker_refusal_unknown)" false "" false true' "$unknown"
+contains "and opens the window as it does"  "bypass_window_start" "$unknown"
+
+# But it says it ONCE. Repeating an insult at every sentence is a machine
+# having a tantrum, and it would talk over the one person who could put
+# it right.
+quiet="$(printf '%s' "$gate" | sed -n '/bypass_window_open; then/,/return 1/p')"
+contains "a second sentence gets silence" 'emit "" false "" false true' "$quiet"
+lacks "not the insult again"              "speaker_refusal_unknown"   "$quiet"
+
+# A ban is a decision, not a failure to recognise. No window, no waiting.
+banned="$(printf '%s' "$gate" | sed -n '/= "banned"/,/return 1/p')"
+contains "a ban ends the turn"    'emit "$(speaker_refusal_banned)" false "" true' "$banned"
+lacks "and opens no window"       "bypass_window"  "$banned"
+
+# Somebody who belongs here talking means whatever that was is over.
+contains "a recognised voice closes the window" "bypass_window_end" "$gate"
+
+# Granting keeps the microphone open too - the person just let in was
+# halfway through a sentence when they were interrupted.
+grant="$(sed -n '/bypass_grant "\$bypass_speaker"/,/^      else$/p' "$TEST_ROOT/bin/orbit")"
+contains "granting listens on"      'false true' "$grant"
+contains "and closes the window"    "bypass_window_end" "$grant"

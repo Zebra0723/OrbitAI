@@ -144,6 +144,34 @@ bypass_code_said() {
   return 1
 }
 
+# The few seconds after a refusal, when it is still listening.
+#
+# A refusal used to close the microphone, so letting somebody in meant
+# saying the wake word again first. It stays open instead - and stays
+# QUIET: repeating the insult at every sentence is a machine having a
+# tantrum, and the person it is aimed at has already heard it.
+
+_bypass_window_file() { printf '%s/bypass-window' "$WELCOME_STATE_DIR"; }
+
+bypass_window_start() {
+  mkdir -p "$WELCOME_STATE_DIR" 2>/dev/null
+  date '+%s' > "$(_bypass_window_file)"
+}
+
+bypass_window_end() { rm -f "$(_bypass_window_file)" 2>/dev/null; }
+
+bypass_window_open() {
+  local file age
+  file="$(_bypass_window_file)"
+  [ -f "$file" ] || return 1
+  age="$(_file_age_seconds "$file")" || { bypass_window_end; return 1; }
+  if [ "${age:-0}" -gt "$ORBIT_BYPASS_LISTEN_SECONDS" ]; then
+    bypass_window_end
+    return 1
+  fi
+  return 0
+}
+
 # ---------------------------------------------------------- turning people away
 
 _refusals_file() { printf '%s/lib/refusals.txt' "$ROOT"; }

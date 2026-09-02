@@ -329,6 +329,10 @@
 # Change the code. This one is written in a public repository.
 : "${ORBIT_BYPASS_CODE:=727590}"
 : "${ORBIT_BYPASS_MINUTES:=10}"
+# How long it keeps listening after turning somebody away, so the code
+# can be said straight back without the wake word. Quietly: the insult is
+# not repeated at every sentence during it.
+: "${ORBIT_BYPASS_LISTEN_SECONDS:=25}"
 : "${ORBIT_SPEAKER_TIMEOUT:=12}"
 : "${ORBIT_SPEAKER_PYTHON:=}"
 # Who is speaking, for whatever is about to be asked. Set by orbit before

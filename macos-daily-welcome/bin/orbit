@@ -161,6 +161,8 @@ speaker_check() {
   fi
 
   if [ "$(printf '%s' "$line" | cut -f3)" = "banned" ]; then
+    # A ban is a decision rather than a failure to recognise, so there is
+    # no window and no listening on afterwards. It ends the turn.
     memory_log_event refused "Refused a command from $SPEAKER"
     emit "$(speaker_refusal_banned)" false "" true
     return 1
@@ -174,10 +176,27 @@ speaker_check() {
   # alternative is a locked assistant with no way back in.
   if [ -z "$SPEAKER" ] && [ "$ORBIT_SPEAKER_REQUIRE_ENROLLED" = "1" ] &&
      speaker_have_audio && [ "$(speaker_enrolled_count)" -gt 0 ]; then
+
+    if bypass_window_open; then
+      # Already said. Saying it again at every sentence is a machine
+      # having a tantrum, and it would talk over the one person who
+      # could put it right. Quiet, still listening, still refusing.
+      emit "" false "" false true
+      return 1
+    fi
+
     memory_log_event refused "Turned away a voice it did not recognise"
-    emit "$(speaker_refusal_unknown)" false "" true
+    # The microphone stays open. A refusal that closes it means the code
+    # can only be said after the wake word, which is a lot to ask of
+    # somebody standing in their own kitchen.
+    bypass_window_start
+    emit "$(speaker_refusal_unknown)" false "" false true
     return 1
   fi
+
+  # Somebody who belongs here is talking, so whatever was going on
+  # before is over.
+  bypass_window_end
   return 0
 }
 
@@ -630,8 +649,11 @@ case "${1:-}" in
         emit "Voice recognition is off, so there is nobody to let in." false "" true
       elif [ -n "$bypass_speaker" ]; then
         bypass_grant "$bypass_speaker"
+        bypass_window_end
         memory_log_event bypass "$bypass_speaker waved a voice through"
-        emit "Right. They are in for the next $(num_word "$ORBIT_BYPASS_MINUTES") minutes." false ""
+        # Listening on, because the person just let in was halfway
+        # through saying something when they were interrupted.
+        emit "Right. They are in for the next $(num_word "$ORBIT_BYPASS_MINUTES") minutes." false "" false true
       else
         # Said by a voice it does not know, which is the one case this
         # must not work in.
