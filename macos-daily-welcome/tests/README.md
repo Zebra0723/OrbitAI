@@ -27,7 +27,9 @@ the name you gave matches no suite.
 | `slots` | the half-finished request, and the way out of one |
 | `speaker` | the voice store: matching, banning, and strangers |
 | `static` | every file parses; Swift balances; no inline `onclick` |
-| `sourcing` | every entry point loads the libraries its libraries need |
+| `plans` | `orbit plan` and `orbit run` agree on the field names |
+| `prompts` | every prompt reaches its own last line |
+| `sourcing` | every function called is one that exists and is loaded |
 
 ## Writing one
 

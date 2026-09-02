@@ -440,18 +440,26 @@ run_plan() {
     return 0
   fi
 
+  # Every key save_plan can write has to be read back here. ADDRESS and
+  # SUBJECT were not, so confirming an email reached "$ADDRESS" as an
+  # unbound variable and, under set -u, took the whole run down without
+  # sending anything and without saying why. tests/plans.test.sh now
+  # compares the two lists.
   local INTENT="" HANDLE="" WHO="" BODY="" DIR="" TASK="" REPO="" ACTION="" ARG=""
+  local ADDRESS="" SUBJECT=""
   while IFS= read -r line; do
     case "$line" in
-      INTENT=*) INTENT="${line#INTENT=}" ;;
-      HANDLE=*) HANDLE="${line#HANDLE=}" ;;
-      WHO=*)    WHO="${line#WHO=}" ;;
-      BODY=*)   BODY="${line#BODY=}" ;;
-      DIR=*)    DIR="${line#DIR=}" ;;
-      TASK=*)   TASK="${line#TASK=}" ;;
-      REPO=*)   REPO="${line#REPO=}" ;;
-      ACTION=*) ACTION="${line#ACTION=}" ;;
-      ARG=*)    ARG="${line#ARG=}" ;;
+      INTENT=*)  INTENT="${line#INTENT=}" ;;
+      HANDLE=*)  HANDLE="${line#HANDLE=}" ;;
+      WHO=*)     WHO="${line#WHO=}" ;;
+      BODY=*)    BODY="${line#BODY=}" ;;
+      DIR=*)     DIR="${line#DIR=}" ;;
+      TASK=*)    TASK="${line#TASK=}" ;;
+      REPO=*)    REPO="${line#REPO=}" ;;
+      ACTION=*)  ACTION="${line#ACTION=}" ;;
+      ARG=*)     ARG="${line#ARG=}" ;;
+      ADDRESS=*) ADDRESS="${line#ADDRESS=}" ;;
+      SUBJECT=*) SUBJECT="${line#SUBJECT=}" ;;
     esac
   done < "$file"
 

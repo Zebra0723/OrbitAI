@@ -22,7 +22,7 @@ num_word() {
 # duration_words 5400 -> "an hour and a half"; 30 -> "thirty seconds".
 # The noun phrase, for "Timer set for ___."
 duration_words() {
-  local secs="${1:-0}" n unit
+  local secs="${1:-0}" n
   if [ "$secs" -lt 60 ]; then
     printf '%s second%s' "$(num_word "$secs")" "$([ "$secs" = 1 ] || echo s)"
   elif [ "$secs" = 5400 ]; then

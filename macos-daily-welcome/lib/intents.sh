@@ -81,7 +81,7 @@ _try_message() {
     who="$(printf '%s' "$flipped" | cut -f1)"
     body="$(printf '%s' "$flipped" | cut -f2-)"
     case "$who" in
-      claude|me|him|her|them|us|everyone|somebody|someone|him|it) ;;   # not a contact
+      claude|me|him|her|them|us|everyone|somebody|someone|it) ;;   # not a contact
       *)
         body="$(printf '%s' "$body" | sed -E 's/^(that|to say|i said)[[:space:]]+//I')"
         if [ -n "$body" ]; then
