@@ -31,6 +31,7 @@ the name you gave matches no suite.
 | `numbers` | numbers said as words, including "twenty five" |
 | `disfluency` | "um", false starts, and which hedges are content |
 | `speech` | how it sounds: pauses, clocks, tidying, sentence case |
+| `natural` | sounding like a person rather than a machine reading |
 | `sources` | the briefing's contents, and the order they come in |
 | `memory` | what it remembers and what it lets go of |
 | `messages` | unread iMessages, against a real chat.db shape |

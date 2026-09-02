@@ -57,7 +57,10 @@
 : "${WELCOME_HONORIFIC:=sir}"
 
 # How it signs off.
-: "${WELCOME_CLOSER:=Standing by.}"
+# How it signs off. Empty by default: a briefing that simply ends sounds
+# like a person finishing a sentence, and one that ends "Standing by."
+# every single morning sounds like the computer on a spaceship.
+: "${WELCOME_CLOSER:=}"
 
 # How many items get read aloud (the screen still shows all of them).
 : "${WELCOME_SPEAK_MAX_ITEMS:=3}"
@@ -253,6 +256,11 @@
 # somewhere near 400 and sounds like dictation; 110 was the other extreme
 # and ran the words together. A person resting at a comma is about 200.
 : "${WELCOME_PAUSE_MS:=210}"
+
+# Lean very slightly on the words that mean "act on this" - overdue,
+# unread, late. `say` understands [[emph +]]; a voice that does not just
+# ignores it. Set to 0 if it sounds mannered on your voice.
+: "${WELCOME_SAY_EMPHASIS:=1}"
 
 : "${WELCOME_OPENAI_VOICE:=nova}"
 : "${WELCOME_OPENAI_TTS_MODEL:=gpt-4o-mini-tts}"

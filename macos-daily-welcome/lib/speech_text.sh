@@ -84,7 +84,12 @@ time_words() {
   local out
 
   if [ "$min" -eq 0 ]; then
-    out="$(num_word "$h12") o'clock"
+    # "Nine in the morning", not "nine o'clock in the morning". On the
+    # hour with no other marker, "o'clock" is what stops "nine" sounding
+    # like a stray number; with a part of the day after it, it is just
+    # two extra syllables in the middle of a list.
+    if [ "$with_part" = "1" ]; then out="$(num_word "$h12")"
+    else out="$(num_word "$h12") o'clock"; fi
   elif [ "$min" -lt 10 ]; then
     out="$(num_word "$h12") oh $(num_word "$min")"
   else
@@ -163,6 +168,83 @@ speech_clean() {
     | cut -c1-120
 }
 
+# Written English and spoken English are not the same language.
+#
+# "It is eight o'clock and you have three reminders" is correct and no
+# person has ever said it. Uncontracted forms are most of what makes a
+# synthetic voice sound like it is reading rather than talking, and the
+# voice cannot fix it - the problem arrives before the voice does.
+#
+# Done on word PAIRS in awk rather than with \b, which BSD sed does not
+# have and macOS ships BSD sed. Capitalisation carries over from the
+# first word and punctuation from the second, so "It is." at the start of
+# a sentence becomes "It's." and not "it'S".
+speech_natural() {
+  printf '%s' "$1" | awk '
+    BEGIN {
+      # Built up rather than written as one string: a table this long
+      # spread over backslash continuations is one deleted line away from
+      # breaking the quoting of the whole file.
+      r = "it is|it@s,that is|that@s,there is|there@s,what is|what@s"
+      r = r ",he is|he@s,she is|she@s,who is|who@s,here is|here@s"
+      r = r ",you are|you@re,we are|we@re,they are|they@re"
+      r = r ",i am|I@m,i will|I@ll,you will|you@ll,it will|it@ll"
+      r = r ",do not|don@t,does not|doesn@t,did not|didn@t,is not|isn@t"
+      r = r ",are not|aren@t,was not|wasn@t,were not|weren@t"
+      r = r ",have not|haven@t,has not|hasn@t,had not|hadn@t"
+      r = r ",will not|won@t,would not|wouldn@t,could not|couldn@t"
+      r = r ",should not|shouldn@t,let us|let@s,you would|you@d,i would|I@d"
+      # No "you have" -> "you@ve". Before a noun that is British and
+      # dated - "you@ve three reminders" - and a briefing is all nouns.
+
+      n = split(r, rules, ",")
+      for (i = 1; i <= n; i++) {
+        split(rules[i], parts, "|")
+        short[parts[1]] = parts[2]
+      }
+    }
+    function bare(w,   s) { s = tolower(w); gsub(/[^a-z]/, "", s); return s }
+    {
+      count = split($0, w, " ")
+      out = ""
+      i = 1
+      while (i <= count) {
+        used = 0
+        if (i < count) {
+          key = bare(w[i]) " " bare(w[i+1])
+
+          # "I will not" is "I won@t", never "I@ll not". When the word
+          # after a pair is "not", the negation is the contraction that
+          # matters and this pair steps aside for it.
+          skip = 0
+          if (i + 2 <= count && bare(w[i+2]) == "not") {
+            second = bare(w[i+1])
+            if (second ~ /^(will|is|are|was|were|have|has|had|do|does|did|would|could|should)$/) skip = 1
+          }
+
+          # Only when the first word is nothing but letters: an opening
+          # bracket or a quote in front of it means it is not a plain
+          # sentence and is better left alone.
+          if (!skip && (key in short) && w[i] ~ /^[A-Za-z]+$/) {
+            joined = short[key]
+            gsub(/@/, "\047", joined)
+            if (w[i] ~ /^[A-Z]/) joined = toupper(substr(joined, 1, 1)) substr(joined, 2)
+            tail = w[i+1]
+            sub(/^[A-Za-z]+/, "", tail)     # a comma, a full stop, a question mark
+            out = out (out == "" ? "" : " ") joined tail
+            i += 2
+            used = 1
+          }
+        }
+        if (!used) {
+          out = out (out == "" ? "" : " ") w[i]
+          i++
+        }
+      }
+      print out
+    }'
+}
+
 # Punctuation for the ear, not the page.
 #
 # A comma tells a reader to breathe and tells a speech engine to STOP,
@@ -206,8 +288,30 @@ speech_pace() {
 
   case "$backend" in
     say)
-      # A tenth of a second instead of the engine's own long breath.
-      printf '%s' "$text" | sed -E "s/,([^0-9])/ [[slnc $WELCOME_PAUSE_MS]]\1/g" ;;
+      # Not one pause repeated.
+      #
+      # Every comma getting the same number of milliseconds is itself
+      # most of what makes a list sound like a list being read out. A
+      # person breathes differently at different joins: barely at all
+      # before "and then", properly at a comma that opens a clause, and
+      # fully at the end of a sentence. Three numbers instead of one.
+      local short_ms long_ms
+      short_ms=$(( WELCOME_PAUSE_MS * 55 / 100 ))
+      long_ms=$(( WELCOME_PAUSE_MS * 175 / 100 ))
+
+      # The words that mean "this is the part to act on". Understated on
+      # purpose: a voice that leans on every number sounds like a
+      # different kind of machine, not less of one.
+      if [ "$WELCOME_SAY_EMPHASIS" = "1" ]; then
+        text="$(printf '%s' "$text" | sed -E \
+          's/(^|[^A-Za-z])(overdue|unread|urgent|late)($|[^A-Za-z])/\1[[emph +]]\2[[emph -]]\3/g')"
+      fi
+
+      printf '%s' "$text" | sed -E "
+        s/, (and then|then|and|but|so) / [[slnc $short_ms]] \1 /g
+        s/,([^0-9])/ [[slnc $WELCOME_PAUSE_MS]]\1/g
+        s/([.?!]) /\1 [[slnc $long_ms]] /g
+      " ;;
     elevenlabs)
       printf '%s' "$text" \
         | sed -E "s#,([^0-9])#<break time=\"$(printf '%s' "$WELCOME_PAUSE_MS" | awk '{printf "%.2f", $1/1000}')s\" />\1#g" ;;

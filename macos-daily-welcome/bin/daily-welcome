@@ -64,6 +64,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
   daily-welcome --set-openai-key   store an OpenAI key, for understanding commands
   daily-welcome --test-voice    say one line now, and report which voice said it
+  daily-welcome --compare-voice the same line before and after the shaping
   daily-welcome --test-voice --plain   the same, with nothing done to the text
   daily-welcome --pause <ms>    how long it rests at a comma (210 is the default)
   daily-welcome --expression <0-150>   how much the built-in voice moves
@@ -108,6 +109,7 @@ while [ $# -gt 0 ]; do
       exit 2 ;;
     --check-key)  MODE=checkkey ;;
     --test-voice) MODE=testvoice ;;
+    --compare-voice) MODE=compare ;;
     --hush)       MODE=hush ;;
     --reset-permissions) MODE=resetperms ;;
     --voices)     MODE=voices ;;
@@ -299,9 +301,35 @@ case "$MODE" in
     esac
     exit 0
     ;;
+  compare)
+    # The same line twice, plain and then shaped, so "it sounds robotic"
+    # can be aimed at whichever half is the problem. If the two are
+    # indistinguishable, the words are not what is wrong - the voice is,
+    # and --mac-voices is the next thing to try.
+    line="Good evening, $WELCOME_NAME. It's $(time_words "$(date '+%-H')" "$((10#$(date '+%M')))" 0), and you have three reminders due today, one of them overdue."
+    flat="It is $(now_words) on $(today_words), and you have three reminders due today, one of them is overdue."
+    echo "Backend: $(tts_backend)     Voice: $(resolve_voice || echo 'system default')"
+    echo
+    echo "1. As it used to be - written English, one pause everywhere:"
+    echo "   $flat"
+    WELCOME_PAUSE=natural WELCOME_SAY_EMPHASIS=0 say_speak "$flat" 2>/dev/null || true
+    sleep 1
+    echo
+    echo "2. As it is now - spoken English, pauses of three different lengths:"
+    echo "   $(speech_natural "$line")"
+    say_speak "$(speech_natural "$line")" 2>/dev/null || true
+    echo
+    echo "Still robotic in both? Then it is the voice, not the words:"
+    echo "  daily-welcome --mac-voices     a Premium voice is a free download"
+    echo "  daily-welcome --setup-piper    a free neural voice, no account"
+    echo
+    echo "Dials:  --pause <ms>        how long it rests (now $WELCOME_PAUSE_MS)"
+    echo "        --expression <n>    how much the voice moves (now $WELCOME_SAY_MODULATION)"
+    exit 0
+    ;;
   testvoice)
     backend="$(tts_backend)"
-    line="Welcome back, $WELCOME_NAME. $(_greeting_word). It's $(now_words), on $(today_words). Voice check complete."
+    line="$(speech_natural "$(_greeting_word), $WELCOME_NAME. It's $(time_words "$(date '+%-H')" "$((10#$(date '+%M')))" 0). That is the voice you will hear.")"
     echo "Backend: $backend"
     case "$backend" in
       elevenlabs) echo "Voice:   $WELCOME_ELEVEN_VOICE_NAME${WELCOME_ELEVEN_VOICE_ID:+ ($WELCOME_ELEVEN_VOICE_ID)}" ;;
@@ -517,14 +545,20 @@ case "$MODE" in
     exit 0
     ;;
   macvoices)
-    # The built-in voices, sorted by how good they actually sound, plus
-    # the two ways to get better ones. The default that ships enabled is
-    # the worst of them, which is why this exists.
+    # Every Premium and Enhanced voice on the Mac, and then the one thing
+    # worth knowing: whether the voice you are using has a better version
+    # of ITSELF available.
+    #
+    # This used to filter both lists through a whitelist of American
+    # English names - ava, zoe, allison and so on - so somebody using
+    # Rishi was shown a list with no Rishi in it and told "none
+    # installed". The command that exists to fix your voice ignored your
+    # voice.
     echo "Voices installed on this Mac"
     echo
     installed="$(_installed_voices)"
-    prem="$(printf '%s\n' "$installed" | grep -F "(Premium)" | grep -Ei "ava|zoe|allison|nicky|samantha|susan|karen|serena|moira|tessa")"
-    enh="$(printf '%s\n' "$installed" | grep -F "(Enhanced)" | grep -Ei "ava|zoe|allison|nicky|samantha|susan|karen|serena|moira|tessa")"
+    prem="$(printf '%s\n' "$installed" | grep -F "(Premium)")"
+    enh="$(printf '%s\n' "$installed" | grep -F "(Enhanced)")"
 
     if [ -n "$prem" ]; then
       echo "  Premium  (the best downloadable ones)"
@@ -540,20 +574,43 @@ case "$MODE" in
       echo "  Enhanced none installed"
     fi
     echo
-    echo "  In use right now: $(resolve_voice || true)"
-    [ -z "$(resolve_voice)" ] && echo "                    (the System Settings voice)"
+
+    current="$(resolve_voice)"
+    echo "  In use right now: ${current:-the System Settings voice}"
     echo
-    echo "To get better ones, free, no account:"
+
+    # The actionable line. A voice name is "Rishi" or "Rishi (Premium)";
+    # the base name is what has better versions.
+    if [ -n "$current" ]; then
+      base="$(printf '%s' "$current" | sed -E 's/ \((Premium|Enhanced)\)$//')"
+      case "$current" in
+        *"(Premium)")
+          echo "  You are already on the best version of $base." ;;
+        *)
+          better="$(printf '%s\n' "$installed" | grep -F "$base (")"
+          if [ -n "$better" ]; then
+            echo "  There is a better $base installed. Switch to it:"
+            printf '%s\n' "$better" | sed 's/^/    daily-welcome --use-voice "/; s/$/"/'
+          else
+            echo "  $base has no Enhanced or Premium version installed, which is"
+            echo "  why it sounds the way it does. It is a free download:"
+            echo "    System Settings > Accessibility > Spoken Content > System Voice"
+            echo "    > Manage Voices... > find $base > tick Premium > Done"
+            echo "  Then:  daily-welcome --use-voice \"$base (Premium)\""
+          fi ;;
+      esac
+      echo
+    fi
+
+    echo "Any other voice, free, no account:"
     echo "  System Settings > Accessibility > Spoken Content > System Voice"
     echo "  > Manage Voices... > tick a Premium voice > Done"
     echo
-    echo "  English (US): Ava, Zoe and Allison are the young expressive ones."
     echo "  The Siri voices in that same list are the best of the lot, but"
     echo "  \`say\` cannot pick them by name - set one as your System Voice"
     echo "  and then run:  daily-welcome --use-voice system"
     echo
-    echo "Then:  daily-welcome --use-voice \"Ava (Premium)\""
-    echo "       daily-welcome --test-voice"
+    echo "Then:  daily-welcome --test-voice"
     exit 0
     ;;
   setuppiper)

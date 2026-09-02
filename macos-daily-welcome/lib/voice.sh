@@ -112,7 +112,10 @@ _spoken_items() {
     [ "$count" -gt "$max" ] && break
     title="$(speech_clean "$title" | sed -E 's/[.[:space:]]+$//')"
     case "$when" in
-      OVERDUE)      printf '%s, which is overdue\n' "$title" ;;
+      # "which is overdue" is a relative clause in the middle of a
+      # spoken list, and the sentence before it has already said how many
+      # are overdue. Two words does the same job.
+      OVERDUE)      printf '%s, already overdue\n' "$title" ;;
       flagged)      printf '%s, flagged\n' "$title" ;;
       done|failed)  printf '%s\n' "$title" ;;
       "")           printf '%s\n' "$title" ;;
@@ -148,8 +151,13 @@ build_spoken_briefing() {
   n_cld="$(count_records "$cld")"
   n_overdue="$(printf '%s\n' "$rem" | awk -F'\t' '$1 == "OVERDUE" { n++ } END { print n + 0 }')"
 
-  local honorific=""
-  [ -n "$WELCOME_HONORIFIC" ] && honorific=", $WELCOME_HONORIFIC"
+  # The honorific replaces the name; it does not follow it. "Good
+  # evening, Arjun, sir" is a doorman and a butler talking over each
+  # other. Empty honorific gets you your name, which is the setting's
+  # whole purpose.
+  local addressed
+  if [ -n "$WELCOME_HONORIFIC" ]; then addressed="$WELCOME_HONORIFIC"
+  else addressed="$(speech_clean "$WELCOME_NAME")"; fi
 
   # Spoken, not printed. The old version was a stack of four-word
   # declaratives - "Three reminders due today. Two events on the calendar.
@@ -179,13 +187,24 @@ build_spoken_briefing() {
   counts="$(_join_clauses < "$WELCOME_STATE_DIR/.counts.$$")"
   rm -f "$WELCOME_STATE_DIR/.counts.$$"
 
-  # The greeting and the time run together as one sentence, because that
-  # is how someone would actually say it.
-  text="Welcome back, $(speech_clean "$WELCOME_NAME") - $(printf '%s' "$(_greeting_word)" | tr '[:upper:]' '[:lower:]')${honorific}. "
+  # One greeting, not two. It used to open "Welcome back, Arjun - good
+  # evening, sir", which is a doorman and a butler talking over each
+  # other, and then read the full date at eight in the evening to
+  # somebody who had been awake all day.
+  text="$(_greeting_word), ${addressed}. "
+
+  # The date belongs to the morning. By the afternoon you know what day
+  # it is, and being told is the sort of thing only a machine does.
+  local when
+  case "$(date '+%-H')" in
+    [0-9]|1[01]) when="It's $(time_words "$(date '+%-H')" "$((10#$(date '+%M')))" 0) on $(today_words)" ;;
+    *)           when="It's $(time_words "$(date '+%-H')" "$((10#$(date '+%M')))" 0)" ;;
+  esac
+
   if [ -n "$counts" ]; then
-    text="${text}It's $(now_words) on $(today_words), and you have ${counts}. "
+    text="${text}${when}, and you have ${counts}. "
   else
-    text="${text}It's $(now_words) on $(today_words), and the day is clear - nothing due, nothing scheduled. "
+    text="${text}${when}, and nothing is due - the day is clear. "
   fi
 
   local items
@@ -198,17 +217,25 @@ build_spoken_briefing() {
               true; } | head -n "$WELCOME_SPEAK_MAX_ITEMS")"
 
   if [ -n "$(printf '%s' "$items" | tr -d '[:space:]')" ]; then
-    # "First X, then Y, then Z" - one sentence, not three headings with
-    # colons after them.
-    local first rest joined idx=0 line
+    # One sentence, not three headings with colons after them - but not
+    # "first, X, then Y, then Z, then Z" either. Repeating one connective
+    # down a list is what a machine reading a list sounds like; people
+    # vary it, and drop it entirely for the last one.
+    local joined idx=0 line total=0
+    total="$(printf '%s\n' "$items" | grep -c .)"
     joined=""
     while IFS= read -r line; do
       [ -z "$line" ] && continue
       idx=$((idx + 1))
-      case "$idx" in
-        1) joined="first, $line" ;;
-        *) joined="$joined, then $line" ;;
-      esac
+      if [ "$idx" -eq 1 ]; then
+        joined="$line"
+      elif [ "$idx" -eq "$total" ]; then
+        joined="$joined, and then $line"
+      elif [ "$idx" -eq 2 ]; then
+        joined="$joined, then $line"
+      else
+        joined="$joined, after that $line"
+      fi
     done <<EOT
 $items
 EOT
@@ -216,8 +243,10 @@ EOT
   fi
 
   text="${text}$WELCOME_CLOSER"
-  # Collapse the whitespace the assembly above leaves behind.
-  printf '%s' "$text" | sed -E 's/[[:space:]]+/ /g; s/ $//' | capitalize_sentences
+  # Collapse the whitespace the assembly above leaves behind, then say it
+  # the way somebody would say it rather than the way it is written.
+  text="$(printf '%s' "$text" | sed -E 's/[[:space:]]+/ /g; s/ $//' | capitalize_sentences)"
+  speech_natural "$text"
 }
 
 # ------------------------------------------------------------- delivery

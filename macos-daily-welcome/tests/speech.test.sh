@@ -68,13 +68,19 @@ ok "each sentence starts like one" "Three reminders due today. Two emails." "$ou
 # --------------------------------------------------------------- clocks
 
 ok "half six"     "six thirty in the evening"     "$(time_words 18 30)"
-ok "on the hour"  "six o'clock in the evening"    "$(time_words 18 00)"
 ok "quarter to"   "six forty-five in the evening" "$(time_words 18 45)"
-ok "morning"      "nine o'clock in the morning"   "$(time_words 9 00)"
-ok "midnight"     "twelve o'clock at night"       "$(time_words 0 00)"
-ok "late"         "eleven o'clock at night"       "$(time_words 23 00)"
-ok "still evening" "nine o'clock in the evening"  "$(time_words 21 00)"
-ok "noon"         "twelve o'clock in the afternoon" "$(time_words 12 00)"
+
+# On the hour with a part of the day after it, "o'clock" is two syllables
+# doing nothing: "nine in the morning" is what a person says. On its own
+# it stays, because "nine" by itself sounds like a stray number.
+ok "on the hour"   "six in the evening"    "$(time_words 18 00)"
+ok "morning"       "nine in the morning"   "$(time_words 9 00)"
+ok "midnight"      "twelve at night"       "$(time_words 0 00)"
+ok "late"          "eleven at night"       "$(time_words 23 00)"
+ok "still evening" "nine in the evening"   "$(time_words 21 00)"
+ok "noon"          "twelve in the afternoon" "$(time_words 12 00)"
+ok "on its own it keeps the o'clock" "six o'clock" "$(time_words 18 00 0)"
+ok "and past the hour needs nothing" "six thirty" "$(time_words 18 30 0)"
 # Digits are for reading, not for saying: "9:05" said as "nine five" is
 # a different time from the one meant.
 ok "past the hour" "nine oh five in the morning"  "$(time_words 9 05)"
