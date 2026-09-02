@@ -157,6 +157,31 @@ The key goes in the same place whichever you pick: `daily-welcome
 **The voice** has a free option too - `daily-welcome --setup-piper` fetches
 a neural voice that runs on this Mac, with no key and no per-word cost.
 
+### Remembering what happened
+
+The transcript recorded what was *said*. It never recorded what was *done*,
+so "who did I message earlier" had nothing to look at even though Orbit was
+the one who sent it. Both are kept now, with timestamps.
+
+```
+you    who did I message earlier
+orbit  Mama, about half an hour ago - you said you were running late.
+
+you    what did we say about Priya
+orbit  You asked what to get her for her birthday, and I emailed her about
+       dinner at eight.
+```
+
+Only questions that point backwards - "did I", "earlier", "yesterday",
+"remember", "last time" - go looking. Everything else is answered without
+dragging history into it.
+
+```
+orbit memory events      what it has done for you
+orbit memory show        what it remembers about you, and recent turns
+orbit memory clear       forget all of it
+```
+
 ### The web
 
 ```

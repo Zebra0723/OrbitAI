@@ -16,7 +16,7 @@
 claude_available() { claude_bin >/dev/null 2>&1; }
 
 _claude_turn_prompt() {
-  local text="$1" phrases="$2" facts="$3" history="$4"
+  local text="$1" phrases="$2" facts="$3" history="$4" events="$5" recalled="$6"
   printf '%s' "You are Orbit, a voice assistant on $WELCOME_NAME's Mac. Work out what
 this spoken sentence wants and answer on ONE line, with real tab
 characters between fields, nothing else, no code fences, no explanation.
@@ -44,22 +44,37 @@ Rules:
   [ -n "$phrases" ] && printf 'Their own macro phrases: %s\n' "$phrases"
   [ -n "$facts" ] && printf 'What you know about them: %s\n' "$facts"
   [ -n "$history" ] && printf 'Recent conversation:\n%s\n' "$history"
+  [ -n "$events" ] && printf 'Things you have done for them lately:\n%s\n' "$events"
+  if [ -n "$recalled" ]; then
+    printf 'They are asking about something that already happened. From the
+record, most recent last:\n%s\n' "$recalled"
+    printf 'Answer from that record. If it does not say, say you do not have it
+rather than inventing something.\n'
+  fi
   printf '\nThey said: %s\n' "$text"
 }
 
 # claude_intent "<transcript>" -> intent <TAB> arg1 <TAB> arg2
 claude_intent() {
-  local text="$1" claude_cmd out line phrases facts history
+  local text="$1" claude_cmd out line phrases facts history events recalled
 
   [ "$ORBIT_NLU_FALLBACK" = "1" ] || return 1
   claude_cmd="$(claude_bin)" || return 1
 
   phrases="$(macros_list 2>/dev/null | cut -f1 | tr '\n' ',' | sed 's/,$//')"
   facts="$(memory_facts 2>/dev/null | cut -f2- | tr '\n' ';' | cut -c1-400)"
-  history="$(chat_history 2>/dev/null | awk -F'\t' '{ printf "%s: %s\n", $1, $2 }' | tail -6)"
+  history="$(chat_history 2>/dev/null | tail -6)"
+  events="$(memory_events "$ORBIT_MEMORY_EVENTS" 2>/dev/null)"
+
+  # Searching every question would drag the whole transcript into every
+  # prompt. Only the ones that point backwards get it.
+  recalled=""
+  if memory_asks_about_past "$text"; then
+    recalled="$(memory_search "$text" "$ORBIT_MEMORY_MATCHES" 2>/dev/null)"
+  fi
 
   out="$(run_with_timeout "$ORBIT_NLU_TIMEOUT" "$claude_cmd" -p \
-    "$(_claude_turn_prompt "$text" "$phrases" "$facts" "$history")" 2>/dev/null)" || return 1
+    "$(_claude_turn_prompt "$text" "$phrases" "$facts" "$history" "$events" "$recalled")" 2>/dev/null)" || return 1
 
   # The model occasionally writes the word TAB instead of pressing it.
   line="$(printf '%s' "$out" | sed -E 's/<TAB>/\t/g' \

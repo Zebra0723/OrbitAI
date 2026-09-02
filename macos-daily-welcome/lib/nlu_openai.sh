@@ -68,6 +68,11 @@ openai_chat() {
   key="$(openai_api_key)" || return 1
 
   history="$(chat_history)"
+  local past=""
+  memory_asks_about_past "$text" && past="$(memory_search "$text" "$ORBIT_MEMORY_MATCHES" 2>/dev/null)"
+  history="$(printf '%s\n%s\n%s' "$history" \
+    "$(memory_events "$ORBIT_MEMORY_EVENTS" 2>/dev/null)" "$past" | grep . )"
+
   out="$(OPENAI_API_KEY="$key" ORBIT_CHAT_HISTORY="$history" \
     ORBIT_OPENAI_BASE="$ORBIT_OPENAI_BASE" ORBIT_OPENAI_MODEL="$ORBIT_OPENAI_MODEL" \
     run_with_timeout "$ORBIT_OPENAI_TIMEOUT" \

@@ -235,6 +235,11 @@
 
 : "${ORBIT_SLOT_TTL_SECONDS:=120}"
 
+# How many past events and matched history lines a turn may carry into
+# the model's prompt when you ask about something that already happened.
+: "${ORBIT_MEMORY_EVENTS:=12}"
+: "${ORBIT_MEMORY_MATCHES:=10}"
+
 : "${ORBIT_PAUSE_ON_CALL:=1}"
 
 # Bundle identifiers that should never count as a call, separated by

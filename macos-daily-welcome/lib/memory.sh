@@ -20,11 +20,12 @@ memory_init() { mkdir -p "$(_memory_dir)" 2>/dev/null; }
 # Every exchange, kept. Trimmed only when it gets genuinely large, from
 # the front, so the recent past is never the thing that gets lost.
 memory_log_turn() {
-  local said="$1" replied="$2"
+  local said="$1" replied="$2" when
   memory_init
+  when="$(date '+%Y-%m-%d %H:%M')"
   {
-    printf 'user\t%s\n' "$(printf '%s' "$said" | tr '\n' ' ')"
-    printf 'assistant\t%s\n' "$(printf '%s' "$replied" | tr '\n' ' ')"
+    printf 'user\t%s\t%s\n' "$when" "$(printf '%s' "$said" | tr '\n' ' ')"
+    printf 'assistant\t%s\t%s\n' "$when" "$(printf '%s' "$replied" | tr '\n' ' ')"
   } >> "$(_transcript)"
 
   local lines
@@ -75,6 +76,97 @@ memory_clear() {
 
 # --- the old short-term names, now backed by the persistent store -------
 
-chat_history() { memory_recent; }
+# Old transcripts have two fields, new ones three. Read both rather than
+# throwing away everything said before the change.
+_memory_line_text() { awk -F'\t' '{ print $1 ": " (NF >= 3 ? $3 : $2) }'; }
+
+chat_history() { memory_recent | _memory_line_text; }
+
+# ------------------------------------------------------------- what it did
+#
+# The transcript records what was SAID. It never recorded what was DONE, so
+# "who did I message earlier" had nothing to look at even though Orbit was
+# the one who sent it.
+_events_file() { printf '%s/events.log' "$(_memory_dir)"; }
+
+# The past tense of an action, for the record. "add_reminder call the
+# bank" is a log line; "Added a reminder: call the bank" is something a
+# voice can read back.
+memory_event_words() {
+  local action="$1" arg="${2:-}"
+  case "$action" in
+    add_reminder) printf 'Added a reminder: %s' "$arg" ;;
+    new_note)     printf 'Made a note: %s' "$arg" ;;
+    timer)        printf 'Set a timer for %s minutes' "$arg" ;;
+    open_app)     printf 'Opened %s' "$arg" ;;
+    quit_app)     printf 'Quit %s' "$arg" ;;
+    play_spotify) printf 'Played %s' "$arg" ;;
+    type_text)    printf 'Typed: %s' "$arg" ;;
+    freeform)     printf 'Ran a command: %s' "$arg" ;;
+    empty_trash)  printf 'Emptied the trash' ;;
+    restart)      printf 'Restarted the Mac' ;;
+    shut_down)    printf 'Shut the Mac down' ;;
+    sleep_mac)    printf 'Put the Mac to sleep' ;;
+    *)            printf '%s%s' "$action" "${arg:+ $arg}" ;;
+  esac
+}
+
+# memory_log_event KIND SUMMARY
+memory_log_event() {
+  [ -n "${2:-}" ] || return 0
+  memory_init
+  printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%d %H:%M')" "$1" \
+    "$(printf '%s' "$2" | tr '\n' ' ')" >> "$(_events_file)"
+
+  local lines
+  lines="$(wc -l < "$(_events_file)" 2>/dev/null | tr -d ' ')"
+  if [ "${lines:-0}" -gt "$ORBIT_MEMORY_MAX_LINES" ]; then
+    tail -n "$((ORBIT_MEMORY_MAX_LINES / 2))" "$(_events_file)" > "$(_events_file).tmp" &&
+      mv "$(_events_file).tmp" "$(_events_file)"
+  fi
+}
+
+# The last few things it actually did, newest last, in plain English.
+memory_events() {
+  [ -f "$(_events_file)" ] || return 0
+  tail -n "${1:-12}" "$(_events_file)" \
+    | awk -F'\t' '{ printf "%s  %s\n", $1, $3 }'
+}
+
+# memory_search "what they said" - the lines of history that look related.
+#
+# Deliberately crude: the content words of the question, matched against
+# everything ever said or done. A model reading ten plausible lines beats
+# clever retrieval that returns nothing.
+memory_search() {
+  local query="$1" limit="${2:-10}" words pattern
+  [ -n "$query" ] || return 0
+
+  words="$(printf '%s' "$query" | tr '[:upper:]' '[:lower:]' \
+    | tr -cs "a-z0-9'" '\n' \
+    | awk 'length($0) > 3' \
+    | grep -Ev '^(what|when|where|which|that|this|there|were|was|did|does|done|have|has|had|about|with|from|then|than|they|them|你|the|and|you|your|yours|mine|remember|earlier|before|last|time|said|say|tell|told|again|ever|just|like|much|many|some|any|know|think)$' \
+    | sort -u | head -6 | tr '\n' '|' | sed 's/|$//')"
+  [ -n "$words" ] || return 0
+
+  {
+    [ -f "$(_transcript)" ] && grep -Ei "$words" "$(_transcript)" 2>/dev/null | _memory_line_text
+    [ -f "$(_events_file)" ] && grep -Ei "$words" "$(_events_file)" 2>/dev/null \
+      | awk -F'\t' '{ printf "%s: %s\n", $1, $3 }'
+  } | tail -n "$limit"
+}
+
+# Is this sentence asking about the past at all? Only then is it worth
+# searching - every question would otherwise drag history into its prompt.
+memory_asks_about_past() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    *"did i "*|*"did we "*|*"did you "*|*remember*|*earlier*|*yesterday*|\
+    *"last time"*|*"we talked"*|*"you said"*|*"i said"*|*"i told you"*|\
+    *"this morning"*|*"last night"*|*"the other day"*|*"what was"*|\
+    *"who was"*|*"when was"*|*"have i "*|*"had i "*|*again*)
+      return 0 ;;
+  esac
+  return 1
+}
 
 chat_remember() { memory_log_turn "$1" "$2"; }

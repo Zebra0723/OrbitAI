@@ -64,7 +64,7 @@ orbit - voice commands for daily-welcome
   orbit warm                     pre-render the lines it says most
   orbit greeting                 the line for a wake word with no command
   orbit console                  open the OrbitAI console in a browser
-  orbit memory [show|add|forget|clear]   what it remembers about you
+  orbit memory [show|events|add|forget|clear]  what it remembers, and did
   orbit log                      what it heard, how it read it, how long it took
   orbit selftest                 check every feature in the place it runs
   orbit debug                    one command, everything worth pasting back
@@ -253,6 +253,7 @@ plan_call() {
     save_plan "$token" "INTENT=system" "ACTION=$kind" "ARG=$handle"
     emit "$(system_describe "$kind" "$who")" true "$token"
   else
+    memory_log_event call "Called $who"
     emit "$(system_run "$kind" "$handle") $who." false ""
   fi
 }
@@ -358,7 +359,13 @@ plan_system() {
 
   # Reversible things just happen - confirming "volume up" out loud is
   # slower than pressing the key would have been.
-  emit "$(system_run "$action" "$arg")" false ""
+  local spoken
+  spoken="$(system_run "$action" "$arg")"
+  case "$action" in
+    add_reminder|new_note|timer|open_app|quit_app|play_spotify)
+      memory_log_event "$action" "$(memory_event_words "$action" "$arg")" ;;
+  esac
+  emit "$spoken" false ""
 }
 
 # Read-only answers happen immediately; there's nothing to confirm.
@@ -450,6 +457,7 @@ run_plan() {
     message)
       if messages_send "$HANDLE" "$BODY"; then
         rm -f "$file"
+        memory_log_event message "Messaged $WHO: $BODY"
         emit "Sent to $WHO." false ""
       else
         emit "Messages wouldn't send that. It may not be an iMessage address." false ""
@@ -458,6 +466,7 @@ run_plan() {
     claude)
       claude_dispatch "$DIR" "$TASK" >/dev/null
       rm -f "$file"
+      memory_log_event claude "Sent Claude into $REPO to $TASK"
       emit "Claude is on it. I'll tell you what happened in your next briefing." false ""
       ;;
     mail_send)
@@ -465,6 +474,7 @@ run_plan() {
       result="$(mail_send_composed "$ADDRESS" "$SUBJECT")"
       rm -f "$file"
       if [ "$result" = "sent" ]; then
+        memory_log_event mail "Emailed $WHO: $SUBJECT"
         emit "Sent to $WHO." false ""
       else
         emit "That draft isn't in Mail any more, so I left it alone." false ""
@@ -492,6 +502,7 @@ run_plan() {
       ;;
     system)
       rm -f "$file"
+      memory_log_event "$ACTION" "$(memory_event_words "$ACTION" "$ARG")"
       emit "$(system_run "$ACTION" "$ARG")" false ""
       ;;
     *)
@@ -762,6 +773,15 @@ case "${1:-}" in
   memory)
     shift
     case "${1:-show}" in
+      events)
+        events="$(memory_events "${2:-25}")"
+        if [ -n "$events" ]; then
+          echo "What it has done for you:"
+          printf '%s\n' "$events" | sed 's/^/  /'
+        else
+          echo "It hasn't done anything worth recording yet."
+        fi
+        ;;
       show)
         facts="$(memory_facts)"
         if [ -n "$facts" ]; then
@@ -772,7 +792,7 @@ case "${1:-}" in
         fi
         echo
         echo "Recent conversation:"
-        memory_recent | awk -F'\t' '{ printf "  %-9s %s\n", $1, substr($2, 1, 68) }' | tail -12
+        memory_recent | awk -F'\t' '{ printf "  %-10s %s\n", $1, (NF >= 3 ? $3 : $2) }'
         ;;
       forget)
         shift
@@ -783,7 +803,7 @@ case "${1:-}" in
         shift
         [ -z "${1:-}" ] && { echo 'orbit memory add "<a fact>"' >&2; exit 2; }
         memory_add_fact "$1"; echo "Noted." ;;
-      *) echo 'orbit memory [show|add "..."|forget "..."|clear]' >&2; exit 2 ;;
+      *) echo 'orbit memory [show|events|add "..."|forget "..."|clear]' >&2; exit 2 ;;
     esac
     ;;
   log)
