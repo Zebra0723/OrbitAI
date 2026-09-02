@@ -60,12 +60,13 @@ _try_message() {
   # first, because the prefix form below bails out immediately on this
   # word order, and the sentence then reached the readback rule, which saw
   # the word "message" and read the inbox out instead of sending anything.
-  flipped="$(printf '%s' "$text" | sed -nE 's/^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?(send|shoot|drop|fire|write|text)[[:space:]]+([a-z0-9'"'"'._-]+)[[:space:]]+(a|an|the)[[:space:]]+(message|text|imessage|note)[[:space:]]+(.*)$/\4\t\7/Ip')"
+  flipped="$(printf '%s' "$text" | sed -nE 's/^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?(send|shoot|drop|fire|write|text)[[:space:]]+([a-z0-9'"'"'._-]+)[[:space:]]+(a|an|the)[[:space:]]+(message|text|imessage|note)[[:space:]]*(.*)$/\4\t\7/Ip')"
   if [ -n "$flipped" ]; then
     who="$(printf '%s' "$flipped" | cut -f1)"
     body="$(printf '%s' "$flipped" | cut -f2-)"
     body="$(printf '%s' "$body" | sed -E 's/^(saying that|saying|that says|and say|telling them)[[:space:]]*//I')"
-    if [ -n "$who" ] && [ -n "$body" ]; then
+    if [ -n "$who" ]; then
+      # An empty body is not a failure - it is a question to ask.
       printf 'message\t%s\t%s\n' "$who" "$body"
       return 0
     fi
@@ -513,9 +514,11 @@ _try_mail_send() {
   else
     who="$(printf '%s' "$rest" | awk '{print $1}')"
     body="$(printf '%s' "$rest" | cut -d' ' -f2-)"
+    [ "$body" = "$who" ] && body=""
   fi
 
-  [ -n "$who" ] && [ -n "$body" ] && [ "$who" != "$body" ] || return 1
+  [ -n "$who" ] || return 1
+  [ "$who" != "$body" ] || body=""
   printf 'mail_send\t%s\t%s\n' "$who" "$body"
 }
 

@@ -781,10 +781,22 @@ final class OrbitListener: NSObject {
 
     /// Where a turn ends up: back in the conversation, or back to waiting
     /// for the wake word.
-    private func finishTurn(ended: Bool) {
+    /// `awaiting` means the turn ended on a question Orbit asked - "what
+    /// should I say to mama?" - and the answer is the next thing you say.
+    /// It holds the microphone open whether or not conversation mode is
+    /// on, because a question nobody can answer is worse than no question.
+    private func finishTurn(ended: Bool, awaiting: Bool = false) {
         greeted = true          // no greeting mid-conversation
         heard = ""
         wakePrefix = ""
+
+        if awaiting && !ended {
+            inConversation = true
+            lastHeardAt = Date()
+            setState(.capturing)
+            restartRecognition()
+            return
+        }
 
         if conversationMode && !ended {
             inConversation = true
@@ -809,6 +821,7 @@ final class OrbitListener: NSObject {
             let token = json["token"] as? String ?? ""
 
             let ended = json["end"] as? Bool ?? false
+            let awaiting = json["listen"] as? Bool ?? false
 
             self.play(audio, saying: speak) {
                 if confirm, !token.isEmpty {
@@ -817,7 +830,7 @@ final class OrbitListener: NSObject {
                     self.setState(.confirming)
                     self.restartRecognition()
                 } else {
-                    self.finishTurn(ended: ended)
+                    self.finishTurn(ended: ended, awaiting: awaiting)
                 }
             }
         }

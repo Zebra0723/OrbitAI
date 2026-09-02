@@ -199,6 +199,22 @@
 # call, FaceTime, Zoom, Meet in a browser tab, Teams or a Slack huddle.
 # Nothing is announced when it happens: an assistant that says "going
 # quiet" over your call has missed the point.
+# How long a half-finished request waits for its missing piece. Long
+# enough to think, short enough that an abandoned question never finishes
+# itself an hour later.
+# Which service speaks. "auto" prefers ElevenLabs, then OpenAI, then the
+# best built-in macOS voice - so a failing provider costs you the voice
+# and never the briefing. Set it explicitly to pin one:
+#   WELCOME_TTS=openai       use OpenAI, reusing your existing key
+#   WELCOME_TTS=elevenlabs   ElevenLabs only
+#   WELCOME_TTS=say          no network at all
+: "${WELCOME_OPENAI_VOICE:=nova}"
+: "${WELCOME_OPENAI_TTS_MODEL:=gpt-4o-mini-tts}"
+# Delivery notes, for the models that accept them. Empty is fine.
+: "${WELCOME_OPENAI_TTS_INSTRUCTIONS:=Speak with calm confidence, like a capable assistant. Natural pace, no rising question intonation at the end of statements.}"
+
+: "${ORBIT_SLOT_TTL_SECONDS:=120}"
+
 : "${ORBIT_PAUSE_ON_CALL:=1}"
 
 # Bundle identifiers that should never count as a call, separated by

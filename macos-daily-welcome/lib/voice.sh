@@ -14,8 +14,11 @@ tts_backend() {
   case "$WELCOME_TTS" in
     say) printf 'say' ;;
     elevenlabs) printf 'elevenlabs' ;;
+    openai) printf 'openai' ;;
     auto|*)
-      if eleven_available; then printf 'elevenlabs'; else printf 'say'; fi ;;
+      if eleven_available; then printf 'elevenlabs'
+      elif openai_tts_available; then printf 'openai'
+      else printf 'say'; fi ;;
   esac
 }
 
@@ -189,11 +192,23 @@ speak_to_file() {
   local text="$1" file
   [ "$WELCOME_SPEAK" = "1" ] || return 1
   [ -z "$text" ] && return 1
-  [ "$(tts_backend)" = "elevenlabs" ] || return 1
 
-  file="$(eleven_cache_path "$text")"
+  case "$(tts_backend)" in
+    elevenlabs)
+      file="$(eleven_cache_path "$text")"
+      [ -s "$file" ] && { printf '%s' "$file"; return 0; }
+      # A hosted voice that refuses is not a reason to go silent when a
+      # second service is configured and willing.
+      if eleven_synthesize "$text" "$file"; then printf '%s' "$file"; return 0; fi
+      openai_tts_available || return 1
+      ;;
+    openai) ;;
+    *) return 1 ;;
+  esac
+
+  file="$(openai_tts_cache_path "$text")"
   [ -s "$file" ] && { printf '%s' "$file"; return 0; }
-  eleven_synthesize "$text" "$file" || return 1
+  openai_tts_synthesize "$text" "$file" || return 1
   printf '%s' "$file"
 }
 

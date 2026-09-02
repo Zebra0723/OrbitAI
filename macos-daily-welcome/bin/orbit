@@ -28,6 +28,7 @@ welcome_load_user_config
 . "$ROOT/lib/present.sh"
 . "$ROOT/lib/speech_text.sh"
 . "$ROOT/lib/tts_eleven.sh"
+. "$ROOT/lib/tts_openai.sh"
 . "$ROOT/lib/voice.sh"
 . "$ROOT/lib/intents.sh"
 . "$ROOT/lib/context.sh"
@@ -38,6 +39,7 @@ welcome_load_user_config
 . "$ROOT/lib/nlu_openai.sh"
 . "$ROOT/lib/emoji.sh"
 . "$ROOT/lib/memory.sh"
+. "$ROOT/lib/slots.sh"
 
 PLAN_DIR="$WELCOME_STATE_DIR/plans"
 mkdir -p "$PLAN_DIR" 2>/dev/null
@@ -85,8 +87,16 @@ emit() {
   if [ -n "$1" ]; then
     audio="$(speak_to_file "$1" 2>/dev/null)" || audio=""
   fi
-  printf '{"speak":"%s","audio":"%s","confirm":%s,"token":"%s","end":%s}\n' \
-    "$(json_escape "$1")" "$(json_escape "$audio")" "$2" "$3" "${4:-false}"
+  printf '{"speak":"%s","audio":"%s","confirm":%s,"token":"%s","end":%s,"listen":%s}\n' \
+    "$(json_escape "$1")" "$(json_escape "$audio")" "$2" "$3" "${4:-false}" "${5:-false}"
+}
+
+# A turn that ends owing you a question. Says it, writes down what it is
+# waiting for, and holds the microphone open for the answer.
+ask_for() {
+  # ask_for QUESTION INTENT SLOT [ARG1] [ARG2]
+  slot_save "$2" "$3" "${4:-}" "${5:-}"
+  emit "$1" false "" false true
 }
 
 new_token() {
@@ -110,6 +120,16 @@ save_plan() {
 
 plan_message() {
   local who="$1" body="$2" handle token
+
+  if [ -z "$who" ]; then
+    ask_for "Who should I send it to?" message recipient "" "$body"
+    return 0
+  fi
+  if [ -z "$body" ]; then
+    ask_for "What should I say to $who?" message body "$who"
+    return 0
+  fi
+
   # "with a fire emoji" is an instruction about the message, not part of it.
   body="$(emoji_expand "$body")"
 
@@ -186,6 +206,16 @@ EOT
 # every other outgoing thing follows.
 plan_mail_send() {
   local who="$1" body="$2" address token subject
+
+  if [ -z "$who" ]; then
+    ask_for "Who should I email?" mail_send recipient "" "$body"
+    return 0
+  fi
+  if [ -z "$body" ]; then
+    ask_for "What should the email say?" mail_send body "$who"
+    return 0
+  fi
+
   body="$(emoji_expand "$body")"
 
   if ! address="$(contact_email "$who")"; then
@@ -487,6 +517,37 @@ case "${1:-}" in
     tone_apply "$ORBIT_TONE"
 
     plan_started="$(date '+%s')"
+
+    # A question is outstanding, so this sentence is most likely its
+    # answer rather than a new instruction. That is the whole point: you
+    # should not have to fit the entire request into one breath.
+    if pending="$(slot_pending)"; then
+      p_intent="$(printf '%s' "$pending" | cut -f1)"
+      p_slot="$(printf '%s' "$pending" | cut -f2)"
+      p_arg1="$(printf '%s' "$pending" | cut -f3)"
+      p_arg2="$(printf '%s' "$pending" | cut -f4)"
+
+      if slot_is_abandon "$transcript"; then
+        slot_clear
+        emit "Dropped it." false "" true
+        exit 0
+      fi
+
+      if ! slot_is_new_command "$transcript"; then
+        slot_clear
+        answer="$(printf '%s' "$transcript" | sed -E 's/^(say|saying|tell (them|him|her)|send)[[:space:],]+//I')"
+        case "$p_intent:$p_slot" in
+          message:body)      plan_message "$p_arg1" "$answer"; exit 0 ;;
+          message:recipient) plan_message "$answer" "$p_arg2"; exit 0 ;;
+          mail_send:body)      plan_mail_send "$p_arg1" "$answer"; exit 0 ;;
+          mail_send:recipient) plan_mail_send "$answer" "$p_arg2"; exit 0 ;;
+        esac
+      fi
+      # A plainly new instruction: let the question go rather than
+      # stuffing "what time is it" into a message to your mother.
+      slot_clear
+    fi
+
     parsed="$(parse_intent "$transcript")"
     intent="$(printf '%s' "$parsed" | cut -f1)"
     arg1="$(printf '%s' "$parsed" | cut -f2)"
@@ -511,7 +572,7 @@ case "${1:-}" in
       mail_reply) plan_mail_reply "$arg1" ;;
       mail_send)  plan_mail_send "$arg1" "$arg2" ;;
       message_ask)
-        emit "What should I say to $arg1?" false "" ;;
+        ask_for "What should I say to $arg1?" message body "$arg1" ;;
       call)       plan_call "$arg1" "$arg2" ;;
       system)     plan_system "$arg1" "$arg2" "$arg3" ;;
       readback)   plan_readback "$arg1" ;;
@@ -895,8 +956,12 @@ case "${1:-}" in
     "$0" listen status 2>&1 | sed 's/^/  /'
 
     printf '\n--- keys ---\n'
+    printf '  speaking via: %s\n' "$(tts_backend)"
     if eleven_api_key >/dev/null 2>&1; then printf '  ElevenLabs: found\n'
-    else printf '  ElevenLabs: MISSING   (daily-welcome --set-key)\n'; fi
+    else printf '  ElevenLabs: missing   (daily-welcome --set-key)\n'; fi
+    if [ -s "$WELCOME_STATE_DIR/last-voice-error" ]; then
+      printf '  last voice error: %s\n' "$(head -c 200 "$WELCOME_STATE_DIR/last-voice-error")"
+    fi
     if openai_api_key >/dev/null 2>&1; then printf '  OpenAI:     found\n'
     else printf '  OpenAI:     missing   (daily-welcome --set-openai-key)\n'; fi
     if claude_bin >/dev/null 2>&1; then printf '  Claude:     %s\n' "$(claude_bin)"

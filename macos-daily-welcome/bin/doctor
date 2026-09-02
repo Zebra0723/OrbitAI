@@ -16,6 +16,7 @@ welcome_load_user_config
 . "$ROOT/lib/common.sh"
 . "$ROOT/lib/speech_text.sh"
 . "$ROOT/lib/tts_eleven.sh"
+. "$ROOT/lib/tts_openai.sh"
 . "$ROOT/lib/voice.sh"
 
 LABEL="${DAILY_WELCOME_LABEL:-com.arjun.dailywelcome}"
