@@ -143,7 +143,14 @@ speech_clean() {
 #
 # WELCOME_PAUSE: short (default) | natural | none
 speech_pace() {
-  local text="$1" backend="${2:-$(tts_backend)}"
+  # speech_text.sh is sourced before voice.sh in some entry points, so
+  # the backend cannot be assumed to be askable yet. Falling back to the
+  # local voice is right: it is the one that always exists.
+  local text="$1" backend="${2:-}"
+  if [ -z "$backend" ]; then
+    if command -v tts_backend >/dev/null 2>&1; then backend="$(tts_backend)"
+    else backend="say"; fi
+  fi
 
   case "$WELCOME_PAUSE" in
     natural) printf '%s' "$text"; return 0 ;;

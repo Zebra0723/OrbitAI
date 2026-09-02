@@ -231,6 +231,35 @@ The Siri voices in that same list are the best of the lot, but `say` cannot
 select them by name - set one as your System Voice and use
 `--use-voice system`.
 
+### Knowing who is speaking
+
+Off by default, because it means keeping a few seconds of microphone audio
+on disk - nothing is uploaded, but it is written down, which it was not
+before.
+
+```
+daily-welcome --setup-speaker      installs it and turns it on
+orbit voice enroll Arjun           say a couple of sentences when it asks
+orbit voice who                    who was that last voice
+orbit voice list                   everyone it knows
+orbit voice ban Sam                refuse commands in that voice
+orbit voice unban Sam
+orbit voice forget Sam
+```
+
+Enrolling happens by talking, reusing the audio the listener already
+keeps, so there is no recorder to install and the sample comes through the
+same microphone as every command it will later be matched against. Enrol
+two or three times, on different days, for a better match.
+
+Once someone is enrolled it addresses them by name and knows that "my" and
+"I" mean them, not the owner of the Mac.
+
+It is a recogniser, not a lock. Voices drift with a cold or a bad
+microphone, and a recording of you sounds like you - so a ban refuses a
+request, it does not secure anything. It answers "I don't know" rather
+than guessing: below the confidence threshold it simply says nothing.
+
 ### Dropping a subject
 
 "Forget that", "anyway", "new topic", "moving on", "forget about the

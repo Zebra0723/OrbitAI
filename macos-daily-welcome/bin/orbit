@@ -42,6 +42,7 @@ welcome_load_user_config
 . "$ROOT/lib/emoji.sh"
 . "$ROOT/lib/memory.sh"
 . "$ROOT/lib/slots.sh"
+. "$ROOT/lib/speaker.sh"
 
 PLAN_DIR="$WELCOME_STATE_DIR/plans"
 mkdir -p "$PLAN_DIR" 2>/dev/null
@@ -65,6 +66,7 @@ orbit - voice commands for daily-welcome
   orbit greeting                 the line for a wake word with no command
   orbit console                  open the OrbitAI console in a browser
   orbit memory [show|events|add|forget|clear]  what it remembers, and did
+  orbit voice [enroll <name>|who|list|ban|unban|forget]  who is speaking
   orbit log                      what it heard, how it read it, how long it took
   orbit selftest                 check every feature in the place it runs
   orbit debug                    one command, everything worth pasting back
@@ -531,6 +533,21 @@ case "${1:-}" in
 
     plan_started="$(date '+%s')"
 
+    # Who is talking. Costs nothing when the feature is off, and an
+    # unrecognised voice is the ordinary case rather than a failure - it
+    # simply means the reply is not addressed to anyone in particular.
+    SPEAKER=""
+    if speaker_enabled; then
+      speaker_line="$(speaker_identify 2>/dev/null)" || speaker_line=""
+      SPEAKER="$(printf '%s' "$speaker_line" | cut -f1)"
+      if [ "$(printf '%s' "$speaker_line" | cut -f3)" = "banned" ]; then
+        memory_log_event refused "Refused a command from $SPEAKER"
+        emit "$ORBIT_SPEAKER_REFUSAL" false "" true
+        exit 0
+      fi
+    fi
+    export ORBIT_SPEAKER_NAME="$SPEAKER"
+
     # A question is outstanding, so this sentence is most likely its
     # answer rather than a new instruction. That is the whole point: you
     # should not have to fit the entire request into one breath.
@@ -995,6 +1012,15 @@ case "${1:-}" in
     if claude_bin >/dev/null 2>&1; then printf '  Claude:     %s\n' "$(claude_bin)"
     else printf '  Claude:     not on PATH\n'; fi
     printf '  NLU mode:   %s\n' "$ORBIT_NLU"
+    if [ "$ORBIT_SPEAKER_ID" = "1" ]; then
+      if speaker_installed; then
+        printf '  Voices:     on - %s enrolled\n' "$(speaker_run list 2>/dev/null | grep -c . )"
+      else
+        printf '  Voices:     ON but the recogniser is missing (daily-welcome --setup-speaker)\n'
+      fi
+    else
+      printf '  Voices:     off\n'
+    fi
 
     printf '\n--- a turn, end to end ---\n'
     for probe in "what time is it" "set a timer for ten minutes" "brief me"; do
@@ -1027,6 +1053,82 @@ case "${1:-}" in
     printf '\n--- last turns ---\n'
     "$0" log 12 2>&1 | sed 's/^/  /'
     printf '\n=== end ===\n\n'
+    ;;
+  voice)
+    shift
+    case "${1:-list}" in
+      enroll|enrol)
+        shift
+        name="${1:-}"
+        [ -n "$name" ] || { echo 'orbit voice enroll <name>' >&2; exit 2; }
+        if ! speaker_installed; then
+          echo "Voice recognition isn't set up. Run: daily-welcome --setup-speaker" >&2
+          exit 1
+        fi
+        wav="$(speaker_utterance)"
+        # Enrolling happens by TALKING, reusing the audio the listener
+        # already keeps. That way there is no recorder to install, and
+        # the sample is captured through the same microphone and the same
+        # path as every command it will later be matched against.
+        before="$(stat -f %m "$wav" 2>/dev/null || echo 0)"
+        speak_async "Say a sentence or two, $name, so I know your voice."
+        echo "Listening. Say a couple of sentences - press Option-Space first if it is not already awake."
+        waited=0
+        while [ "$waited" -lt 45 ]; do
+          sleep 1; waited=$((waited + 1))
+          now="$(stat -f %m "$wav" 2>/dev/null || echo 0)"
+          [ "$now" != "$before" ] && [ -s "$wav" ] && break
+        done
+        if [ "$now" = "$before" ]; then
+          echo "Heard nothing in forty-five seconds. Is it listening? orbit listen status" >&2
+          exit 1
+        fi
+        sleep 1   # let the writer finish
+        if out="$(speaker_run enroll "$name" "$wav" 2>&1)"; then
+          echo "Enrolled $name ($(printf '%s' "$out" | cut -f2) $(printf '%s' "$out" | cut -f2 | awk '{print ($1==1)?"sample":"samples"}'))."
+          echo "Do it two or three more times, on different days, for a better match."
+        else
+          echo "Couldn't use that: $out" >&2; exit 1
+        fi
+        ;;
+      who)
+        result="$(speaker_identify)" || true
+        if [ -n "$result" ]; then
+          printf 'That last voice was %s (%s confidence, %s).\n' \
+            "$(printf '%s' "$result" | cut -f1)" \
+            "$(printf '%s' "$result" | cut -f2)" \
+            "$(printf '%s' "$result" | cut -f3)"
+        else
+          echo "I don't recognise that voice, or nothing has been said yet."
+        fi
+        ;;
+      list)
+        out="$(speaker_run list 2>/dev/null)"
+        if [ -n "$out" ]; then
+          printf 'Voices it knows:\n'
+          printf '%s\n' "$out" | awk -F'\t' '{ printf "  %-16s %s %s\n", $1, $2, ($3 == "banned" ? "samples, BANNED" : "samples") }'
+        else
+          echo "Nobody has enrolled yet. Start with: orbit voice enroll <name>"
+        fi
+        ;;
+      ban|unban|forget)
+        action="$1"; shift
+        name="${1:-}"
+        [ -n "$name" ] || { echo "orbit voice $action <name>" >&2; exit 2; }
+        if out="$(speaker_run "$action" "$name" 2>&1)"; then
+          case "$action" in
+            ban)    echo "$name is banned. Commands in that voice will be refused." ;;
+            unban)  echo "$name is allowed again." ;;
+            forget) echo "Forgot $name." ;;
+          esac
+        else
+          echo "$out" >&2; exit 1
+        fi
+        ;;
+      *)
+        echo 'orbit voice [enroll <name>|who|list|ban <name>|unban <name>|forget <name>]' >&2
+        exit 2 ;;
+    esac
     ;;
   examples)
     intent_examples

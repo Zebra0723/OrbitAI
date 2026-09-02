@@ -257,6 +257,22 @@
 
 # How many past events and matched history lines a turn may carry into
 # the model's prompt when you ask about something that already happened.
+# Recognising who is speaking. Off by default: it means keeping a few
+# seconds of microphone audio on disk, which is not something to switch
+# on quietly. daily-welcome --setup-speaker turns it on deliberately.
+: "${ORBIT_SPEAKER_ID:=0}"
+: "${ORBIT_SPEAKER_STORE:=$HOME/.config/daily-welcome/voices.json}"
+# How close a voice must be to count as a match. Higher admits fewer
+# people and says "I don't know" more often, which is the safer error.
+: "${ORBIT_SPEAKER_THRESHOLD:=0.72}"
+: "${ORBIT_SPEAKER_TIMEOUT:=12}"
+: "${ORBIT_SPEAKER_PYTHON:=}"
+# What a banned voice hears.
+# No apostrophe here on purpose: inside ${VAR:=word} bash treats a lone
+# quote as opening one, even within double quotes, and the whole file
+# stops parsing.
+: "${ORBIT_SPEAKER_REFUSAL:=Sorry, I do not take requests from you.}"
+
 : "${ORBIT_MEMORY_EVENTS:=12}"
 : "${ORBIT_MEMORY_MATCHES:=10}"
 

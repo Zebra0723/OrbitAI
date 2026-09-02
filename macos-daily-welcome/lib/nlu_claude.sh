@@ -50,6 +50,15 @@ Rules:
   React to what they said, then ask the one question that moves it
   forward. Never refuse; if you do not know, say so in a sentence.
 "
+  if [ -n "$ORBIT_SPEAKER_NAME" ]; then
+    if [ "$ORBIT_SPEAKER_NAME" = "$WELCOME_NAME" ]; then
+      printf 'The person speaking is %s, whose Mac this is.\n' "$ORBIT_SPEAKER_NAME"
+    else
+      printf 'The person speaking is %s - NOT %s, whose Mac this is. Address
+them by name, and remember that "my" and "I" mean %s here.\n' \
+        "$ORBIT_SPEAKER_NAME" "$WELCOME_NAME" "$ORBIT_SPEAKER_NAME"
+    fi
+  fi
   [ -n "$phrases" ] && printf 'Their own macro phrases: %s\n' "$phrases"
   [ -n "$facts" ] && printf 'What you know about them: %s\n' "$facts"
   [ -n "$history" ] && printf 'Recent conversation:\n%s\n' "$history"

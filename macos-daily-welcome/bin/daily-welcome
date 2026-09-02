@@ -32,6 +32,7 @@ welcome_load_user_config
 . "$ROOT/lib/nlu_openai.sh"
 . "$ROOT/lib/tts_openai.sh"
 . "$ROOT/lib/tts_piper.sh"
+. "$ROOT/lib/speaker.sh"
 # shellcheck source=../lib/voice.sh
 . "$ROOT/lib/voice.sh"
 
@@ -67,6 +68,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --voice-provider openai | elevenlabs | piper | say | auto
   daily-welcome --setup-piper   a free neural voice that runs on this Mac
   daily-welcome --mac-voices    the built-in voices, and how to get better ones
+  daily-welcome --setup-speaker recognise who is speaking, by name
   daily-welcome --hush          stop talking right now
   daily-welcome --mute-today    skip the rest of today
   daily-welcome --reset         forget that today's greeting happened
@@ -112,6 +114,7 @@ while [ $# -gt 0 ]; do
     --plain)       WELCOME_PAUSE=natural ;;
     --pause)       MODE=pause; shift; VOICE_ARG="${1:-}" ;;
     --expression)  MODE=expression; shift; VOICE_ARG="${1:-}" ;;
+    --setup-speaker) MODE=setupspeaker ;;
     --mute-today) MODE=mute ;;
     --reset)      MODE=reset ;;
     -h|--help)    usage; exit 0 ;;
@@ -365,6 +368,58 @@ case "$MODE" in
         fi
         say_speak "$line" ;;
     esac
+    exit 0
+    ;;
+  setupspeaker)
+    # Installs the library, turns the feature on, and says plainly what
+    # switching it on means - which is that the microphone audio now
+    # touches the disk.
+    echo "Recognising who is speaking"
+    echo
+    echo "This keeps the last few seconds of microphone audio in a file on"
+    echo "this Mac, so the voice can be matched after the fact. Nothing is"
+    echo "uploaded and nothing leaves the machine, but the audio is written"
+    echo "down, which it never was before. Turn it off again any time with"
+    echo "  ORBIT_SPEAKER_ID=0"
+    echo
+
+    if ! speaker_installed; then
+      if command -v pipx >/dev/null 2>&1; then
+        echo "Installing the recogniser (this pulls in PyTorch, so it is a"
+        echo "few hundred megabytes and takes a couple of minutes)..."
+        if ! pipx install resemblyzer; then
+          echo "daily-welcome: pipx could not install resemblyzer." >&2
+          exit 1
+        fi
+      else
+        echo "It needs Resemblyzer, which is a Python package:" >&2
+        echo >&2
+        echo "  brew install pipx" >&2
+        echo "  pipx install resemblyzer" >&2
+        echo >&2
+        echo "Then run this again." >&2
+        exit 1
+      fi
+    fi
+
+    if ! speaker_installed; then
+      echo "Installed, but I still cannot import it. Point at the right" >&2
+      echo "interpreter with ORBIT_SPEAKER_PYTHON=/path/to/python" >&2
+      exit 1
+    fi
+
+    cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+    mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+    grep -v '^ORBIT_SPEAKER_ID=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+    { cat "$cfg.tmp"; printf 'ORBIT_SPEAKER_ID="1"\n'; } > "$cfg"
+    rm -f "$cfg.tmp"
+    launchctl kickstart -k "gui/$(id -u)/${DAILY_WELCOME_LABEL:-com.arjun.dailywelcome}" >/dev/null 2>&1
+
+    echo "Ready. Now enrol yourself - say a couple of sentences when it asks:"
+    echo "  orbit voice enroll $WELCOME_NAME"
+    echo
+    echo "Then anyone else who uses it. To refuse a voice:"
+    echo "  orbit voice ban <name>"
     exit 0
     ;;
   expression)

@@ -46,6 +46,23 @@ final class OrbitListener: NSObject {
     /// Path to the `orbit` script; set by the app delegate.
     var orbitPath: String = ""
     var wakeWord: String = "hey orbit"
+    /// Where to leave the audio of the last thing said, so the person
+    /// speaking can be identified after the fact. Empty means don't keep
+    /// any - which is the default, because recording the room by habit is
+    /// not something to switch on quietly.
+    var utterancePath: String = ""
+    var keepUtteranceAudio = false
+
+    /// A rolling few seconds of microphone audio. The wake word arrives
+    /// before anyone knows a command is coming, so the audio has to
+    /// already be in hand by the time there is something to identify.
+    private var recentAudio: [AVAudioPCMBuffer] = []
+    private var recentFrames: AVAudioFrameCount = 0
+    private var recentFormat: AVAudioFormat?
+    private let utteranceSeconds: Double = 8
+    /// The tap runs on an audio thread; the writer runs on the main one.
+    private let audioQueue = DispatchQueue(label: "orbit.audio.ring")
+
     /// Told to stop listening, this file appears; the microphone closes
     /// until the hot key, the menu or a command removes it again. Stopping
     /// this way rather than killing the app means there is always a way
@@ -280,6 +297,57 @@ final class OrbitListener: NSObject {
 
     // MARK: - Audio
 
+    /// Keeps a copy of the buffer, dropping whatever has aged out. The
+    /// buffer the tap hands over is reused by the engine, so it has to be
+    /// copied rather than retained.
+    private func remember(_ buffer: AVAudioPCMBuffer, format: AVAudioFormat) {
+        guard keepUtteranceAudio, !utterancePath.isEmpty else { return }
+        guard let copy = AVAudioPCMBuffer(pcmFormat: buffer.format,
+                                          frameCapacity: buffer.frameLength) else { return }
+        copy.frameLength = buffer.frameLength
+
+        if let src = buffer.floatChannelData, let dst = copy.floatChannelData {
+            let channels = Int(buffer.format.channelCount)
+            let bytes = Int(buffer.frameLength) * MemoryLayout<Float>.size
+            for ch in 0..<channels { memcpy(dst[ch], src[ch], bytes) }
+        } else if let src = buffer.int16ChannelData, let dst = copy.int16ChannelData {
+            let channels = Int(buffer.format.channelCount)
+            let bytes = Int(buffer.frameLength) * MemoryLayout<Int16>.size
+            for ch in 0..<channels { memcpy(dst[ch], src[ch], bytes) }
+        } else {
+            return
+        }
+
+        audioQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.recentFormat = format
+            self.recentAudio.append(copy)
+            self.recentFrames += copy.frameLength
+            let cap = AVAudioFrameCount(format.sampleRate * self.utteranceSeconds)
+            while self.recentFrames > cap, let first = self.recentAudio.first {
+                self.recentFrames -= first.frameLength
+                self.recentAudio.removeFirst()
+            }
+        }
+    }
+
+    /// Writes what is in hand to a WAV, for the identifier to read. Called
+    /// the moment a command is submitted, so the file is the thing that
+    /// was just said.
+    private func writeUtterance() {
+        guard keepUtteranceAudio, !utterancePath.isEmpty else { return }
+        audioQueue.async { [weak self] in
+            guard let self = self,
+                  let format = self.recentFormat,
+                  !self.recentAudio.isEmpty else { return }
+            let url = URL(fileURLWithPath: self.utterancePath)
+            try? FileManager.default.removeItem(at: url)
+            guard let file = try? AVAudioFile(forWriting: url,
+                                              settings: format.settings) else { return }
+            for buffer in self.recentAudio { try? file.write(from: buffer) }
+        }
+    }
+
     private func beginSession() {
         guard !engine.isRunning else { return }
 
@@ -288,6 +356,7 @@ final class OrbitListener: NSObject {
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             self?.request?.append(buffer)
+            self?.remember(buffer, format: format)
         }
 
         engine.prepare()
@@ -722,6 +791,7 @@ final class OrbitListener: NSObject {
             if !command.isEmpty, quietFor > commandSilence {
                 heard = ""
                 greeted = false
+                writeUtterance()
                 setState(.working)
                 plan(command)
 
