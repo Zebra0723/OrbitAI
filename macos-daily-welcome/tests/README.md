@@ -36,6 +36,7 @@ the name you gave matches no suite.
 | `applescript` | the scripts Mail is sent, as they come out |
 | `slots` | the half-finished request, and the way out of one |
 | `speaker` | the voice store: matching, banning, and strangers |
+| `freeform` | the denylist on model-written commands, and its wiring |
 | `backend` | choosing how to speak, without dying in the attempt |
 | `unbound` | every variable read is one something declares |
 | `static` | every file parses; Swift balances; no inline `onclick` |

@@ -112,11 +112,30 @@ claude_intent() {
 
   case "$(printf '%s' "$line" | cut -f1)" in
     command)
-      # Same shape the freeform planner produced, so it is confirmed out
-      # loud before anything runs - a model-written shell command is not
-      # something to run on trust.
-      printf 'system\tfreeform\t%s\t%s\n' \
-        "$(printf '%s' "$line" | cut -f3)" "$(printf '%s' "$line" | cut -f2)"
+      # A model-written shell command, about to be offered for a spoken
+      # yes. Two things have to happen before it is offered at all, and
+      # neither was happening: the switch that turns this off has to be
+      # honoured, and the denylist has to see it.
+      #
+      # The denylist lived in lib/freeform.sh next to a planner that
+      # nothing has called since this took over. It refuses whole
+      # categories outright - sudo, the disk tools, piping a download
+      # into a shell - because "Go ahead?" after a half-heard sentence is
+      # too thin a thing to be the only guard.
+      local cmd summary
+      cmd="$(printf '%s' "$line" | cut -f3)"
+      summary="$(printf '%s' "$line" | cut -f2)"
+
+      if [ "$ORBIT_FREEFORM" != "1" ]; then
+        printf 'chat\t%s\t\n' "That needs me to run a command, and that is switched off."
+        return 0
+      fi
+      if _freeform_refused "$cmd"; then
+        welcome_log "freeform: refused '$cmd'"
+        printf 'chat\t%s\t\n' "I won't run that one."
+        return 0
+      fi
+      printf 'system\tfreeform\t%s\t%s\n' "$cmd" "$summary"
       ;;
     *) printf '%s\n' "$line" ;;
   esac
