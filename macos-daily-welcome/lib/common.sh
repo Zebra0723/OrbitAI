@@ -30,7 +30,14 @@ run_with_timeout() {
   err="$(mktemp -t daily-welcome-err.XXXXXX)" || { rm -f "$out"; return 1; }
   mkdir -p "$(dirname "$(run_error_file)")" 2>/dev/null
 
-  "$@" >"$out" 2>"$err" &
+  # Stdin is closed, always. Nothing run through here should ever read it,
+  # and one thing badly does: `claude -p` accepts piped input, so it
+  # inherited the menu bar app's stdin and sat waiting for an end-of-file
+  # that was never coming. Every answer Claude was supposed to give - every
+  # question, every bit of conversation - burned the whole timeout and then
+  # came back empty, which from the outside is an assistant that ignores
+  # you.
+  "$@" >"$out" 2>"$err" </dev/null &
   pid=$!
 
   waited=0

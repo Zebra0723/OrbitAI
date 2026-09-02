@@ -63,6 +63,7 @@ orbit - voice commands for daily-welcome
   orbit memory [show|add|forget|clear]   what it remembers about you
   orbit log                      what it heard, how it read it, how long it took
   orbit selftest                 check every feature in the place it runs
+  orbit debug                    one command, everything worth pasting back
   orbit examples                 phrasings it understands
 
 Plan and run print one line of JSON: {"speak":"...","confirm":true,"token":"..."}
@@ -830,6 +831,50 @@ case "${1:-}" in
                  printf '             conversation | ondevice | pause_on_call | call_ignore\n' >&2
                  exit 2 ;;
     esac
+    ;;
+  debug)
+    # One command, one thing to paste back. Everything worth knowing when
+    # it "just isn't responding", in the order it would go wrong.
+    printf '\n=== orbit debug ===\n'
+    printf 'when:     %s\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')"
+    printf 'macOS:    %s (%s)\n' "$(sw_vers -productVersion 2>/dev/null)" "$(uname -m)"
+    printf 'repo:     %s\n' "$ROOT"
+    printf 'commit:   %s\n' "$(git -C "$ROOT" log --oneline -1 2>/dev/null || echo 'not a git checkout')"
+
+    APP_BIN="$HOME/Applications/DailyWelcome.app/Contents/MacOS/DailyWelcome"
+    newest="$(ls -t "$ROOT"/menubar/*.swift 2>/dev/null | head -1)"
+    if [ ! -x "$APP_BIN" ]; then
+      printf 'build:    NO APP BUILT - run ./install.sh\n'
+    elif [ -n "$newest" ] && [ "$newest" -nt "$APP_BIN" ]; then
+      printf 'build:    STALE - the running app predates your last git pull\n'
+      printf '          >>> run ./macos-daily-welcome/install.sh <<<\n'
+    else
+      printf 'build:    current\n'
+    fi
+
+    printf '\n--- listener ---\n'
+    "$0" listen status 2>&1 | sed 's/^/  /'
+
+    printf '\n--- keys ---\n'
+    if eleven_api_key >/dev/null 2>&1; then printf '  ElevenLabs: found\n'
+    else printf '  ElevenLabs: MISSING   (daily-welcome --set-key)\n'; fi
+    if openai_api_key >/dev/null 2>&1; then printf '  OpenAI:     found\n'
+    else printf '  OpenAI:     missing   (daily-welcome --set-openai-key)\n'; fi
+    if claude_bin >/dev/null 2>&1; then printf '  Claude:     %s\n' "$(claude_bin)"
+    else printf '  Claude:     not on PATH\n'; fi
+    printf '  NLU mode:   %s\n' "$ORBIT_NLU"
+
+    printf '\n--- a turn, end to end ---\n'
+    for probe in "what time is it" "set a timer for ten minutes" "brief me"; do
+      start="$(date '+%s')"
+      line="$("$0" plan "$probe" 2>&1 | tail -1)"
+      took=$(( $(date '+%s') - start ))
+      printf '  %-30s %2ds  %s\n' "\"$probe\"" "$took" "$(printf '%s' "$line" | cut -c1-70)"
+    done
+
+    printf '\n--- last turns ---\n'
+    "$0" log 12 2>&1 | sed 's/^/  /'
+    printf '\n=== end ===\n\n'
     ;;
   examples)
     intent_examples

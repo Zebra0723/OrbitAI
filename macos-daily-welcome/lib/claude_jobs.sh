@@ -68,7 +68,7 @@ claude_dispatch() {
   (
     cd "$dir" 2>/dev/null || exit 1
     # shellcheck disable=SC2086
-    "$(claude_bin)" -p "$task" $ORBIT_CLAUDE_FLAGS > "$log" 2>&1
+    "$(claude_bin)" -p "$task" $ORBIT_CLAUDE_FLAGS > "$log" 2>&1 </dev/null
     printf '%s' "$?" > "$jobs/$id.done"
   ) >/dev/null 2>&1 &
 

@@ -56,8 +56,21 @@ _trim_that() {
 _try_message() {
   local text="$1" rest pair
   rest="$(_strip_prefix "$text" "^[[:space:]]*(please[[:space:]]+)?(can[[:space:]]+you[[:space:]]+)?(send[[:space:]]+(a[[:space:]]+)?)?(message|text|imessage|write)[[:space:]]+(to[[:space:]]+)?")" || return 1
-  pair="$(_split_on "$rest" " saying that | saying | that says | telling them | and say |: ")" || return 1
-  printf 'message\t%s\n' "$pair"
+  if pair="$(_split_on "$rest" " saying that | saying | that says | telling them | and say |: ")"; then
+    printf 'message\t%s\n' "$pair"
+    return 0
+  fi
+
+  # No "saying" anywhere. People drop it constantly - "text Priya dinner at
+  # eight" - and refusing those made a plain instruction land as nothing.
+  # First word is who, the rest is the message; a name that matches no
+  # contact is reported rather than guessed at, so a wrong split is not
+  # silent.
+  local who body
+  who="$(printf '%s' "$rest" | awk '{print $1}')"
+  body="$(printf '%s' "$rest" | cut -d' ' -f2-)"
+  [ -n "$who" ] && [ -n "$body" ] && [ "$who" != "$body" ] || return 1
+  printf 'message\t%s\t%s\n' "$who" "$body"
 }
 
 _try_claude() {
@@ -161,8 +174,47 @@ _after() {
   }'
 }
 
+# Numbers arrive as WORDS. Nobody says "set a timer for one zero minutes",
+# and the recogniser writes what it hears - so a digits-only reading of
+# "set a timer for ten minutes" found no number at all and the command
+# fell through to nothing at all.
+#
+# Done in awk rather than sed because "twenty five" is two words and one
+# number, and because the answer wanted is the FIRST number in the
+# sentence: a greedy regex quietly returned the last one.
 _first_number() {
-  printf '%s' "$1" | sed -nE 's/.*[^0-9]([0-9]{1,3})([^0-9].*|$)/\1/p; t; s/^([0-9]{1,3})([^0-9].*|$)/\1/p' | head -1
+  printf '%s' "$1" | awk '
+    BEGIN {
+      split("zero one two three four five six seven eight nine ten " \
+            "eleven twelve thirteen fourteen fifteen sixteen seventeen " \
+            "eighteen nineteen", units, " ")
+      for (i in units) value[units[i]] = i - 1
+      split("twenty thirty forty fifty sixty seventy eighty ninety", tens, " ")
+      for (i in tens) { value[tens[i]] = i * 10 + 10; isTen[tens[i]] = 1 }
+      value["fourty"] = 40; isTen["fourty"] = 1        # spelt as it sounds
+      value["hundred"] = 100
+      value["half"] = 30                                # "half an hour"
+      value["an"] = 60; value["a"] = 1                  # "an hour", "a minute"
+    }
+    {
+      gsub(/[^a-zA-Z0-9 ]/, " ")
+      n = split(tolower($0), word, " ")
+      for (i = 1; i <= n; i++) {
+        w = word[i]
+        if (w ~ /^[0-9]{1,3}$/) { print w + 0; exit }
+
+        # "a" and "an" only count when a unit of time follows, or every
+        # "a" in the sentence would read as the number one.
+        if ((w == "a" || w == "an") &&
+            !(word[i+1] ~ /^(minute|minutes|second|seconds|hour|hours)$/)) continue
+        if (w == "half" && word[i+1] != "an") continue
+
+        if (!(w in value)) continue
+        if (isTen[w] && (word[i+1] in value) && value[word[i+1]] < 10 &&
+            !isTen[word[i+1]]) { print value[w] + value[word[i+1]]; exit }
+        print value[w]; exit
+      }
+    }'
 }
 
 # Calls. Anchored to the start of the sentence so "remind me to call the
@@ -258,7 +310,10 @@ _try_system() {
 
     *"next track"*|*"next song"*|*"skip this"*|"skip"*) printf 'system\tnext_track\t\n'; return 0 ;;
     *"previous track"*|*"previous song"*|*"go back a song"*) printf 'system\tprev_track\t\n'; return 0 ;;
-    "play"|"pause"|*"play music"*|*"pause the music"*|*"resume music"*) printf 'system\tplaypause\t\n'; return 0 ;;
+    "play"|"pause"|*"play music"*|*"pause the music"*|*"resume music"*|\
+    *"play some music"*|*"put some music on"*|*"play something"*|\
+    *"music on"*|*"unpause"*|"resume"|*"keep playing"*)
+      printf 'system\tplaypause\t\n'; return 0 ;;
 
     *"take a screenshot"*|"screenshot"*|*"screen shot"*) printf 'system\tscreenshot\t\n'; return 0 ;;
     *"lock the screen"*|*"lock my mac"*|*"lock the mac"*|"lock"*) printf 'system\tlock\t\n'; return 0 ;;
@@ -507,13 +562,17 @@ parse_intent() {
   _try_system "$text"      && return 0
   # The rules have had their go. Anything they could not place is handed
   # to a model, which is far better at the phrasings nobody anticipated.
-  if [ "$ORBIT_NLU" != "rules" ] && openai_intent "$text"; then
-    return 0
-  fi
+  case "$ORBIT_NLU" in
+    rules|off) ;;   # rules only, no model, no network
+    *) openai_intent "$text" && return 0 ;;
+  esac
 
   _try_readback "$text"    && return 0
   _try_ask "$text"         && return 0
-  _try_claude_nlu "$text"  && return 0
+  case "$ORBIT_NLU" in
+    rules|off) ;;
+    *) _try_claude_nlu "$text" && return 0 ;;
+  esac
 
   # Nothing recognised it: let Claude write the command, to be confirmed
   # out loud before anything happens.
