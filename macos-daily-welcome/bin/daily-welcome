@@ -384,20 +384,23 @@ case "$MODE" in
     echo
 
     if ! speaker_installed; then
-      if command -v pipx >/dev/null 2>&1; then
-        echo "Installing the recogniser (this pulls in PyTorch, so it is a"
-        echo "few hundred megabytes and takes a couple of minutes)..."
-        if ! pipx install resemblyzer; then
-          echo "daily-welcome: pipx could not install resemblyzer." >&2
+      venv="$(speaker_venv)"
+      if [ ! -x "$venv/bin/python" ]; then
+        echo "Making a place to put it..."
+        if ! python3 -m venv "$venv"; then
+          echo "daily-welcome: could not create a virtual environment at $venv" >&2
+          echo "Is python3 installed? xcode-select --install" >&2
           exit 1
         fi
-      else
-        echo "It needs Resemblyzer, which is a Python package:" >&2
+      fi
+      echo "Installing the recogniser. This pulls in PyTorch, so it is a"
+      echo "few hundred megabytes and takes a couple of minutes..."
+      echo
+      if ! "$venv/bin/pip" install --upgrade pip >/dev/null 2>&1; then : ; fi
+      if ! "$venv/bin/pip" install resemblyzer; then
         echo >&2
-        echo "  brew install pipx" >&2
-        echo "  pipx install resemblyzer" >&2
-        echo >&2
-        echo "Then run this again." >&2
+        echo "daily-welcome: pip could not install resemblyzer." >&2
+        echo "The environment is at $venv if you want to look." >&2
         exit 1
       fi
     fi

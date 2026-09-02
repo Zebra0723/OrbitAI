@@ -8,14 +8,20 @@
 
 _speaker_py() { printf '%s/lib/speaker.py' "$ROOT"; }
 
+speaker_venv() { printf '%s/.config/daily-welcome/speaker-venv' "$HOME"; }
+
 _speaker_python() {
-  # pipx puts resemblyzer in its own environment, so the interpreter that
-  # can import it is not necessarily the one on PATH.
+  # Resemblyzer is a LIBRARY, not an application, so it does not belong to
+  # pipx at all - pipx installs every dependency correctly and then
+  # refuses at the last step because there is no command to put on your
+  # PATH. It lives in its own virtual environment instead, and that
+  # environment's interpreter is the only one that can import it.
   if [ -n "$ORBIT_SPEAKER_PYTHON" ] && [ -x "$ORBIT_SPEAKER_PYTHON" ]; then
     printf '%s' "$ORBIT_SPEAKER_PYTHON"; return 0
   fi
   local candidate
-  for candidate in "$HOME/.local/share/pipx/venvs/resemblyzer/bin/python" \
+  for candidate in "$(speaker_venv)/bin/python" \
+                   "$HOME/.local/share/pipx/venvs/resemblyzer/bin/python" \
                    "$HOME/.local/pipx/venvs/resemblyzer/bin/python"; do
     [ -x "$candidate" ] && { printf '%s' "$candidate"; return 0; }
   done
