@@ -358,10 +358,16 @@ case "$MODE" in
     voice_path="amy/medium/en_US-amy-medium.onnx"
 
     if ! piper_bin >/dev/null 2>&1; then
-      echo "Piper isn't installed. Get it with:"
-      echo "  brew install piper-tts"
+      echo "Piper isn't installed yet. It ships on PyPI, not in Homebrew:"
       echo
-      echo "Then run this again."
+      echo "  brew install pipx"
+      echo "  pipx install piper-tts"
+      echo
+      echo "Or, without pipx:"
+      echo "  python3 -m pip install --user piper-tts"
+      echo
+      echo "Then run this again. If it is installed but not found, point at"
+      echo "it directly:  WELCOME_PIPER_BIN=/full/path/to/piper"
       exit 1
     fi
 

@@ -3,16 +3,20 @@
    it would cost more requests than it saves bytes. */
 
 :root {
-  --void: #07070c;
-  --panel: #101019;
-  --line: #1e1e2d;
-  --text: #e8e8f2;
-  --dim: #8b8ba3;
-  --faint: #56566b;
-  --accent: #a78bfa;
-  --accent-dim: #6d5bb0;
-  --good: #7ee2b8;
-  --bad: #f28b82;
+  /* Sitefold's palette: black, white, and the opacities in between.
+     Monochrome is the whole idea - the accent is white, not a colour. */
+  --void: #000000;
+  --panel: #0a0a0a;
+  --line: rgba(255,255,255,.10);
+  --text: #ffffff;
+  --dim: rgba(255,255,255,.55);
+  --faint: rgba(255,255,255,.40);
+  --accent: #ffffff;
+  --accent-dim: rgba(255,255,255,.32);
+  /* Status still has to read as status, so these keep just enough hue to
+     mean something at a glance without breaking the monochrome. */
+  --good: #b8e6d0;
+  --bad: #f0b8b2;
   /* The DailyOS pairing: Fraunces, a warm old-style serif, for anything
      with a voice; Inter for everything that is read rather than heard. */
   --display: "Fraunces", Georgia, "Iowan Old Style", "Times New Roman", serif;
@@ -35,11 +39,7 @@ body {
 
 /* The sky: nebulae that drift, stars that don't. */
 .sky { position: fixed; inset: 0; z-index: -1; overflow: hidden;
-  background:
-    radial-gradient(1200px 700px at 10% -10%, #1b1440 0%, transparent 60%),
-    radial-gradient(900px 600px at 95% 5%, #12203f 0%, transparent 55%),
-    radial-gradient(1100px 900px at 50% 115%, #1a1030 0%, transparent 60%),
-    var(--void);
+  background: var(--void);
 }
 .sky::after {
   content: ""; position: absolute; inset: -50%;
@@ -49,11 +49,11 @@ body {
     radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,.6) 50%, transparent),
     radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,.4) 50%, transparent),
     radial-gradient(1px 1px at 15% 85%, rgba(255,255,255,.5) 50%, transparent),
-    radial-gradient(2px 2px at 33% 15%, rgba(190,180,255,.45) 50%, transparent),
-    radial-gradient(2px 2px at 78% 82%, rgba(190,180,255,.4) 50%, transparent);
+    radial-gradient(2px 2px at 33% 15%, rgba(255,255,255,.35) 50%, transparent),
+    radial-gradient(2px 2px at 78% 82%, rgba(255,255,255,.3) 50%, transparent);
   background-size: 480px 480px, 620px 620px, 540px 540px, 700px 700px,
                    560px 560px, 900px 900px, 820px 820px;
-  animation: drift 260s linear infinite; opacity: .5;
+  animation: drift 260s linear infinite; opacity: .35;
 }
 @keyframes drift { to { transform: translate3d(-180px, -140px, 0); } }
 @media (prefers-reduced-motion: reduce) { .sky::after { animation: none; } }
@@ -62,7 +62,7 @@ body {
 .nav {
   position: sticky; top: 0; z-index: 10;
   backdrop-filter: blur(16px);
-  background: rgba(7,7,12,.72);
+  background: rgba(0,0,0,.72);
   border-bottom: 1px solid var(--line);
 }
 .nav-inner {
@@ -91,7 +91,7 @@ body {
 .nav a.link[aria-current=page] { color: var(--accent); border-bottom-color: var(--accent-dim); }
 .nav .spacer { flex: 1; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
-.dot.on { background: var(--good); box-shadow: 0 0 8px rgba(126,226,184,.6); }
+.dot.on { background: var(--good); box-shadow: 0 0 8px rgba(184,230,208,.5); }
 .dot.off { background: var(--bad); }
 .nav .state { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--faint); }
 
@@ -126,7 +126,7 @@ section { margin-bottom: 52px; }
 
 /* Surfaces */
 .panel {
-  background: linear-gradient(180deg, rgba(20,20,32,.7), rgba(12,12,20,.7));
+  background: rgba(255,255,255,.03);
   border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px;
   backdrop-filter: blur(12px);
 }
@@ -135,19 +135,19 @@ section { margin-bottom: 52px; }
 .grid.three { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 
 .card { border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px;
-        background: rgba(16,16,25,.6); }
+        background: rgba(255,255,255,.025); }
 .card h3 { color: var(--text); }
 .card p { color: var(--dim); font-size: 13.5px; margin: 0; }
 
 /* Rows and controls */
 .row { display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
-       padding: 13px 0; border-bottom: 1px solid rgba(30,30,45,.6); }
+       padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
 .row:last-child { border-bottom: 0; }
 .row .help { display: block; color: var(--faint); font-size: 12.5px; margin-top: 3px; }
 .row .control { flex: none; }
 
 input[type=text], input[type=number], input[type=password], select, textarea {
-  background: rgba(7,7,14,.8); border: 1px solid var(--line); color: var(--text);
+  background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--text);
   padding: 8px 11px; border-radius: 7px; font: 13px var(--mono); min-width: 230px;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-dim); }
@@ -157,12 +157,12 @@ textarea { width: 100%; min-height: 90px; resize: vertical; }
    that nesting is invalid and browsers disagree about whether the click
    ever reaches the href. */
 button, .btn {
-  background: rgba(167,139,250,.1); border: 1px solid var(--accent-dim); color: var(--accent);
+  background: rgba(255,255,255,.08); border: 1px solid var(--accent-dim); color: var(--accent);
   padding: 8px 16px; border-radius: 7px; font: 500 13px inherit; cursor: pointer;
   transition: background .15s, border-color .15s, color .15s;
 }
 .btn { display: inline-flex; align-items: center; text-decoration: none; }
-button:hover, .btn:hover { background: rgba(167,139,250,.2); border-color: var(--accent); }
+button:hover, .btn:hover { background: rgba(255,255,255,.16); border-color: var(--accent); }
 button.quiet, .btn.quiet { border-color: var(--line); color: var(--dim); background: transparent; }
 button.quiet:hover, .btn.quiet:hover { color: var(--text); border-color: var(--faint); }
 button.big, .btn.big { padding: 11px 22px; font-size: 14px; }
@@ -171,10 +171,10 @@ button:focus-visible, .btn:focus-visible, .switch:focus-visible {
 }
 
 .switch { width: 42px; height: 24px; border-radius: 12px; border: 1px solid var(--line);
-          background: rgba(7,7,14,.8); position: relative; cursor: pointer; padding: 0; }
+          background: rgba(255,255,255,.04); position: relative; cursor: pointer; padding: 0; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
                  border-radius: 50%; background: var(--faint); transition: transform .18s, background .18s; }
-.switch[aria-checked=true] { border-color: var(--accent-dim); background: rgba(167,139,250,.14); }
+.switch[aria-checked=true] { border-color: var(--accent-dim); background: rgba(255,255,255,.14); }
 .switch[aria-checked=true]::after { transform: translateX(18px); background: var(--accent); }
 
 .bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
@@ -193,7 +193,7 @@ button:focus-visible, .btn:focus-visible, .switch:focus-visible {
 .tile .v.on { color: var(--good); }
 .tile .v.off { color: var(--bad); }
 
-pre { background: rgba(7,7,14,.75); border: 1px solid var(--line); border-radius: 10px;
+pre { background: rgba(0,0,0,.5); border: 1px solid var(--line); border-radius: 10px;
       padding: 16px 18px; font: 12.5px/1.65 var(--mono); color: var(--dim);
       overflow-x: auto; white-space: pre-wrap; margin: 16px 0 0; }
 pre:empty { display: none; }
@@ -212,14 +212,14 @@ td input { width: 100%; min-width: 0; }
 
 .cmd-list { display: grid; gap: 10px; }
 .cmd { border: 1px solid var(--line); border-radius: 9px; padding: 13px 16px;
-       background: rgba(16,16,25,.5); }
+       background: rgba(255,255,255,.025); }
 .cmd .phrase { font: 13.5px var(--mono); color: var(--text); }
 .cmd .what { color: var(--faint); font-size: 12.5px; margin-top: 4px; }
 .cmd .tag { float: right; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
             color: var(--accent-dim); }
 
 .offline { opacity: .35; pointer-events: none; }
-.banner { border: 1px solid var(--accent-dim); background: rgba(167,139,250,.08);
+.banner { border: 1px solid var(--accent-dim); background: rgba(255,255,255,.06);
           border-radius: 10px; padding: 14px 18px; color: var(--dim); font-size: 13px;
           margin-bottom: 28px; }
 .hero { padding: 40px 0 20px; }
@@ -239,4 +239,31 @@ footer { border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5
   h1 { font-size: 32px; }
   .row { flex-direction: column; align-items: stretch; gap: 8px; }
   input[type=text], input[type=number], input[type=password] { min-width: 0; width: 100%; }
+}
+
+
+/* -------------------------------------------------- the DailyOS wordmark
+   Sitefold sets its name in Instrument Serif beside a folded-sheet mark,
+   large and monochrome. The same treatment here, at footer scale, so the
+   family resemblance is the point rather than a coincidence. */
+.affiliate {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-top: 30px; padding-top: 26px; border-top: 1px solid var(--line);
+  color: var(--faint); font-size: 13px; letter-spacing: .01em;
+}
+.affiliate a {
+  display: inline-flex; align-items: center; gap: 9px;
+  color: var(--text); text-decoration: none;
+  transition: opacity .15s;
+}
+.affiliate a:hover, .affiliate a:focus-visible { opacity: .7; }
+.affiliate a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 3px; }
+.affiliate svg { width: 19px; height: 19px; flex: none; }
+.affiliate .name {
+  font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
+  font-size: 25px; line-height: 1; letter-spacing: 0;
+}
+
+@media (max-width: 620px) {
+  .affiliate { flex-direction: column; gap: 12px; text-align: center; }
 }

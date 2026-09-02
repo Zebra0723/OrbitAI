@@ -6,8 +6,9 @@
 # built-in `say` voices and it cannot run out of credit halfway through a
 # briefing, which is the failure mode that matters.
 #
-# Setup is two things - the binary and one voice file:
-#   brew install piper-tts
+# Setup is two things - the binary and one voice file. Piper ships on
+# PyPI, not in Homebrew core:
+#   brew install pipx && pipx install piper-tts
 #   daily-welcome --setup-piper        downloads a voice and points at it
 
 piper_bin() {
@@ -15,6 +16,18 @@ piper_bin() {
     printf '%s' "$WELCOME_PIPER_BIN"; return 0
   fi
   command -v piper 2>/dev/null && return 0
+
+  # pipx and pip --user put it somewhere that is often not on the PATH a
+  # menu bar app inherits, so look in the usual places rather than
+  # declaring it missing.
+  local candidate
+  for candidate in "$HOME/.local/bin/piper" \
+                   "$HOME/Library/Python/3.*/bin/piper" \
+                   /opt/homebrew/bin/piper /usr/local/bin/piper; do
+    for expanded in $candidate; do
+      [ -x "$expanded" ] && { printf '%s' "$expanded"; return 0; }
+    done
+  done
   return 1
 }
 
