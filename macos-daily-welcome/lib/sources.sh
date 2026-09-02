@@ -97,13 +97,32 @@ src_reminders() {
 
 # Overdue first, then chronological, then undated.
 _reminders_format() {
+  # Overdue, then the rest of the day in order, then the undated.
+  #
+  # Two keys, sorted together. The second used to be the time as a
+  # string, which put ten in the morning before nine and one in the
+  # afternoon before either - an order that was neither chronological nor
+  # obviously wrong, just quietly shuffled.
   printf '%s\n' "$1" | awk -F'\t' '
+    function minutes(t,   s, parts, n, h, m, pm, am) {
+      s = toupper(t)
+      pm = (index(s, "PM") > 0)
+      am = (index(s, "AM") > 0)
+      gsub(/[^0-9:]/, "", s)
+      n = split(s, parts, ":")
+      if (n < 2) return 99999
+      h = parts[1] + 0; m = parts[2] + 0
+      if (pm && h < 12) h += 12
+      if (am && h == 12) h = 0
+      if (h > 23 || m > 59) return 99999
+      return h * 60 + m
+    }
     NF >= 2 && $2 != "" {
       rank = ($1 == "OVERDUE") ? 0 : (($1 == "flagged") ? 2 : 1)
-      printf "%d\t%s\t%s\t%s\n", rank, $1, $2, $3
+      printf "%d\t%05d\t%s\t%s\t%s\n", rank, minutes($1), $1, $2, $3
     }' \
-  | sort -t"$(printf '\t')" -k1,1n -k2,2 \
-  | cut -f2- \
+  | sort -t"$(printf '\t')" -k1,1n -k2,2n -s \
+  | cut -f3- \
   | tidy_time_field
 }
 
@@ -178,7 +197,8 @@ src_calendar() {
   rc=$?
   [ "$rc" -eq 124 ] && { _note "Calendar took too long to answer"; return 0; }
   [ "$rc" -ne 0 ] && { _note "Calendar: $(last_error) (daily-welcome --doctor)"; return 0; }
-  printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != "" { print }' | sort | tidy_time_field
+  printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != "" { print }' \
+    | sort_by_time_field | tidy_time_field
 }
 
 # -------------------------------------------------------------- tasks file

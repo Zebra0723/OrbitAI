@@ -169,6 +169,33 @@ tidy_time_field() {
     }'
 }
 
+# Sorts records by the clock time in their first field.
+#
+# Sorting those strings as strings puts "10:00 AM" before "9:00 AM" and
+# "1:00 PM" before either, so the day was read out in an order that was
+# neither chronological nor obviously wrong - just quietly shuffled. This
+# reads the hour and minute properly, twelve- or twenty-four-hour, and
+# leaves anything it cannot read at the end where it belongs.
+sort_by_time_field() {
+  awk -F'\t' '
+    function minutes(t,   s, parts, n, h, m, pm, am) {
+      s = toupper(t)
+      pm = (index(s, "PM") > 0)
+      am = (index(s, "AM") > 0)
+      gsub(/[^0-9:]/, "", s)
+      n = split(s, parts, ":")
+      if (n < 2) return 99999
+      h = parts[1] + 0; m = parts[2] + 0
+      if (pm && h < 12) h += 12
+      if (am && h == 12) h = 0
+      if (h > 23 || m > 59) return 99999
+      return h * 60 + m
+    }
+    { printf "%05d\t%s\n", minutes($1), $0 }' \
+  | sort -t"$(printf '\t')" -k1,1n -s \
+  | cut -f2-
+}
+
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 # The menu bar app inherits launchd's PATH, not a login shell's, so tools
