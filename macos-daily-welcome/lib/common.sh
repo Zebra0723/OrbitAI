@@ -91,7 +91,44 @@ if you are asked directly, asked twice, or told it is fine to say."
 # True while a voice sample is being recorded. Nothing should speak, and
 # nothing should announce itself, into a microphone that is capturing
 # somebody's voice for enrolment.
-enrolling_now() { [ -f "$WELCOME_STATE_DIR/enrolling" ]; }
+# True while a voice sample is being recorded - but only for as long as
+# that could plausibly still be happening. `orbit voice enroll` removes
+# the flag when it is done and traps the usual interruptions, and a
+# terminal closed or a process killed outright still leaves it. While it
+# is there Orbit says nothing at all, so a stale one is an assistant that
+# has gone silent for no reason anybody can see. Enrolment takes
+# forty-five seconds; three minutes is well past any doubt.
+enrolling_now() {
+  local flag="$WELCOME_STATE_DIR/enrolling"
+  [ -f "$flag" ] || return 1
+  local age
+  age="$(_file_age_seconds "$flag")"
+  if [ "${age:-0}" -gt 180 ]; then
+    rm -f "$flag" 2>/dev/null
+    return 1
+  fi
+  return 0
+}
+
+# Seconds since a file was last written.
+#
+# stat's flags collide: -f is "format" on macOS and "filesystem" on GNU,
+# so `stat -f %m` on Linux prints a block-size report and SUCCEEDS - the
+# `||` fallback never fires and the caller gets a paragraph where it
+# wanted a number. The answer is checked for being a number instead of
+# the command being checked for failing.
+_file_age_seconds() {
+  local mtime now
+  mtime="$(stat -f %m "$1" 2>/dev/null)"
+  case "$mtime" in
+    ''|*[!0-9]*) mtime="$(stat -c %Y "$1" 2>/dev/null)" ;;
+  esac
+  case "$mtime" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  now="$(date '+%s')"
+  printf '%s' "$(( now - mtime ))"
+}
 
 # True while another app has the microphone - which is what a call looks
 # like from here. The menu bar app is the one doing the detecting; it

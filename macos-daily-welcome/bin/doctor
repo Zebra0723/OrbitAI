@@ -270,6 +270,19 @@ fi
 
 head_ "Listening"
 
+# The one state that makes it deaf and silent at the same time, with
+# nothing on screen to say so. A voice enrolment that was interrupted
+# leaves this behind, and until tonight it never expired.
+if [ -f "$WELCOME_STATE_DIR/enrolling" ]; then
+  if enrolling_now; then
+    warn "A voice enrolment is running right now - it will not answer until that ends."
+  else
+    bad "An enrolment was left open. Orbit records and does not answer while it is."
+    fix "orbit listen resume"
+  fi
+fi
+
+
 STATUS_FILE="$WELCOME_STATE_DIR/listener-status"
 if [ -f "$STATUS_FILE" ]; then
   l_state="$(awk -F'\t' '$1 == "state" { print $2 }' "$STATUS_FILE")"

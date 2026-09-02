@@ -65,9 +65,19 @@ final class OrbitListener: NSObject {
     /// before anyone knows a command is coming, so the audio has to
     /// already be in hand by the time there is something to identify.
     private var recentAudio: [AVAudioPCMBuffer] = []
+    // The loudest sample in each buffer, kept alongside it. A recording
+    // that is all silence and a recording that never happened look the
+    // same from the shell, and they need completely different advice.
+    private var recentPeaks: [Float] = []
     private var recentFrames: AVAudioFrameCount = 0
     private var recentFormat: AVAudioFormat?
     private let utteranceSeconds: Double = 8
+    // Enrolment writes as soon as it has this much audio, and keeps
+    // writing so the sample grows towards the whole window.
+    private let enrolSampleSeconds: Double = 3
+    private var enrolLevel: Float = 0
+    private var lastEnrolWrite = Date.distantPast
+    private var lastEnrolStatus = Date.distantPast
     /// The tap runs on an audio thread; the writer runs on the main one.
     private let audioQueue = DispatchQueue(label: "orbit.audio.ring")
 
@@ -333,15 +343,29 @@ final class OrbitListener: NSObject {
             return
         }
 
+        // The loudest sample in this buffer. A microphone that is muted,
+        // or an input device nobody is speaking into, delivers buffers
+        // perfectly steadily and they are all zero.
+        var peak: Float = 0
+        if let src = copy.floatChannelData {
+            let n = Int(copy.frameLength)
+            for i in 0..<n {
+                let v = abs(src[0][i])
+                if v > peak { peak = v }
+            }
+        }
+
         audioQueue.async { [weak self] in
             guard let self = self else { return }
             self.recentFormat = format
             self.recentAudio.append(copy)
+            self.recentPeaks.append(peak)
             self.recentFrames += copy.frameLength
             let cap = AVAudioFrameCount(format.sampleRate * self.utteranceSeconds)
             while self.recentFrames > cap, let first = self.recentAudio.first {
                 self.recentFrames -= first.frameLength
                 self.recentAudio.removeFirst()
+                if !self.recentPeaks.isEmpty { self.recentPeaks.removeFirst() }
             }
         }
     }
@@ -352,15 +376,46 @@ final class OrbitListener: NSObject {
     private func flushRecent() {
         audioQueue.async { [weak self] in
             self?.recentAudio.removeAll()
+            self?.recentPeaks.removeAll()
             self?.recentFrames = 0
         }
+    }
+
+    /// How much audio is in hand, and how loud the loudest part of it is.
+    /// Used by enrolment, which needs to know whether the microphone is
+    /// delivering anything before it can say why nothing was recorded.
+    private func audioSnapshot() -> (seconds: Double, peak: Float) {
+        var seconds = 0.0
+        var peak: Float = 0
+        audioQueue.sync {
+            if let rate = self.recentFormat?.sampleRate, rate > 0 {
+                seconds = Double(self.recentFrames) / rate
+            }
+            for p in self.recentPeaks where p > peak { peak = p }
+        }
+        return (seconds, peak)
     }
 
     /// Picks up the enrolling flag and gets out of the way while it is
     /// there. Returns true when this tick has been fully handled.
     private func handleEnrolling() -> Bool {
         guard !enrollPath.isEmpty else { return false }
-        let present = FileManager.default.fileExists(atPath: enrollPath)
+        var present = FileManager.default.fileExists(atPath: enrollPath)
+
+        // The flag expires. `orbit voice enroll` removes it when it
+        // finishes, and it traps the ordinary ways of being interrupted -
+        // but a terminal closed, a machine slept, a process killed
+        // outright, and the file stays. While it is there Orbit records
+        // and does not answer, so a failed enrolment left an assistant
+        // that was permanently deaf and silent with nothing on screen
+        // saying why. Enrolment takes forty-five seconds at the outside.
+        if present,
+           let stamp = try? FileManager.default.attributesOfItem(atPath: enrollPath)[.modificationDate] as? Date,
+           Date().timeIntervalSince(stamp) > 180 {
+            try? FileManager.default.removeItem(atPath: enrollPath)
+            present = false
+            status("enrolling-expired", "an enrolment was left open; listening again")
+        }
 
         if present && !enrolling {
             enrolling = true
@@ -368,6 +423,9 @@ final class OrbitListener: NSObject {
             // beginSession starts a recognition task of its own, so the
             // one at the end of this block would only throw away a task a
             // few lines old - and SFSpeechRecognizer counts those.
+            enrolLevel = 0
+            lastEnrolWrite = Date.distantPast
+            lastEnrolStatus = Date.distantPast
             var freshlyStarted = false
             if !engine.isRunning {
                 beginSession()
@@ -411,11 +469,41 @@ final class OrbitListener: NSObject {
 
         guard enrolling else { return false }
 
-        // Recording. When a phrase ends, keep it and wait for the next -
-        // the shell notices the file changing and takes it from there.
+        // Recording.
+        //
+        // This used to wait for the RECOGNISER to produce a phrase and
+        // only then keep the audio. Enrolment does not need words - it
+        // needs a few seconds of somebody's voice - and tying it to
+        // transcription meant that any reason for recognition to be
+        // quiet (permission not granted after a rebuild, the on-device
+        // model missing, no network for the server-side one) produced a
+        // microphone that was working perfectly, a person talking into
+        // it, and "Recorded nothing in forty-five seconds."
+        //
+        // So it goes off the audio itself. Once there are a few seconds
+        // in hand it is written, and rewritten as the sample grows.
+        let (seconds, peak) = audioSnapshot()
+        if peak > enrolLevel { enrolLevel = peak }
+
+        // What is actually happening, once a second, where the shell can
+        // read it. "No audio at all" and "audio, but silent" and "fine,
+        // still waiting" need three different answers.
+        if Date().timeIntervalSince(lastEnrolStatus) > 1 {
+            lastEnrolStatus = Date()
+            status("enrolling", String(format: "recording - %.1fs of audio, loudest %.0f%%",
+                                       seconds, enrolLevel * 100))
+        }
+
+        if seconds >= enrolSampleSeconds, Date().timeIntervalSince(lastEnrolWrite) > 1.5 {
+            writeUtterance()
+            lastEnrolWrite = Date()
+        }
+
+        // The recogniser is still running, and still gets recycled so it
+        // does not expire mid-enrolment - it just no longer decides
+        // whether anything is kept.
         let spoken = heard.trimmingCharacters(in: .whitespacesAndNewlines)
         if !spoken.isEmpty, Date().timeIntervalSince(lastHeardAt) > commandSilence {
-            writeUtterance()
             heard = ""
             lastHeardAt = Date()
             restartRecognition()

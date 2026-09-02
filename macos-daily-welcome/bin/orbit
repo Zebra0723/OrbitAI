@@ -719,11 +719,17 @@ case "${1:-}" in
         echo "  Option-Space, the menu bar item, or: orbit listen resume"
         ;;
       resume)
-        rm -f "$WELCOME_STATE_DIR/paused"
+        # Everything that holds it quiet, not just the pause. An
+        # enrolment that never finished is the likeliest of them and by
+        # far the least visible, and this is the command people reach for
+        # when it has stopped answering.
+        [ -f "$WELCOME_STATE_DIR/enrolling" ] &&
+          echo "(clearing an enrolment that was never finished)"
+        rm -f "$WELCOME_STATE_DIR/paused" "$WELCOME_STATE_DIR/enrolling"
         echo "Listening again."
         ;;
       restart)
-        rm -f "$WELCOME_STATE_DIR/paused"
+        rm -f "$WELCOME_STATE_DIR/paused" "$WELCOME_STATE_DIR/enrolling"
         launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1
         echo "Restarted. The ears come back a second or two after the app does."
         ;;
@@ -1109,8 +1115,12 @@ case "${1:-}" in
         hush 2>/dev/null
         mkdir -p "$WELCOME_STATE_DIR"
         : > "$flag"
-        # Whatever happens next, do not leave it deaf.
-        trap 'rm -f "$flag"' EXIT INT TERM
+        # Whatever happens next, do not leave it deaf. The trap covers
+        # being interrupted; it cannot cover being killed outright or the
+        # terminal window being closed, so the flag also expires - see
+        # enrolling_now in lib/common.sh. Between them there is no way to
+        # end up with an assistant that is silent and will not say why.
+        trap 'rm -f "$flag"' EXIT INT TERM HUP QUIT
 
         # The app is the only thing that can record, so if it is not
         # running or not new enough to know about enrolling, say so now
