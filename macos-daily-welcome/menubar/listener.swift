@@ -440,7 +440,10 @@ final class OrbitListener: NSObject {
             let settings: [String: Any] = [
                 AVFormatIDKey: kAudioFormatLinearPCM,
                 AVSampleRateKey: format.sampleRate,
-                AVNumberOfChannelsKey: format.channelCount,
+                // Int rather than the AVAudioChannelCount it comes as:
+                // these go through a dictionary of Any into Objective-C,
+                // and Int is the type that reliably arrives as a number.
+                AVNumberOfChannelsKey: Int(format.channelCount),
                 AVLinearPCMBitDepthKey: 16,
                 AVLinearPCMIsFloatKey: false,
                 AVLinearPCMIsBigEndianKey: false,
