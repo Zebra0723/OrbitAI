@@ -374,8 +374,20 @@ else
   if [ "${enrolled:-0}" -eq 0 ]; then
     warn "Voice recognition is on, but nobody has enrolled - it lets everyone through."
     fix "orbit voice enroll <your name>"
+  elif [ "$ORBIT_SPEAKER_REQUIRE_ENROLLED" = "1" ] &&
+       speaker_run list 2>/dev/null | awk -F'\t' -v me="$WELCOME_NAME" \
+         '$1 == me && $3 == "banned" { found = 1 } END { exit !found }'; then
+    bad "You are banned, and unrecognised voices are turned away."
+    bad_note "Nothing works at all in that state, and it is one word away."
+    fix "orbit voice unban \"$WELCOME_NAME\""
   else
-    ok "Voice recognition: $enrolled enrolled"
+    if [ "$ORBIT_SPEAKER_REQUIRE_ENROLLED" = "1" ]; then
+      ok "Voice recognition: $enrolled enrolled, unrecognised voices refused"
+      bad_note "A voice it fails to place is a command that does not happen."
+      fix "orbit voice test     what your own voice actually scores"
+    else
+      ok "Voice recognition: $enrolled enrolled, refusing nobody"
+    fi
     if ! speaker_have_audio; then
       warn "No recording to identify from - the app may be an older build."
       fix "cd ~/vortex && ./macos-daily-welcome/install.sh && orbit listen restart"
