@@ -255,6 +255,22 @@ two or three times, on different days, for a better match.
 Once someone is enrolled it addresses them by name and knows that "my" and
 "I" mean them, not the owner of the Mac.
 
+Once somebody has enrolled, a voice it does not recognise is turned away:
+
+> Hi! To continue using OrbitAI, please verify your voice with the DailyOS
+> Team. Thank you!
+
+Until the first person enrols it lets everyone through, or nobody could
+ever enrol. And being unable to VERIFY is not the same as failing
+verification - if the recording is missing or the recogniser is broken,
+the command goes through anyway. A locked assistant with no way back in is
+a worse failure than an unrecognised command getting answered.
+
+```
+ORBIT_SPEAKER_REQUIRE_ENROLLED=0    label voices, but let anyone speak
+ORBIT_SPEAKER_UNKNOWN="..."         what a stranger hears
+```
+
 It is a recogniser, not a lock. Voices drift with a cold or a bad
 microphone, and a recording of you sounds like you - so a ban refuses a
 request, it does not secure anything. It answers "I don't know" rather

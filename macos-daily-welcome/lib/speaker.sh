@@ -59,3 +59,14 @@ speaker_identify() {
 
 speaker_name()   { speaker_identify "$@" | cut -f1; }
 speaker_banned() { [ "$(speaker_identify "$@" | cut -f3)" = "banned" ]; }
+
+# How many people have enrolled. Nought means the feature is on but
+# nobody has taught it anything yet, and turning everyone away at that
+# point would lock the first person out of enrolling.
+speaker_enrolled_count() {
+  speaker_run list 2>/dev/null | grep -c . || printf '0'
+}
+
+# Was there anything to identify? A missing or empty recording is not the
+# same as an unrecognised voice, and must not be treated as one.
+speaker_have_audio() { [ -s "$(speaker_utterance)" ]; }

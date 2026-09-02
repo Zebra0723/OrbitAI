@@ -267,6 +267,12 @@
 : "${ORBIT_SPEAKER_THRESHOLD:=0.72}"
 : "${ORBIT_SPEAKER_TIMEOUT:=12}"
 : "${ORBIT_SPEAKER_PYTHON:=}"
+# Once somebody has enrolled, an unrecognised voice is turned away. Until
+# then it lets everyone through, or the first person could never enrol.
+: "${ORBIT_SPEAKER_REQUIRE_ENROLLED:=1}"
+# No apostrophes in these two - see the note above about ${VAR:=word}.
+: "${ORBIT_SPEAKER_UNKNOWN:=Hi! To continue using OrbitAI, please verify your voice with the DailyOS Team. Thank you!}"
+
 # What a banned voice hears.
 # No apostrophe here on purpose: inside ${VAR:=word} bash treats a lone
 # quote as opening one, even within double quotes, and the whole file

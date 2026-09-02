@@ -540,9 +540,23 @@ case "${1:-}" in
     if speaker_enabled; then
       speaker_line="$(speaker_identify 2>/dev/null)" || speaker_line=""
       SPEAKER="$(printf '%s' "$speaker_line" | cut -f1)"
+
       if [ "$(printf '%s' "$speaker_line" | cut -f3)" = "banned" ]; then
         memory_log_event refused "Refused a command from $SPEAKER"
         emit "$ORBIT_SPEAKER_REFUSAL" false "" true
+        exit 0
+      fi
+
+      # An unrecognised voice is turned away - but only when there is
+      # actually something to recognise and somebody to recognise it
+      # against. Being unable to VERIFY is not the same as failing
+      # verification: if the recording is missing or the recogniser is
+      # broken, letting the command through is the right error to make.
+      # The alternative is a locked assistant with no way back in.
+      if [ -z "$SPEAKER" ] && [ "$ORBIT_SPEAKER_REQUIRE_ENROLLED" = "1" ] &&
+         speaker_have_audio && [ "$(speaker_enrolled_count)" -gt 0 ]; then
+        memory_log_event refused "Turned away a voice it did not recognise"
+        emit "$ORBIT_SPEAKER_UNKNOWN" false "" true
         exit 0
       fi
     fi
