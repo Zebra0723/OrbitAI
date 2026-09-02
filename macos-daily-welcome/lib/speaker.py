@@ -12,6 +12,7 @@ banning a voice here refuses a request rather than securing anything.
 
     speaker.py enroll <name> <wav>    add a sample for someone
     speaker.py identify <wav>         name<TAB>score, or nothing
+    speaker.py scores <wav>           every score, for tuning
     speaker.py list                   who is enrolled
     speaker.py forget <name>          remove them
 """
@@ -27,7 +28,10 @@ STORE = Path(os.environ.get("ORBIT_SPEAKER_STORE",
 # guidance puts a same-speaker pair well above 0.75 and different
 # speakers well below; 0.72 leans towards admitting it does not know
 # rather than naming the wrong person.
-THRESHOLD = float(os.environ.get("ORBIT_SPEAKER_THRESHOLD", "0.72"))
+THRESHOLD = float(os.environ.get("ORBIT_SPEAKER_THRESHOLD", "0.78"))
+# How far ahead of the runner-up the winner has to be. Without this, two
+# people who sound alike take turns being each other.
+MARGIN = float(os.environ.get("ORBIT_SPEAKER_MARGIN", "0.06"))
 
 
 def _fail(message, code=1):
@@ -110,6 +114,33 @@ def _similarity(a, b):
     return dot / (na * nb) if na and nb else 0.0
 
 
+def _centroid(samples):
+    """The average of somebody's samples - what their voice is, rather
+    than what it did on one particular day.
+
+    Scoring against the single best-matching sample was letting strangers
+    in: the more samples a person has, the more chances one of them has
+    of being spuriously close to whoever is talking, so every enrolment
+    made the check WORSE. An average moves the other way - it gets more
+    like the person and less like anybody else with every sample."""
+    if not samples:
+        return None
+    width = len(samples[0])
+    return [sum(s[i] for s in samples) / len(samples) for i in range(width)]
+
+
+def _scores(here, data):
+    """Everybody, best first, as (name, score, banned)."""
+    rows = []
+    for name, person in data["people"].items():
+        centroid = _centroid(person.get("samples", []))
+        if centroid is None:
+            continue
+        rows.append((name, _similarity(here, centroid), person.get("banned", False)))
+    rows.sort(key=lambda r: r[1], reverse=True)
+    return rows
+
+
 def enroll(name, wav_path):
     data = _load()
     person = data["people"].setdefault(name, {"samples": [], "banned": False})
@@ -125,17 +156,36 @@ def identify(wav_path):
     data = _load()
     if not data["people"]:
         return
-    here = _embed(wav_path)
-    best, best_score = None, 0.0
-    for name, person in data["people"].items():
-        for sample in person.get("samples", []):
-            score = _similarity(here, sample)
-            if score > best_score:
-                best, best_score = name, score
-    if best is None or best_score < THRESHOLD:
+    rows = _scores(_embed(wav_path), data)
+    if not rows:
         return
-    banned = data["people"][best].get("banned", False)
-    print("%s\t%.3f\t%s" % (best, best_score, "banned" if banned else "ok"))
+
+    name, score, banned = rows[0]
+    if score < THRESHOLD:
+        return
+
+    # Beating the threshold is not enough when somebody else is nearly as
+    # close. Two people at 0.79 and 0.78 is a coin toss, and a coin toss
+    # that names a person out loud is worse than saying nothing.
+    if len(rows) > 1 and (score - rows[1][1]) < MARGIN:
+        return
+
+    print("%s\t%.3f\t%s" % (name, score, "banned" if banned else "ok"))
+
+
+def scores(wav_path):
+    """Every score, for tuning the threshold against actual voices rather
+    than against a number somebody once guessed."""
+    data = _load()
+    if not data["people"]:
+        _fail("nobody has enrolled yet", 5)
+    rows = _scores(_embed(wav_path), data)
+    for name, score, banned in rows:
+        verdict = "match" if score >= THRESHOLD else "no"
+        print("%s\t%.3f\t%s\t%s" % (name, score, verdict,
+                                      "banned" if banned else "allowed"))
+    if len(rows) > 1:
+        print("margin\t%.3f\t(needs %.2f)" % (rows[0][1] - rows[1][1], MARGIN))
 
 
 def main():
@@ -147,6 +197,8 @@ def main():
         enroll(sys.argv[2], sys.argv[3])
     elif command == "identify" and len(sys.argv) == 3:
         identify(sys.argv[2])
+    elif command == "scores" and len(sys.argv) == 3:
+        scores(sys.argv[2])
     elif command == "list":
         for name, person in sorted(_load()["people"].items()):
             print("%s\t%d\t%s" % (name, len(person.get("samples", [])),

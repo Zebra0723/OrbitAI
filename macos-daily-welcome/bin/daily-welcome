@@ -72,6 +72,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --voices        available voices, and which one it will use
   daily-welcome --voice-provider openai | elevenlabs | piper | say | auto
   daily-welcome --setup-piper   a free neural voice that runs on this Mac
+  daily-welcome --best-voice    find the best voice this Mac has, and use it
   daily-welcome --mac-voices    the built-in voices, and how to get better ones
   daily-welcome --setup-speaker recognise who is speaking, by name
   daily-welcome --hush          stop talking right now
@@ -119,6 +120,7 @@ while [ $# -gt 0 ]; do
     --voice-provider) MODE=provider; shift; VOICE_ARG="${1:-}" ;;
     --setup-piper) MODE=setuppiper ;;
     --mac-voices)  MODE=macvoices ;;
+    --best-voice)  MODE=bestvoice ;;
     --plain)       WELCOME_PAUSE=natural ;;
     --pause)       MODE=pause; shift; VOICE_ARG="${1:-}" ;;
     --expression)  MODE=expression; shift; VOICE_ARG="${1:-}" ;;
@@ -595,6 +597,86 @@ case "$MODE" in
     rm -f "$cfg.tmp"
     echo "$key set to $value."
     echo "Hear it: daily-welcome --test-voice"
+    exit 0
+    ;;
+  bestvoice)
+    # One command that finds the best voice this Mac can actually use and
+    # switches to it, because "here are five options, three of them need
+    # a download" has not got anybody a better voice yet.
+    #
+    # Ordered by how much they sound like a person, not by how clever
+    # they are to set up.
+    echo "Looking for the best voice on this Mac."
+    echo
+
+    if eleven_available; then
+      echo "  ElevenLabs is working. Nothing beats it and nothing else is close."
+      "$0" --voice-provider elevenlabs >/dev/null 2>&1
+      echo "  Using it."
+      echo; echo "Hear it: daily-welcome --test-voice"; exit 0
+    fi
+
+    if openai_tts_available 2>/dev/null; then
+      echo "  OpenAI voices are working. Expressive, and cheap rather than free."
+      "$0" --voice-provider openai >/dev/null 2>&1
+      echo "  Using it."
+      echo; echo "Hear it: daily-welcome --test-voice"; exit 0
+    fi
+
+    if piper_available 2>/dev/null; then
+      echo "  Piper is set up: neural, local, free, no account."
+      "$0" --voice-provider piper >/dev/null 2>&1
+      echo "  Using it."
+      echo; echo "Hear it: daily-welcome --test-voice"; exit 0
+    fi
+
+    # Nothing neural is installed. The best remaining thing is a Siri
+    # voice, which IS neural and is already on most Macs - but `say`
+    # cannot name one, so it has to be the System Voice and we use that.
+    echo "  No neural voice is set up, so this is as good as it gets for now:"
+    echo
+    installed="$(_installed_voices)"
+    current="$(resolve_voice)"
+    base="$(printf '%s' "${current:-}" | sed -E 's/ \((Premium|Enhanced)\)$//')"
+
+    upgrade=""
+    [ -n "$base" ] && upgrade="$(printf '%s\n' "$installed" | grep -F "$base (Premium)" | head -1)"
+    [ -z "$upgrade" ] && [ -n "$base" ] && upgrade="$(printf '%s\n' "$installed" | grep -F "$base (Enhanced)" | head -1)"
+    if [ -n "$upgrade" ]; then
+      "$0" --use-voice "$upgrade" >/dev/null 2>&1
+      echo "  Switched to $upgrade - the better version of the voice you were on."
+    else
+      best="$(printf '%s\n' "$installed" | grep -F "(Premium)" | head -1)"
+      if [ -n "$best" ]; then
+        echo "  There is a Premium voice installed: $best"
+        echo "  Use it:  daily-welcome --use-voice \"$best\""
+      else
+        echo "  Every voice here is the plain compact kind, which is the one"
+        echo "  that sounds like a robot. That is not something wording or"
+        echo "  timing can fix - it is the synthesiser."
+      fi
+    fi
+
+    echo
+    echo "To actually sound like a person, in order:"
+    echo
+    echo "  1. A Siri voice. Neural, free, already on this Mac. \`say\` cannot"
+    echo "     pick one by name, so it has to be the system voice:"
+    echo "       System Settings > Accessibility > Spoken Content > System Voice"
+    echo "       > Manage Voices... > English > tick a Siri voice > Done"
+    echo "       daily-welcome --use-voice system"
+    echo
+    echo "  2. ElevenLabs. The only one that sounds like it means it. The free"
+    echo "     tier is ten thousand characters a month, which is about a month"
+    echo "     of briefings:"
+    echo "       elevenlabs.io > sign up > Profile > API key"
+    echo "       daily-welcome --set-key"
+    echo
+    echo "  3. Piper. Neural, local, free, no account, nothing leaves the Mac:"
+    echo "       daily-welcome --setup-piper"
+    echo
+    echo "  4. A Premium \`say\` voice. Better than compact, still not a person:"
+    echo "       daily-welcome --mac-voices"
     exit 0
     ;;
   macvoices)

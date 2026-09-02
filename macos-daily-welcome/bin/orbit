@@ -558,7 +558,7 @@ case "${1:-}" in
 
       if [ "$(printf '%s' "$speaker_line" | cut -f3)" = "banned" ]; then
         memory_log_event refused "Refused a command from $SPEAKER"
-        emit "$ORBIT_SPEAKER_REFUSAL" false "" true
+        emit "$(speaker_refusal_banned)" false "" true
         exit 0
       fi
 
@@ -571,7 +571,7 @@ case "${1:-}" in
       if [ -z "$SPEAKER" ] && [ "$ORBIT_SPEAKER_REQUIRE_ENROLLED" = "1" ] &&
          speaker_have_audio && [ "$(speaker_enrolled_count)" -gt 0 ]; then
         memory_log_event refused "Turned away a voice it did not recognise"
-        emit "$ORBIT_SPEAKER_UNKNOWN" false "" true
+        emit "$(speaker_refusal_unknown)" false "" true
         exit 0
       fi
     fi

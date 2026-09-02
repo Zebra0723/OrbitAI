@@ -305,14 +305,22 @@
 # Once somebody has enrolled, an unrecognised voice is turned away. Until
 # then it lets everyone through, or the first person could never enrol.
 : "${ORBIT_SPEAKER_REQUIRE_ENROLLED:=1}"
-# No apostrophes in these two - see the note above about ${VAR:=word}.
-: "${ORBIT_SPEAKER_UNKNOWN:=Hi! To continue using OrbitAI, please verify your voice with the DailyOS Team. Thank you!}"
-
-# What a banned voice hears.
-# No apostrophe here on purpose: inside ${VAR:=word} bash treats a lone
-# quote as opening one, even within double quotes, and the whole file
-# stops parsing.
-: "${ORBIT_SPEAKER_REFUSAL:=Sorry, I do not take requests from you.}"
+# What an unrecognised voice hears, and what a banned one hears.
+#
+# Empty means the built-in lines in lib/speaker.sh, which are a rotating
+# set rather than one sentence: being told no in exactly the same words
+# every single time is the most machine-like thing a machine can do. Set
+# either of these to a line of your own and it is used instead, every
+# time - including the polite version this used to ship with:
+#   ORBIT_SPEAKER_UNKNOWN="Hi! To continue using OrbitAI, please verify
+#   your voice with the DailyOS Team. Thank you!"
+#
+# No apostrophes in a value set here: inside ${VAR:=word} bash treats a
+# lone quote as opening one, even within double quotes, and the whole
+# file stops parsing. The built-in lines live in a function, where they
+# can have all the apostrophes they like.
+: "${ORBIT_SPEAKER_UNKNOWN:=}"
+: "${ORBIT_SPEAKER_REFUSAL:=}"
 
 : "${ORBIT_MEMORY_EVENTS:=12}"
 : "${ORBIT_MEMORY_MATCHES:=10}"
