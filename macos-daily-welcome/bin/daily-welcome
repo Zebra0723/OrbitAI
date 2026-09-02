@@ -60,6 +60,8 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
   daily-welcome --set-openai-key   store an OpenAI key, for understanding commands
   daily-welcome --test-voice    say one line now, and report which voice said it
+  daily-welcome --test-voice --plain   the same, with nothing done to the text
+  daily-welcome --pause <ms>    how long it rests at a comma (210 is the default)
   daily-welcome --voices        available voices, and which one it will use
   daily-welcome --voice-provider openai | elevenlabs | piper | say | auto
   daily-welcome --setup-piper   a free neural voice that runs on this Mac
@@ -106,6 +108,8 @@ while [ $# -gt 0 ]; do
     --voice-provider) MODE=provider; shift; VOICE_ARG="${1:-}" ;;
     --setup-piper) MODE=setuppiper ;;
     --mac-voices)  MODE=macvoices ;;
+    --plain)       WELCOME_PAUSE=natural ;;
+    --pause)       MODE=pause; shift; VOICE_ARG="${1:-}" ;;
     --mute-today) MODE=mute ;;
     --reset)      MODE=reset ;;
     -h|--help)    usage; exit 0 ;;
@@ -298,6 +302,10 @@ case "$MODE" in
                   echo "Voice:   ${local_voice:-system default}" ;;
     esac
     echo "Saying:  $line"
+    # What the engine is actually handed, after pacing. If a pause marker
+    # ever gets READ ALOUD instead of obeyed, this is where you see it.
+    spoken="$(speech_pace "$line" "$backend")"
+    [ "$spoken" != "$line" ] && echo "Sent:    $spoken"
 
     case "$backend" in
       elevenlabs)
@@ -354,6 +362,39 @@ case "$MODE" in
         fi
         say_speak "$line" ;;
     esac
+    exit 0
+    ;;
+  pause)
+    # One dial, so this can be tuned by ear in a few seconds rather than
+    # by editing a config file between every try.
+    cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+    mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+    case "${VOICE_ARG:-}" in
+      natural|none|short) key=WELCOME_PAUSE; value="$VOICE_ARG" ;;
+      ''|*[!0-9]*)
+        echo "daily-welcome --pause <milliseconds> | short | natural | none" >&2
+        echo >&2
+        echo "  --pause 210      a person's rest at a comma  (the default)" >&2
+        echo "  --pause 320      slower, more deliberate" >&2
+        echo "  --pause 120      brisk" >&2
+        echo "  --pause natural  leave the text exactly as written" >&2
+        echo "  --pause none     no comma rests at all" >&2
+        echo >&2
+        echo "Now: WELCOME_PAUSE=$WELCOME_PAUSE, WELCOME_PAUSE_MS=$WELCOME_PAUSE_MS" >&2
+        exit 2 ;;
+      *) key=WELCOME_PAUSE_MS; value="$VOICE_ARG" ;;
+    esac
+    grep -v "^$key=" "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+    { cat "$cfg.tmp"; printf '%s="%s"\n' "$key" "$value"; } > "$cfg"
+    # Setting a length implies wanting the rests at all.
+    if [ "$key" = "WELCOME_PAUSE_MS" ]; then
+      grep -v '^WELCOME_PAUSE=' "$cfg" > "$cfg.tmp2" 2>/dev/null || : > "$cfg.tmp2"
+      { cat "$cfg.tmp2"; printf 'WELCOME_PAUSE="short"\n'; } > "$cfg"
+      rm -f "$cfg.tmp2"
+    fi
+    rm -f "$cfg.tmp"
+    echo "$key set to $value."
+    echo "Hear it: daily-welcome --test-voice"
     exit 0
     ;;
   macvoices)

@@ -226,7 +226,10 @@
 #   natural  leave the text exactly as written
 #   none     remove the commas altogether
 : "${WELCOME_PAUSE:=short}"
-: "${WELCOME_PAUSE_MS:=110}"
+# How long the comma rest is, in milliseconds. The engines' own rest is
+# somewhere near 400 and sounds like dictation; 110 was the other extreme
+# and ran the words together. A person resting at a comma is about 200.
+: "${WELCOME_PAUSE_MS:=210}"
 
 : "${WELCOME_OPENAI_VOICE:=nova}"
 : "${WELCOME_OPENAI_TTS_MODEL:=gpt-4o-mini-tts}"

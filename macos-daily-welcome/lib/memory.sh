@@ -37,9 +37,23 @@ memory_log_turn() {
 }
 
 # The last few exchanges, oldest first, as "role<TAB>text".
+# "Forget that" has to actually forget it. The model is handed the last
+# few turns for continuity, so telling it to drop a subject while still
+# feeding it that subject achieves nothing - it needs a line in the sand.
+memory_drop_subject() {
+  memory_init
+  printf 'reset\t%s\t--\n' "$(date '+%Y-%m-%d %H:%M')" >> "$(_transcript)"
+}
+
 memory_recent() {
   [ -f "$(_transcript)" ] || return 0
-  tail -n "$((ORBIT_CHAT_TURNS * 2))" "$(_transcript)"
+  # Everything since the last time they said to drop it, and no further
+  # back. The full transcript is still on disk for "what did we say
+  # about X" to search - this only bounds what rides along automatically.
+  awk -F'\t' '$1 == "reset" { n = 0; delete keep; next }
+              { keep[++n] = $0 }
+              END { for (i = 1; i <= n; i++) print keep[i] }' "$(_transcript)" \
+    | tail -n "$((ORBIT_CHAT_TURNS * 2))"
 }
 
 # One line per thing worth remembering.

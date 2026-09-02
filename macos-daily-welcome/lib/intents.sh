@@ -323,6 +323,18 @@ _try_system() {
     "that's enough"|"thats enough"|"shush"|"enough"|"stop it"|"silence")
       printf 'system\tstop_talking\t\n'; return 0 ;;
 
+    "forget that"|"forget it"|"drop it"|"drop that"|"never mind that"|\
+    "new subject"|"new topic"|"change the subject"|"different subject"|\
+    "something else"|"moving on"|"lets move on"|"let's move on"|\
+    "stop talking about that"|"stop talking about it"|"enough about that"|\
+    "forget what i said"|"forget all that"|"clear that"|"start over"|\
+    "different question"|"anyway"|\
+    "forget about "*|"stop talking about "*|"no more about "*|"enough about "*)
+      # A targeted forget - "forget about the dentist" - drops the thread
+      # too. Keeping half of a subject you were told to drop is worse than
+      # dropping all of it.
+      printf 'system\tdrop_subject\t\n'; return 0 ;;
+
     "stop listening"|"stop listening to me"|"don't listen"|"dont listen"|\
     "turn off your ears"|"close the mic"|"close the microphone"|\
     "leave me alone"|"go away"|"stop recording"|"mute yourself"|\

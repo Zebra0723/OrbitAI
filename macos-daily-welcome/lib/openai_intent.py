@@ -71,6 +71,7 @@ system actions:
   wifi_on wifi_off bluetooth_on bluetooth_off empty_trash battery time_now
   new_note(text) add_reminder(text) timer(minutes) type_text(text)
   copy_text(text) read_clipboard find_file(name) end_call
+  drop_subject      they want the current topic dropped entirely
   stop_talking      they want the voice to stop, not the Mac muted
   stop_listening    they want the microphone closed until they ask again
   start_listening   they want it listening again

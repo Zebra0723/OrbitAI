@@ -231,6 +231,14 @@ The Siri voices in that same list are the best of the lot, but `say` cannot
 select them by name - set one as your System Voice and use
 `--use-voice system`.
 
+### Dropping a subject
+
+"Forget that", "anyway", "new topic", "moving on", "forget about the
+dentist" - and it is gone. The recent turns that ride along with every
+question are cut at that point, so the subject cannot come back on its
+own. The full record stays on disk, so "what did we say about X" can still
+find it if you ask for it deliberately.
+
 ### Pauses
 
 A comma tells a reader to breathe and tells a speech engine to stop, and

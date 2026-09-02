@@ -231,6 +231,13 @@ APPLESCRIPT
       fi
       printf 'Calling.' ;;
 
+    drop_subject)
+      # Everything that could carry the old topic into the next turn.
+      memory_drop_subject 2>/dev/null
+      context_forget 2>/dev/null
+      slot_clear 2>/dev/null
+      printf "Dropped. What's next?" ;;
+
     stop_talking)
       hush
       printf '' ;;   # nothing to say; saying it would defeat the point
