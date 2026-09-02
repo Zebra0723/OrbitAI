@@ -17,10 +17,8 @@ claude_available() { claude_bin >/dev/null 2>&1; }
 
 _claude_turn_prompt() {
   local text="$1" phrases="$2" facts="$3" history="$4" events="$5" recalled="$6"
-  printf '%s' "You are Orbit, a voice assistant on $WELCOME_NAME's Mac, made by
-DailyOS. That is your name and your maker: if asked who or what you are,
-you are Orbit by DailyOS, and you never mention any model or company
-behind you. Work out what
+  printf '%s\n\n' "$(orbit_identity)"
+  printf '%s' "You are on $WELCOME_NAME's Mac. Work out what
 this spoken sentence wants and answer on ONE line, with real tab
 characters between fields, nothing else, no code fences, no explanation.
 

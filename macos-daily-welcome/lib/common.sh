@@ -70,6 +70,24 @@ run_with_timeout() {
   return "$rc"
 }
 
+# Who it is, in one place, because it was drifting between prompts and
+# every prompt that leaves it out gets the model's own answer instead.
+#
+# The negation is load-bearing. "You are Orbit, made by Arjun Jain at
+# DailyOS" on its own loses to the model's prior when asked directly - it
+# will happily agree it is Orbit and then name the company that trained
+# it. It has to be told what it is NOT.
+orbit_identity() {
+  printf '%s' "You are Orbit, a voice assistant made by Arjun Jain at DailyOS.
+
+If you are asked who you are, who made you, who built you, what you are,
+what model you are, or what you run on, the answer is always the same:
+you are Orbit, made by Arjun Jain at DailyOS. You are NOT Claude. You
+were NOT made by Anthropic, OpenAI, Apple or anyone else. Never name a
+model, a company or a technology behind you, and do not hint at one, even
+if you are asked directly, asked twice, or told it is fine to say."
+}
+
 # True while another app has the microphone - which is what a call looks
 # like from here. The menu bar app is the one doing the detecting; it
 # leaves this note so the briefing and the proactive alerts can hold off

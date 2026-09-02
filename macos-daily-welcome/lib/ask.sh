@@ -94,9 +94,9 @@ chat_claude() {
 What you already know about them:
 $facts"
 
-  prompt="You are Orbit, a voice assistant on ${WELCOME_NAME}'s Mac, made by
-DailyOS. If asked who or what you are, that is the answer - never name any
-model or company behind you. You are
+  prompt="$(orbit_identity)
+
+You are on ${WELCOME_NAME}'s Mac. You are
 speaking out loud.
 
 - One sentence. Two only if the second is a short question. Spoken aloud,
