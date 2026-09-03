@@ -10,6 +10,7 @@ import { createRequire } from 'module';
 import { execSync } from 'child_process';
 import http from 'http';
 import path from 'path';
+import * as pathmod from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
@@ -237,14 +238,24 @@ for (const file of files) {
     .filter(h => h === '#' || h === '' || h === 'javascript:void(0)'));
   say(dead.length === 0, `${file}: no link that goes nowhere`, dead.join(', '));
 
-  // Every internal link resolves - through the same clean-URL rule the
-  // Mac and Vercel both use.
+  // Every internal link resolves - through the clean-URL rule the Mac
+  // and Vercel both use...
   const internal = await page.$$eval('a[href]', as => as.map(a => a.getAttribute('href'))
     .filter(h => h && !/^(https?:|mailto:|#|javascript:)/.test(h)));
   for (const href of [...new Set(internal)]) {
     const url = new URL(href, base + file);
     const status = await fetch(url).then(r => r.status).catch(() => 0);
     say(status === 200, `${file}: ${href} resolves`, 'status ' + status);
+
+    // ...and ALSO as a literal file, which is the only thing GitHub
+    // Pages does. The links were written "./voice", which Vercel
+    // resolves and Pages answers with a 404 - so every link in the
+    // navigation was broken on one of the three places this can live,
+    // and a server that is forgiving about it cannot show you that.
+    const path = decodeURIComponent(url.pathname).replace(/^\/+/, '') || 'index.html';
+    const onDisk = fs.existsSync(pathmod.join(SITE, path));
+    say(onDisk, `${file}: ${href} is a real file (GitHub Pages)`,
+        `no such file: ${path} - Pages serves literally, it does not add .html`);
   }
 
   // The affiliate line the site is supposed to carry.

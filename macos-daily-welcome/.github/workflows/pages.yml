@@ -1,0 +1,44 @@
+# Publishes the OrbitAI console to GitHub Pages.
+#
+# The site is static files and nothing else - the Mac it talks to is
+# reached from your browser, not from here - so there is nothing to
+# build. It uploads web/orbitai as it stands.
+name: Publish the console
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'macos-daily-welcome/web/orbitai/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One publish at a time, and let a newer one win rather than queueing.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pages runs Jekyll over an upload unless told not to, and Jekyll
+      # quietly drops anything whose name starts with an underscore.
+      - run: touch macos-daily-welcome/web/orbitai/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: macos-daily-welcome/web/orbitai
+      - id: deploy
+        uses: actions/deploy-pages@v4
