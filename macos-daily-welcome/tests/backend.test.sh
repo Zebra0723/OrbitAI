@@ -115,3 +115,33 @@ ok "and there is one of each setting" "1" \
 ok "an unknown name is refused" "2" \
    "$( export WELCOME_CONFIG="$cfg"
        "$TEST_ROOT/bin/daily-welcome" --brain nonsense >/dev/null 2>&1; echo $? )"
+
+# A setting that changes nothing must not claim it changed something.
+#
+# "--brain groq doesn't do anything" was a fair report: it wrote the
+# config, announced that understanding now went to Groq, and without a
+# key the model path is skipped in silence, so everything carried on
+# exactly as before.
+brain_out() {
+  ( export WELCOME_CONFIG="$WELCOME_STATE_DIR/b.sh"; : > "$WELCOME_CONFIG"
+    export HOME="$WELCOME_STATE_DIR/nokey"; mkdir -p "$HOME"
+    "$TEST_ROOT/bin/daily-welcome" --brain "$1" 2>&1 )
+}
+out="$(brain_out groq)"
+contains "it says the setting is not in use without a key" "NOT IN USE YET" "$out"
+lacks "and does not claim otherwise" "understanding goes to groq" "$out"
+contains "and says where to get one"  "console.groq.com" "$out"
+contains "and how to check afterwards" "--brain test"    "$out"
+
+# One real request, and whatever came back.
+out="$( export WELCOME_CONFIG="$WELCOME_STATE_DIR/b.sh"
+        export HOME="$WELCOME_STATE_DIR/nokey"
+        "$TEST_ROOT/bin/daily-welcome" --brain test 2>&1 )"
+contains "the test names the endpoint" "Endpoint:" "$out"
+contains "and says when there is no key" "No key stored" "$out"
+
+# And status tells the truth about the same thing.
+out="$( export WELCOME_CONFIG="$WELCOME_STATE_DIR/b.sh"
+        export HOME="$WELCOME_STATE_DIR/nokey"
+        "$TEST_ROOT/bin/daily-welcome" --status 2>&1 )"
+contains "status says understanding is not in use" "NO KEY" "$out"

@@ -63,6 +63,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --set-key       store your ElevenLabs API key in the Keychain
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
   daily-welcome --brain groq | gemini | ollama | openai | claude
+  daily-welcome --brain test    ask it one real question and show the answer
   daily-welcome --set-openai-key   store the key for whichever of those you chose
   daily-welcome --test-voice    say one line now, and report which voice said it
   daily-welcome --voice-probe   the same line six ways, to find what sounds wrong
@@ -122,7 +123,11 @@ while [ $# -gt 0 ]; do
     --setup-piper) MODE=setuppiper ;;
     --mac-voices)  MODE=macvoices ;;
     --best-voice)  MODE=bestvoice ;;
-    --brain)       MODE=brain; shift; VOICE_ARG="${1:-}" ;;
+    --brain)       shift
+                   case "${1:-}" in
+                     test|check) MODE=braintest ;;
+                     *) MODE=brain; VOICE_ARG="${1:-}" ;;
+                   esac ;;
     --plain)       WELCOME_PAUSE=natural ;;
     --pause)       MODE=pause; shift; VOICE_ARG="${1:-}" ;;
     --expression)  MODE=expression; shift; VOICE_ARG="${1:-}" ;;
@@ -656,16 +661,79 @@ case "$MODE" in
     } > "$cfg"
     rm -f "$cfg.tmp"
 
-    printf 'Understanding now goes to %s (%s).\n' "$VOICE_ARG" "$model"
-    if [ "$VOICE_ARG" = "ollama" ]; then
-      echo "No key needed. Make sure it is running: ollama serve"
-      echo "And that the model is pulled:        ollama pull $model"
-    else
-      echo "Key from $where, then:"
-      echo "  daily-welcome --set-openai-key"
-    fi
+    printf 'Set: %s, model %s.\n' "$VOICE_ARG" "$model"
     echo
-    echo "Then try it:  orbit plan \"put the volume up a bit\""
+
+    # What will ACTUALLY happen now, which is not the same thing as what
+    # was just written down. Without a key the model path is skipped in
+    # silence and everything carries on exactly as before - so saying
+    # "understanding now goes to Groq" would be a straight lie, and
+    # "nothing happened" would be the entirely reasonable report.
+    if [ "$VOICE_ARG" = "ollama" ]; then
+      if curl -fsS --max-time 3 "$base/models" >/dev/null 2>&1; then
+        echo "Ollama is answering. Understanding goes to it from now on."
+      else
+        echo "NOT IN USE YET: nothing is answering at $base."
+        echo "  ollama serve"
+        echo "  ollama pull $model"
+      fi
+    elif ORBIT_OPENAI_BASE="$base" ORBIT_OPENAI_MODEL="$model" openai_available; then
+      echo "A key is stored, so understanding goes to $VOICE_ARG from now on."
+      echo "Check it really works:  daily-welcome --brain test"
+    else
+      echo "NOT IN USE YET - there is no key, and without one this setting"
+      echo "changes nothing at all. It will carry on as it did before."
+      echo
+      echo "  1. Get a key:  $where"
+      echo "  2. Store it:   daily-welcome --set-openai-key"
+      echo "  3. Check it:   daily-welcome --brain test"
+    fi
+    exit 0
+    ;;
+  braintest)
+    # One real request, and whatever came back. "Did that do anything" is
+    # not a question anybody should have to answer by feel.
+    printf 'Endpoint: %s\nModel:    %s\n' "$ORBIT_OPENAI_BASE" "$ORBIT_OPENAI_MODEL"
+    if ! openai_available; then
+      echo
+      echo "No key stored, so none of the above is being used."
+      echo "  daily-welcome --set-openai-key"
+      exit 1
+    fi
+    echo "Key:      found"
+    echo
+    echo 'Asking it: "put the volume up a bit"'
+    key="$(openai_api_key)"
+    started="$(date '+%s')"
+    out="$(OPENAI_API_KEY="$key" \
+           ORBIT_OPENAI_BASE="$ORBIT_OPENAI_BASE" \
+           ORBIT_OPENAI_MODEL="$ORBIT_OPENAI_MODEL" \
+           python3 "$ROOT/lib/openai_intent.py" "put the volume up a bit" 2>&1)"
+    unset key
+    printf 'It said:   %s\n' "${out:-<nothing>}"
+    printf 'Took:      %ss\n' "$(( $(date '+%s') - started ))"
+    echo
+    case "$out" in
+      system*|message*|ask*|chat*|claude*|mail*|readback*|command*|web*|none*)
+        echo "Working. That is the shape the rest of Orbit expects." ;;
+      *model*|*Model*)
+        echo "The endpoint answered but does not have that model."
+        echo "Pick one it does have and set ORBIT_OPENAI_MODEL:"
+        curl -fsS --max-time 8 -H "Authorization: Bearer $(openai_api_key)" \
+          "$ORBIT_OPENAI_BASE/models" 2>/dev/null \
+          | python3 -c 'import json,sys
+try:
+    for m in json.load(sys.stdin).get("data", [])[:20]:
+        print("   ", m.get("id"))
+except Exception:
+    print("    (could not list them)")' ;;
+      *401*|*403*|*nvalid*|*uthenti*)
+        echo "The key was refused. Store the right one:"
+        echo "  daily-welcome --set-openai-key" ;;
+      *)
+        echo "That is not an answer Orbit can use. The text above is what"
+        echo "the endpoint actually said." ;;
+    esac
     exit 0
     ;;
   bestvoice)
@@ -1059,6 +1127,18 @@ case "$MODE" in
     echo "present:       $WELCOME_PRESENT"
     voice="$(resolve_voice)"
     echo "speak:         $WELCOME_SPEAK"
+    # Which service works out what you meant, and whether it is really
+    # being used - a configured endpoint with no key is skipped in
+    # silence, which looks exactly like a setting that did nothing.
+    if [ "$ORBIT_NLU" = "rules" ] || [ "$ORBIT_NLU" = "off" ]; then
+      echo "understanding: rules only, no model"
+    elif [ "$ORBIT_NLU" = "openai" ] && openai_available 2>/dev/null; then
+      echo "understanding: $ORBIT_OPENAI_MODEL at $ORBIT_OPENAI_BASE"
+    elif [ "$ORBIT_NLU" = "openai" ]; then
+      echo "understanding: $ORBIT_OPENAI_BASE is set but has NO KEY - not in use"
+    else
+      echo "understanding: Claude Code"
+    fi
     echo "voice backend: $(tts_backend)"
     echo "hosted voice:  $WELCOME_ELEVEN_VOICE_NAME"
     echo "local voice:   ${voice:-system default}"
