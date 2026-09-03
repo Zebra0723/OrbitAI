@@ -410,14 +410,19 @@
 # which includes two with free tiers that are far faster than booting
 # Claude Code for every sentence:
 #
-#   Groq    ORBIT_OPENAI_BASE="https://api.groq.com/openai/v1"
-#           ORBIT_OPENAI_MODEL="llama-3.3-70b-versatile"      console.groq.com
-#   Gemini  ORBIT_OPENAI_BASE="https://generativelanguage.googleapis.com/v1beta/openai"
-#           ORBIT_OPENAI_MODEL="gemini-2.0-flash"             aistudio.google.com
-#   Ollama  ORBIT_OPENAI_BASE="http://localhost:11434/v1"
-#           ORBIT_OPENAI_MODEL="llama3.2"                     entirely offline
+#   Groq    console.groq.com        free, and the quickest of them
+#   Gemini  aistudio.google.com     free tier
+#   Ollama  ollama.com              entirely on this Mac, no account
 #
-# The key goes in the same place either way: daily-welcome --set-openai-key
+# Do not set these by hand. Providers retire models - the one recommended
+# here for months was decommissioned out from under it - and a config
+# file naming a dead model fails at the moment you speak, with an error
+# nobody sees. This asks the endpoint instead:
+#
+#   daily-welcome --brain groq        endpoint, and a model it serves today
+#   daily-welcome --set-openai-key    the key
+#   daily-welcome --brain test        one real question, and the answer
+#   daily-welcome --brain models      everything it offers
 # Searching the web and reading a page are real work, so they get a longer
 # leash than an ordinary answer.
 : "${ORBIT_WEB_TIMEOUT:=45}"

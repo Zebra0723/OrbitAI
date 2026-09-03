@@ -64,6 +64,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
   daily-welcome --brain groq | gemini | ollama | openai | claude
   daily-welcome --brain test    ask it one real question and show the answer
+  daily-welcome --brain models  what that service actually serves today
   daily-welcome --set-openai-key   store the key for whichever of those you chose
   daily-welcome --test-voice    say one line now, and report which voice said it
   daily-welcome --voice-probe   the same line six ways, to find what sounds wrong
@@ -126,6 +127,7 @@ while [ $# -gt 0 ]; do
     --brain)       shift
                    case "${1:-}" in
                      test|check) MODE=braintest ;;
+                     models|list) MODE=brainmodels ;;
                      *) MODE=brain; VOICE_ARG="${1:-}" ;;
                    esac ;;
     --plain)       WELCOME_PAUSE=natural ;;
@@ -623,7 +625,7 @@ case "$MODE" in
     # much faster than booting Claude Code for every sentence.
     cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
     case "${VOICE_ARG:-}" in
-      groq)    base="https://api.groq.com/openai/v1";  model="llama-3.3-70b-versatile"
+      groq)    base="https://api.groq.com/openai/v1";  model="llama-3.1-8b-instant"
                where="console.groq.com/keys" ;;
       gemini)  base="https://generativelanguage.googleapis.com/v1beta/openai"
                model="gemini-2.0-flash";               where="aistudio.google.com/apikey" ;;
@@ -649,6 +651,19 @@ case "$MODE" in
         echo "  now: $ORBIT_OPENAI_MODEL at $ORBIT_OPENAI_BASE" >&2
         exit 2 ;;
     esac
+
+    # The named model is a starting guess. Providers retire models -
+    # llama-3.3-70b-versatile was the one recommended here until Groq
+    # retired it - so when there is a key, ask the endpoint what it will
+    # actually serve today and take that instead. A config file naming a
+    # dead model fails at the moment you speak, with an error nobody sees.
+    if [ "$VOICE_ARG" != "ollama" ] && ORBIT_OPENAI_BASE="$base" openai_available 2>/dev/null; then
+      live="$(ORBIT_OPENAI_BASE="$base" openai_pick_model 2>/dev/null)" || live=""
+      if [ -n "$live" ] && [ "$live" != "$model" ]; then
+        printf 'Asked %s what it serves: using %s.\n' "$VOICE_ARG" "$live"
+        model="$live"
+      fi
+    fi
 
     mkdir -p "$(dirname "$cfg")"; touch "$cfg"
     grep -vE '^(ORBIT_OPENAI_BASE|ORBIT_OPENAI_MODEL|ORBIT_NLU)=' "$cfg" > "$cfg.tmp" 2>/dev/null \
@@ -687,7 +702,24 @@ case "$MODE" in
       echo "  1. Get a key:  $where"
       echo "  2. Store it:   daily-welcome --set-openai-key"
       echo "  3. Check it:   daily-welcome --brain test"
+      echo
+      echo "$model is a starting guess. Once there is a key, --brain test"
+      echo "asks $VOICE_ARG what it actually serves and settles on one."
     fi
+    exit 0
+    ;;
+  brainmodels)
+    printf 'What %s serves today:\n\n' "$ORBIT_OPENAI_BASE"
+    if ! openai_available; then
+      echo "  (no key stored, so it cannot be asked)"
+      echo "  daily-welcome --set-openai-key"
+      exit 1
+    fi
+    openai_models 2>/dev/null | sed 's/^/  /' || {
+      echo "  (it would not answer)"; exit 1; }
+    echo
+    printf 'Orbit would choose: %s\n' "$(openai_pick_model 2>/dev/null || echo '<none usable>')"
+    echo "Set another with: ORBIT_OPENAI_MODEL=... in your config"
     exit 0
     ;;
   braintest)
@@ -716,17 +748,21 @@ case "$MODE" in
     case "$out" in
       system*|message*|ask*|chat*|claude*|mail*|readback*|command*|web*|none*)
         echo "Working. That is the shape the rest of Orbit expects." ;;
-      *model*|*Model*)
-        echo "The endpoint answered but does not have that model."
-        echo "Pick one it does have and set ORBIT_OPENAI_MODEL:"
-        curl -fsS --max-time 8 -H "Authorization: Bearer $(openai_api_key)" \
-          "$ORBIT_OPENAI_BASE/models" 2>/dev/null \
-          | python3 -c 'import json,sys
-try:
-    for m in json.load(sys.stdin).get("data", [])[:20]:
-        print("   ", m.get("id"))
-except Exception:
-    print("    (could not list them)")' ;;
+      *model*|*Model*|*decommission*|*not_found*|*404*)
+        echo "The endpoint answered, but not with that model - retired, or"
+        echo "never there. Asking it what it does serve."
+        live="$(openai_pick_model 2>/dev/null)" || live=""
+        if [ -n "$live" ]; then
+          cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+          mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+          grep -v '^ORBIT_OPENAI_MODEL=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+          { cat "$cfg.tmp"; printf 'ORBIT_OPENAI_MODEL="%s"\n' "$live"; } > "$cfg"
+          rm -f "$cfg.tmp"
+          printf '\nSwitched to %s. Run this again to check it.\n' "$live"
+        else
+          echo "It would not say. Everything it offers:"
+          openai_models 2>/dev/null | sed 's/^/    /' | head -25
+        fi ;;
       *401*|*403*|*nvalid*|*uthenti*)
         echo "The key was refused. Store the right one:"
         echo "  daily-welcome --set-openai-key" ;;
