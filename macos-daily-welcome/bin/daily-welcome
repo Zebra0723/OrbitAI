@@ -62,7 +62,8 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --reset-permissions   make macOS ask about access again
   daily-welcome --set-key       store your ElevenLabs API key in the Keychain
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
-  daily-welcome --set-openai-key   store an OpenAI key, for understanding commands
+  daily-welcome --brain groq | gemini | ollama | openai | claude
+  daily-welcome --set-openai-key   store the key for whichever of those you chose
   daily-welcome --test-voice    say one line now, and report which voice said it
   daily-welcome --voice-probe   the same line six ways, to find what sounds wrong
   daily-welcome --emphasis on|off  lean on "overdue" and "unread" (off by default)
@@ -121,6 +122,7 @@ while [ $# -gt 0 ]; do
     --setup-piper) MODE=setuppiper ;;
     --mac-voices)  MODE=macvoices ;;
     --best-voice)  MODE=bestvoice ;;
+    --brain)       MODE=brain; shift; VOICE_ARG="${1:-}" ;;
     --plain)       WELCOME_PAUSE=natural ;;
     --pause)       MODE=pause; shift; VOICE_ARG="${1:-}" ;;
     --expression)  MODE=expression; shift; VOICE_ARG="${1:-}" ;;
@@ -270,7 +272,18 @@ case "$MODE" in
 
     # Check it against a real request rather than leaving you to find out
     # the first time you say something.
-    probe="$(OPENAI_API_KEY="$new_key" python3 "$ROOT/lib/openai_intent.py" "turn the volume up" 2>&1)"
+    # Against the endpoint that is actually configured. Without passing
+    # these, a Groq or Gemini key was tested against api.openai.com and
+    # reported as broken - which is a good way to be told a working key
+    # does not work.
+    probe="$(OPENAI_API_KEY="$new_key" \
+             ORBIT_OPENAI_BASE="$ORBIT_OPENAI_BASE" \
+             ORBIT_OPENAI_MODEL="$ORBIT_OPENAI_MODEL" \
+             python3 "$ROOT/lib/openai_intent.py" "turn the volume up" 2>&1)"
+    case "$ORBIT_OPENAI_BASE" in
+      *api.openai.com*) : ;;
+      *) printf 'Checking against %s (%s).\n' "$ORBIT_OPENAI_BASE" "$ORBIT_OPENAI_MODEL" ;;
+    esac
     unset new_key
     case "$probe" in
       system*) echo "OpenAI accepted it. Understanding is on." ;;
@@ -597,6 +610,62 @@ case "$MODE" in
     rm -f "$cfg.tmp"
     echo "$key set to $value."
     echo "Hear it: daily-welcome --test-voice"
+    exit 0
+    ;;
+  brain)
+    # Which service works out what you meant. Anything that speaks the
+    # OpenAI chat-completions shape does, and two of them are free and
+    # much faster than booting Claude Code for every sentence.
+    cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+    case "${VOICE_ARG:-}" in
+      groq)    base="https://api.groq.com/openai/v1";  model="llama-3.3-70b-versatile"
+               where="console.groq.com/keys" ;;
+      gemini)  base="https://generativelanguage.googleapis.com/v1beta/openai"
+               model="gemini-2.0-flash";               where="aistudio.google.com/apikey" ;;
+      ollama)  base="http://localhost:11434/v1";       model="llama3.2"
+               where="nothing - it runs on this Mac" ;;
+      openai)  base="https://api.openai.com/v1";       model="gpt-4o-mini"
+               where="platform.openai.com/api-keys" ;;
+      claude|off)
+               grep -v '^ORBIT_NLU=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+               { cat "$cfg.tmp"; printf 'ORBIT_NLU="claude"\n'; } > "$cfg"
+               rm -f "$cfg.tmp"
+               echo "Using Claude Code. No key, slower to start talking."
+               exit 0 ;;
+      *)
+        echo "daily-welcome --brain groq | gemini | ollama | openai | claude" >&2
+        echo >&2
+        echo "  groq    free, and the fastest of them        console.groq.com" >&2
+        echo "  gemini  free tier                            aistudio.google.com" >&2
+        echo "  ollama  entirely on this Mac, no account     ollama.com" >&2
+        echo "  openai  pay as you go" >&2
+        echo "  claude  no key at all, slower to start" >&2
+        echo >&2
+        echo "  now: $ORBIT_OPENAI_MODEL at $ORBIT_OPENAI_BASE" >&2
+        exit 2 ;;
+    esac
+
+    mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+    grep -vE '^(ORBIT_OPENAI_BASE|ORBIT_OPENAI_MODEL|ORBIT_NLU)=' "$cfg" > "$cfg.tmp" 2>/dev/null \
+      || : > "$cfg.tmp"
+    {
+      cat "$cfg.tmp"
+      printf 'ORBIT_OPENAI_BASE="%s"\n' "$base"
+      printf 'ORBIT_OPENAI_MODEL="%s"\n' "$model"
+      printf 'ORBIT_NLU="openai"\n'
+    } > "$cfg"
+    rm -f "$cfg.tmp"
+
+    printf 'Understanding now goes to %s (%s).\n' "$VOICE_ARG" "$model"
+    if [ "$VOICE_ARG" = "ollama" ]; then
+      echo "No key needed. Make sure it is running: ollama serve"
+      echo "And that the model is pulled:        ollama pull $model"
+    else
+      echo "Key from $where, then:"
+      echo "  daily-welcome --set-openai-key"
+    fi
+    echo
+    echo "Then try it:  orbit plan \"put the volume up a bit\""
     exit 0
     ;;
   bestvoice)

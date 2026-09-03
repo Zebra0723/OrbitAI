@@ -78,3 +78,40 @@ done
 out="$( ( set -u; export PATH="$stub_dir:$PATH"
           speech_pace "Morning, Arjun." ) 2>/dev/null )"
 contains "pacing still knows what to do" "Arjun" "$out"
+
+# ------------------------------------------------------- which brain answers
+#
+# Anything speaking the OpenAI chat-completions shape works, and two of
+# them are free. The trap is that the KEY CHECK ignored the configured
+# endpoint, so a Groq key was tested against api.openai.com and reported
+# as broken - a good way to be told a working key does not work.
+
+probe_line="$(sed -n '/probe="\$(OPENAI_API_KEY/,/openai_intent.py/p' "$TEST_ROOT/bin/daily-welcome")"
+contains "the key is checked against the configured endpoint" "ORBIT_OPENAI_BASE" "$probe_line"
+contains "with the configured model"                          "ORBIT_OPENAI_MODEL" "$probe_line"
+
+# Switching provider should not mean hand-editing a config file.
+cfg="$WELCOME_STATE_DIR/brain.sh"
+switch() { ( export WELCOME_CONFIG="$cfg"; : > "$cfg"
+             "$TEST_ROOT/bin/daily-welcome" --brain "$1" >/dev/null 2>&1; cat "$cfg" ); }
+
+contains "groq points at groq"     "api.groq.com"          "$(switch groq)"
+contains "and names a groq model"  "llama"                 "$(switch groq)"
+contains "gemini points at google" "generativelanguage"    "$(switch gemini)"
+contains "ollama stays on this Mac" "localhost:11434"      "$(switch ollama)"
+contains "openai points at openai" "api.openai.com"        "$(switch openai)"
+contains "and each one turns the model path on" 'ORBIT_NLU="openai"' "$(switch groq)"
+contains "claude needs no key at all" 'ORBIT_NLU="claude"' "$(switch claude)"
+
+# Switching twice must not leave both.
+two="$( export WELCOME_CONFIG="$cfg"; : > "$cfg"
+        "$TEST_ROOT/bin/daily-welcome" --brain groq   >/dev/null 2>&1
+        "$TEST_ROOT/bin/daily-welcome" --brain gemini >/dev/null 2>&1
+        cat "$cfg" )"
+lacks "the old endpoint is gone" "api.groq.com" "$two"
+ok "and there is one of each setting" "1" \
+   "$(printf '%s\n' "$two" | grep -c '^ORBIT_OPENAI_BASE=')"
+
+ok "an unknown name is refused" "2" \
+   "$( export WELCOME_CONFIG="$cfg"
+       "$TEST_ROOT/bin/daily-welcome" --brain nonsense >/dev/null 2>&1; echo $? )"

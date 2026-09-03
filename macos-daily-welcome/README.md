@@ -504,6 +504,8 @@ daily-welcome              the daily check (greets only once a day)
 daily-welcome --force      greet now regardless
 daily-welcome --print      the briefing as text, no voice
 daily-welcome --status     what it thinks, and when it last ran
+daily-welcome --brain groq which service works out what you meant
+daily-welcome --set-openai-key   its key, into the Keychain
 daily-welcome --set-key    ElevenLabs key into the Keychain
 daily-welcome --test-voice speak one line, report which voice said it
 daily-welcome --test       run the test suite (four seconds, no network)
