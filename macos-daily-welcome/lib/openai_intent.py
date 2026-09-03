@@ -170,6 +170,64 @@ def chat():
     sys.exit(0)
 
 
+def _post(fields, key):
+    """One request. Returns the parsed body, or raises HTTPError."""
+    request = urllib.request.Request(
+        ENDPOINT,
+        data=json.dumps(fields).encode(),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
+    )
+    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        return json.load(response)
+
+
+# Fields OpenAI accepts that other endpoints reject, and what to do about
+# each. They are all niceties - guaranteed JSON, no creativity, a length
+# cap - and none of them is worth failing the whole request over.
+OPTIONAL = ("response_format", "temperature", "max_tokens")
+
+
+def _ask(fields, key):
+    """Asks, and drops whatever the endpoint objects to rather than
+    giving up.
+
+    Every service here speaks the same chat-completions shape and then
+    disagrees at the edges: JSON mode exists on some models and not
+    others, a few insist temperature is 1, a few want
+    max_completion_tokens instead. The failure is a 400 naming the field,
+    which is enough to know what to leave out - and an answer without the
+    nicety beats no answer at all.
+    """
+    try:
+        return _post(fields, key)
+    except urllib.error.HTTPError as error:
+        detail = error.read()[:400]
+        if error.code not in (400, 422):
+            print(f"openai: HTTP {error.code} {detail!r}", file=sys.stderr)
+            sys.exit(3)
+        blamed = [f for f in OPTIONAL if f.encode() in detail and f in fields]
+        # Nothing named, so drop the one that is unsupported most often.
+        if not blamed and "response_format" in fields:
+            blamed = ["response_format"]
+        if not blamed:
+            print(f"openai: HTTP {error.code} {detail!r}", file=sys.stderr)
+            sys.exit(3)
+        for field in blamed:
+            fields.pop(field, None)
+        print("openai: retrying without " + ", ".join(blamed), file=sys.stderr)
+        try:
+            return _post(fields, key)
+        except urllib.error.HTTPError as second:
+            print(f"openai: HTTP {second.code} {second.read()[:200]!r}", file=sys.stderr)
+            sys.exit(3)
+        except Exception as second:  # noqa: BLE001 - reported, not raised
+            print(f"openai: {second}", file=sys.stderr)
+            sys.exit(4)
+    except Exception as error:  # noqa: BLE001 - reported, not raised
+        print(f"openai: {error}", file=sys.stderr)
+        sys.exit(4)
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--chat":
         chat()
@@ -197,31 +255,15 @@ def main():
                 messages.append({"role": role, "content": content.strip()})
     messages.append({"role": "user", "content": user})
 
-    body = json.dumps({
+    fields = {
         "model": MODEL,
         "messages": messages,
         "response_format": {"type": "json_object"},
         "temperature": 0,
         "max_tokens": 200,
-    }).encode()
+    }
 
-    request = urllib.request.Request(
-        ENDPOINT,
-        data=body,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
-    )
-
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-            payload = json.load(response)
-    except urllib.error.HTTPError as error:
-        # The reason matters to whoever is debugging this, and stderr is
-        # already captured by the shell's timeout wrapper.
-        print(f"openai: HTTP {error.code} {error.read()[:200]!r}", file=sys.stderr)
-        sys.exit(3)
-    except Exception as error:  # noqa: BLE001 - reported, not raised
-        print(f"openai: {error}", file=sys.stderr)
-        sys.exit(4)
+    payload = _ask(fields, key)
 
     try:
         content = payload["choices"][0]["message"]["content"]

@@ -51,6 +51,8 @@ the name you gave matches no suite.
 | `sourcing` | every function called is one that exists and is loaded |
 | `web` | every page and control, in a real browser |
 | `bridge` | who the console bridge lets in, and what it runs |
+| `models` | choosing a model that exists, not one that was remembered |
+| `endpoints` | the fields each service rejects, and carrying on anyway |
 
 ## Writing one
 
