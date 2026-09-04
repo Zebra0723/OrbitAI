@@ -33,11 +33,18 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      # Jekyll runs over an upload unless told not to, and quietly drops
+      # anything whose name starts with an underscore.
+      - name: Do not run Jekyll over it
+        run: touch macos-daily-welcome/web/orbitai/.nojekyll
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          # The site, not the whole repository. Uploading "." would put
+          # the console at /macos-daily-welcome/web/orbitai/ rather than
+          # at the root, and publish every shell script beside it.
+          path: 'macos-daily-welcome/web/orbitai'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
