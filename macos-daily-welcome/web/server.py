@@ -38,6 +38,8 @@ WELCOME = str(ROOT / "bin" / "daily-welcome")
 SETTINGS = [
     ("WELCOME_NAME", "text", "Your name", "What it calls you, on screen and out loud."),
     ("ORBIT_WAKE_WORD", "text", "Wake word", "Ordinary words are recognised far better than invented ones."),
+    ("ORBIT_WAKE_ALIASES", "text", "Also counts as the wake word",
+     "Separated by |. Whatever the recogniser hears instead of your wake word, add it here."),
     ("ORBIT_GREETING", "text", "Greeting", "The answer to the wake word on its own."),
     ("ORBIT_SIGNOFF", "text", "Sign-off", "What ends a conversation."),
     ("WELCOME_HONORIFIC", "text", "Honorific", "How the briefing addresses you. Empty for just your name."),
@@ -423,11 +425,62 @@ class Console(BaseHTTPRequestHandler):
             # Who is enrolled, and whether the gate is on. Its own call
             # rather than part of state: it shells out to Python and the
             # rest of the page should not wait for that.
-            ok, out = run([ORBIT, "voice", "list"], timeout=30)
-            return self.send(200, json.dumps({"ok": ok, "output": out}))
+            #
+            # Rows, not the paragraph the terminal prints. A page that
+            # re-reads the enrolment files itself would eventually
+            # disagree with the assistant about who is enrolled, so it
+            # asks the same command, which just knows how to answer twice.
+            ok, out = run([ORBIT, "voice", "list", "--raw"], timeout=30)
+            people = []
+            if ok:
+                for line in out.splitlines():
+                    parts = line.split("\t")
+                    if parts and parts[0].strip():
+                        people.append({
+                            "name": parts[0],
+                            "samples": int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0,
+                            "banned": len(parts) > 2 and parts[2] == "banned",
+                        })
+            facts = {}
+            fine, raw = run([ORBIT, "voice", "status"], timeout=30)
+            if fine:
+                for line in raw.splitlines():
+                    if "\t" in line:
+                        k, v = line.split("\t", 1)
+                        facts[k] = v
+            return self.send(200, json.dumps({
+                "ok": ok, "output": out, "people": people,
+                "installed": facts.get("installed") == "1",
+                "enabled": facts.get("enabled") == "1",
+                "gate": facts.get("gate") == "1",
+                "threshold": facts.get("threshold", ""),
+                "bypass": facts.get("bypass", ""),
+            }))
 
         if path == "/api/models":
             ok, out = run([WELCOME, "--brain", "models"], timeout=45)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/who":
+            # Who spoke last, and how sure it is. The console's answer to
+            # "does it actually know me", which until now you could only
+            # ask a terminal.
+            ok, out = run([ORBIT, "voice", "who"], timeout=30)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/scores":
+            ok, out = run([ORBIT, "voice", "test"], timeout=40)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/refusals":
+            ok, out = run([ORBIT, "voice", "refusals", "6"], timeout=30)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/claude":
+            # Whether Orbit can find Claude, and where. The single most
+            # common "it says it is not installed" is a menu bar app that
+            # inherited launchd's PATH rather than a login shell's.
+            ok, out = run([WELCOME, "--find-claude"], timeout=45)
             return self.send(200, json.dumps({"ok": ok, "output": out}))
 
         if path == "/api/braintest":
@@ -537,6 +590,43 @@ class Console(BaseHTTPRequestHandler):
             if what not in ("piper", "speaker"):
                 return self.send(400, json.dumps({"error": "no"}))
             ok, out = run([WELCOME, "--setup-" + what], timeout=600)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/banlast":
+            # Ban whoever just spoke. The voices worth banning are exactly
+            # the ones with no name, so this enrols the last thing heard
+            # under a label and bans that, in one go.
+            label = (data.get("label") or "").strip()
+            args = [ORBIT, "voice", "ban", "last"] + ([label] if label else [])
+            ok, out = run(args, timeout=60)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/bypass":
+            action = data.get("action", "status")
+            if action not in ("start", "end", "status"):
+                return self.send(400, json.dumps({"error": "no"}))
+            ok, out = run([ORBIT, "voice", "bypass", action], timeout=30)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/permissions":
+            ok, out = run([WELCOME, "--reset-permissions"], timeout=60)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/installclaude":
+            # Long, and the page says so. It looks before it installs, so
+            # pressing this when Claude is merely unfindable costs a
+            # second rather than a download.
+            ok, out = run([WELCOME, "--install-claude"], timeout=900)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/claudeat":
+            # Point it at a Claude you found yourself, when the search
+            # cannot: a Claude inside a version manager the shell only
+            # sets up interactively.
+            where = (data.get("path") or "").strip()
+            if not where:
+                return self.send(400, json.dumps({"error": "no path"}))
+            ok, out = run([WELCOME, "--claude-at", where], timeout=45)
             return self.send(200, json.dumps({"ok": ok, "output": out}))
 
         if path == "/api/preview":

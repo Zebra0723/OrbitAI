@@ -214,3 +214,42 @@ ok "but a banned voice is still refused" "yes" \
 out="$("$TEST_ROOT/bin/orbit" voice ban "$WELCOME_NAME" 2>&1)" && rc=0 || rc=1
 ok "you cannot ban yourself" "1" "$rc"
 contains "and it says why" "locks you out" "$out"
+
+# ------------------------------------------------- what the console reads
+#
+# The People page draws a button per person, which it cannot do from the
+# paragraph the terminal prints. Both come out of the same command: a
+# page that re-read the enrolment files itself would eventually disagree
+# with the assistant about who is enrolled, and the disagreement would
+# show up as a ban that appears not to have worked.
+reset
+raw="$("$TEST_ROOT/bin/orbit" voice list --raw 2>/dev/null)"
+ok "the raw list has a row per person" "2" "$(printf '%s\n' "$raw" | grep -c .)"
+ok "a name, a count and nothing else for somebody allowed" \
+   "Arjun	3	" "$(printf '%s\n' "$raw" | sed -n 1p)"
+ok "and the word banned for somebody who is" \
+   "Neighbour	2	banned" "$(printf '%s\n' "$raw" | sed -n 2p)"
+# Tabs, not spaces: "Unwelcome 2 Sep" is the label an unnamed voice gets
+# when you ban it, and splitting on whitespace turns that into three
+# people.
+ok "the columns are tabs" "3" \
+   "$(printf '%s\n' "$raw" | sed -n 1p | awk -F'\t' '{print NF}')"
+# Captured, then searched. Piping into `grep -q` closes the pipe the
+# moment it matches, orbit dies of SIGPIPE, and under pipefail the whole
+# pipeline reports failure - so the check said "no" for a command that
+# had just printed exactly what was being looked for.
+human="$("$TEST_ROOT/bin/orbit" voice list 2>/dev/null)"
+contains "the human list still reads as a sentence" "Voices it knows" "$human"
+contains "with the count spelled out for a person" "3 samples" "$human"
+
+facts="$("$TEST_ROOT/bin/orbit" voice status 2>/dev/null)"
+field() { printf '%s\n' "$facts" | awk -F'\t' -v k="$1" '$1 == k { print $2 }'; }
+ok "status knows recognition is installed" "1" "$(field installed)"
+ok "and that the gate is on here" "1" "$(field gate)"
+ok "and how many voices it knows" "2" "$(field enrolled)"
+ok "and that no bypass is open" "" "$(field bypass)"
+"$TEST_ROOT/bin/orbit" voice bypass >/dev/null 2>&1
+ok "and reports one when there is" "yes" \
+   "$("$TEST_ROOT/bin/orbit" voice status 2>/dev/null \
+      | awk -F'\t' '$1 == "bypass" { print ($2 != "") ? "yes" : "no" }')"
+"$TEST_ROOT/bin/orbit" voice bypass end >/dev/null 2>&1

@@ -63,6 +63,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --set-key       store your ElevenLabs API key in the Keychain
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
   daily-welcome --find-claude   find Claude Code and remember where it is
+  daily-welcome --install-claude install it, if it is genuinely not here
   daily-welcome --brain claude | groq | gemini | ollama
   daily-welcome --brain test    ask it one real question and show the answer
   daily-welcome --brain models  what that service actually serves today
@@ -126,6 +127,7 @@ while [ $# -gt 0 ]; do
     --mac-voices)  MODE=macvoices ;;
     --best-voice)  MODE=bestvoice ;;
     --find-claude) MODE=findclaude ;;
+    --install-claude) MODE=installclaude ;;
     --claude-at)   MODE=claudeat; shift; VOICE_ARG="${1:-}" ;;
     --brain)       shift
                    case "${1:-}" in
@@ -744,6 +746,48 @@ case "$MODE" in
       exit 1
     fi
     exit 0
+    ;;
+  installclaude)
+    # Asked for by name: "install claude code to orbit, because it seems
+    # to think it isn't installed". Usually it IS installed and only
+    # unfindable, so look first - installing over a working copy for no
+    # reason is a five-minute download that changes nothing.
+    if found="$(claude_bin)"; then
+      printf 'Claude Code is already here: %s\n' "$found"
+      echo "Nothing to install. If Orbit still says otherwise:"
+      echo "  daily-welcome --find-claude"
+      exit 0
+    fi
+    # Same reason ORBIT_CLAUDE_BIN exists: npm can be somewhere a
+    # launchd-started process never looks, and naming it is quicker than
+    # explaining PATH to somebody who did not ask.
+    npm_cmd="${ORBIT_NPM:-npm}"
+    if ! command -v "$npm_cmd" >/dev/null 2>&1; then
+      echo "Claude Code is installed by npm, and there is no npm on this Mac." >&2
+      echo >&2
+      echo "  Install Node first - it brings npm with it:" >&2
+      echo "    https://nodejs.org  (the button that says LTS)" >&2
+      echo "  or, if you have Homebrew:  brew install node" >&2
+      echo >&2
+      echo "  Then run this again." >&2
+      exit 1
+    fi
+    echo "Installing Claude Code. This takes a couple of minutes."
+    echo
+    if ! "$npm_cmd" install -g @anthropic-ai/claude-code; then
+      echo >&2
+      echo "npm would not install it. The usual reason is that npm's global" >&2
+      echo "directory belongs to root, which is worth fixing rather than" >&2
+      echo "working around with sudo:" >&2
+      echo "  $npm_cmd config set prefix ~/.npm-global" >&2
+      echo "  daily-welcome --install-claude" >&2
+      exit 1
+    fi
+    echo
+    # Where npm put it is not where it was looked for a moment ago, so
+    # the remembered answer is now wrong.
+    claude_forget
+    exec "$0" --find-claude
     ;;
   claudeat)
     [ -n "${VOICE_ARG:-}" ] || { echo "daily-welcome --claude-at /path/to/claude" >&2; exit 2; }

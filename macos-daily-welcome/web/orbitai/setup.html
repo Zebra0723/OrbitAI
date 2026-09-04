@@ -16,6 +16,7 @@
   <a class="brand" href="./"><span class="ring"></span><span>OrbitAI</span></a>
   <a class="link" href="./console.html">Console</a>
   <a class="link" href="./voice.html">Voice</a>
+  <a class="link" href="./people.html">People</a>
   <a class="link" href="./commands.html">Commands</a>
   <a class="link" href="./macros.html">Macros</a>
   <a class="link" href="./setup.html">Setup</a>
@@ -23,74 +24,170 @@
   <div class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></div>
 </div></nav>
 <main>
+<section id="pairing" hidden>
+  <h2>Connection</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:13.5px;margin:0 0 14px">
+      This page talks straight from your browser to the bridge on your Mac.
+      Nothing about your assistant is stored here, and no request passes
+      through this site.</p>
+    <div class="say">
+      <input type="text" id="bridgeUrl" aria-label="Bridge address"
+             placeholder="http://127.0.0.1:7717">
+      <input type="password" id="bridgeToken" aria-label="Pairing token"
+             placeholder="pairing token">
+      <button data-act="pair">Connect</button>
+    </div>
+    <pre id="pairOut"></pre>
+    <div class="note">On the Mac: <code>orbit console --allow https://your-project.vercel.app</code>
+      then <code>orbit console --bridge</code>, which prints the token and stays running.</div>
+  </div>
+</section>
+
 <section>
   <h1 style="font-size:28px">Setup</h1>
-  <p class="lede">Four commands, two permissions macOS asks for, and one it
-  never will.</p>
+  <p class="lede">One line to install it. After that everything on this page is a
+  button, including the things that used to want a terminal.</p>
 </section>
 
 <section>
-  <h2>Install</h2>
+  <h2>1. Put it on your Mac</h2>
   <div class="panel">
-<pre>cd ~/vortex && git pull
-./macos-daily-welcome/install.sh
-daily-welcome --set-key
-orbit selftest</pre>
-    <div class="note">The installer needs <code>swiftc</code>. If it says so, run
-    <code>xcode-select --install</code> and try again - without it there is no
-    menu bar app, and with no app macOS never asks for anything.</div>
+    <div class="say">
+      <input type="text" id="installLine" readonly aria-label="Install command"
+        value="curl -fsSL https://raw.githubusercontent.com/Zebra0723/OrbitAI/main/macos-daily-welcome/bootstrap.sh | bash">
+      <button data-act="copy" data-arg="installLine">Copy</button>
+    </div>
+    <div class="note">Paste that into Terminal &#8212; Spotlight, type Terminal,
+    press return &#8212; and press return again. It fetches Orbit, builds the
+    menu bar app, and starts it. That is the only line there is; after it, the
+    Orbit icon appears in your menu bar and <em>Settings and Setup</em> in its
+    menu opens this page, served from your own Mac.</div>
+    <div class="note">If it stops and asks for <code>swiftc</code>, run
+    <code>xcode-select --install</code>, let Apple's download finish, and paste
+    the line again. Without it there is no app, and with no app macOS never
+    asks for the permissions below.</div>
   </div>
 </section>
 
 <section>
-  <h2>Permissions</h2>
+  <h2>2. Let it see what it needs to</h2>
   <div class="grid two">
-    <div class="card"><h3>Asked for once</h3><p>Microphone and Speech Recognition
-      for the wake word. Reminders, Calendar, Contacts, Mail, Messages, Notes for
-      reading and acting. Accessibility for typing and window commands.</p></div>
-    <div class="card"><h3>Never asked for</h3><p>Reading Messages needs Full Disk
-      Access, which macOS will not prompt for. Add
-      <code>~/Applications/DailyWelcome.app</code> under Privacy and Security,
-      Full Disk Access.</p></div>
+    <div class="card"><h3>It will ask you</h3><p>Microphone and Speech
+      Recognition, for the wake word. Reminders, Calendar, Contacts, Mail,
+      Messages and Notes, for reading them and acting on them. Accessibility,
+      for typing and moving windows. Say yes as they come up.</p></div>
+    <div class="card"><h3>It cannot ask you</h3><p>Reading your messages needs
+      Full Disk Access, and macOS never offers that by itself. Open System
+      Settings, Privacy &amp; Security, Full Disk Access, and add
+      <code>~/Applications/DailyWelcome.app</code>. Skip it and everything else
+      still works; you just get no messages in the briefing.</p></div>
   </div>
-  <div class="note">Grants belong to whichever app is asking. Allowing your
-  terminal does not allow the menu bar app. If something was refused once, macOS
-  remembers - <code>daily-welcome --reset-permissions</code> makes it ask again.</div>
+  <div class="bar">
+    <button class="quiet" data-act="doctor">Check what is working</button>
+    <button class="quiet" data-act="permissions">Make macOS ask again</button>
+    <button class="quiet" data-act="selftest">Self-test</button>
+  </div>
+  <pre id="setupOut"></pre>
+  <div class="note">A permission belongs to whichever app asked for it, so
+  allowing your terminal does not allow the menu bar app &#8212; and a refusal
+  is remembered, which is what the middle button undoes.</div>
 </section>
 
 <section>
-  <h2>When the wake word doesn't fire</h2>
+  <h2>3. How it understands you</h2>
+  <div class="panel" id="brainSettings"></div>
+  <div class="panel" style="margin-top:14px">
+    <div class="say">
+      <input type="password" id="brainKey" placeholder="Paste a key, if the service needs one">
+      <button data-act="brain-key">Save key</button>
+      <button class="quiet" data-act="models">What can it run?</button>
+      <button class="quiet" data-act="braintest">Test it</button>
+    </div>
+    <div class="note">Claude is the default and needs no key of its own if you
+    already have Claude on this Mac. The alternatives are OpenAI-shaped services
+    &#8212; Groq and Google both have free tiers &#8212; and <em>rules</em> needs
+    nothing at all, understanding the phrasings in the Commands list and no
+    others. The key is kept in your login Keychain and is never typed as part of
+    a command, because commands are remembered by the shell.</div>
+    <pre id="brainOut"></pre>
+  </div>
+</section>
+
+<section>
+  <h2>4. Can it find Claude?</h2>
   <div class="panel">
-    <p class="muted" style="font-size:13.5px">A made-up name isn't in any
-    recogniser's vocabulary, so it comes back as whatever real words it
-    resembled. Three fixes, in order:</p>
-<pre>orbit listen heard                    # what it actually heard you say
-orbit listen alias "or bit"           # accept that as the wake word too
-orbit listen wake "hey computer"      # or use words it already knows</pre>
-    <div class="note">Server recognition is the default because on-device
-    recognition is markedly worse at unfamiliar words. Turn it back on in the
-    console if you would rather the audio never left the Mac.</div>
+    <div class="bar" style="margin:0 0 12px">
+      <button data-act="find-claude">Look for it</button>
+      <button class="quiet" data-act="install-claude">Install it</button>
+    </div>
+    <div class="say">
+      <input type="text" id="claudePath" data-enter="claude-at"
+             placeholder="Or point it at one: /path/to/claude">
+      <button class="quiet" data-act="claude-at">Use that</button>
+    </div>
+    <div class="note">The commonest complaint about Orbit is that it says Claude
+    is not installed when it plainly is. The menu bar app is started by macOS
+    rather than by your shell, so it never sees the directories your shell adds
+    &#8212; and version managers like nvm put Claude somewhere with the version
+    number in the middle of the path. This looks in all of them and remembers
+    where it found it.</div>
+    <pre id="claudeOut"></pre>
   </div>
 </section>
 
 <section>
-  <h2>This site</h2>
+  <h2>5. When the wake word doesn't fire</h2>
+  <div class="panel" id="wakeSettings"></div>
+  <div class="panel" style="margin-top:14px">
+    <div class="bar" style="margin:0 0 10px">
+      <button class="quiet" data-act="heard">What has it been hearing?</button>
+    </div>
+    <pre id="heardOut"></pre>
+    <div class="note">An invented name is in no recogniser's vocabulary, so it
+    comes back as whatever real words it sounded like. Press the button, find
+    what it heard instead, and paste that into the second box above &#8212; or
+    change the wake word to two ordinary words, which works better than any
+    amount of tuning.</div>
+  </div>
+</section>
+
+<section>
+  <h2>6. A better voice, if you want one</h2>
+  <div class="panel">
+    <div class="bar" style="margin:0">
+      <button class="quiet" data-act="setup-piper">Install offline voices</button>
+      <button class="quiet" data-act="preview">Say a line the way it is now</button>
+    </div>
+    <div class="note">Out of the box it uses the voice your Mac already has,
+    which is free, instant and stays on the machine. Piper is a better one that
+    also stays on the machine, at the cost of a download. ElevenLabs is better
+    still and needs a key and an internet connection &#8212; that one lives on
+    the Voice page.</div>
+    <pre id="piperOut"></pre>
+  </div>
+</section>
+
+<section>
+  <h2>Putting this page on the web</h2>
   <div class="panel">
 <pre>cd macos-daily-welcome/web/orbitai
 vercel deploy --prod
 
 orbit console --allow https://your-project.vercel.app
 orbit console --bridge                # prints the pairing token</pre>
-    <div class="note">The page runs in your browser and talks straight to your
-    Mac. A browser will let any site reach localhost, so the bridge refuses
-    anything without the token. Safari blocks HTTPS pages from reaching local
-    addresses entirely - there, run <code>orbit console</code> and use the copy
-    served from the Mac.</div>
+    <div class="note">You do not need this. The Orbit menu, <em>Settings and
+    Setup</em>, opens the same page from your own Mac with nothing to pair. This
+    is for reaching it from a deployed copy instead, and then the bridge refuses
+    anything that does not carry the token &#8212; a browser will let any site
+    talk to localhost, and this one can send mail. Safari blocks HTTPS pages from
+    reaching local addresses at all, so there, use the menu.</div>
   </div>
 </section>
 </main>
-<footer>OrbitAI runs on your Mac. This page only ever talks to it directly.
+<footer>OrbitAI runs on your Mac. This page only ever talks to it directly. <a href="./privacy.html">Privacy</a>.
 <br><span class="affiliate">OrbitAI, a<a href="https://dailyos.uk" rel="noopener" aria-label="DailyOS"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="dos-mark" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1976a8"></stop><stop offset="1" stop-color="#21577d"></stop></linearGradient></defs><g fill="none" stroke="url(#dos-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path><path d="M8.5 12.2l2.4 2.4 4.6-5.4" stroke-width="2.4"></path></g></svg><span class="name"><span class="d">Daily</span><span class="os">OS</span></span></a>company</span></footer>
 <script src="./assets/app.js"></script>
+<script src="./assets/setup.js"></script>
 </body>
 </html>

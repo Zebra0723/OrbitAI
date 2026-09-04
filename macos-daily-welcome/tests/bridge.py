@@ -147,6 +147,73 @@ ask("/api/say", LOCAL, json.dumps({"text": "hello; touch /tmp/pwned"}).encode())
 check("what is said is one argument, not a command line",
       True, any(a[-1] == "hello; touch /tmp/pwned" for a in ran))
 
+# ------------------------------------------------- the pages that replaced
+#                                                    the terminal
+#
+# Every one of these used to be a command you typed. A verb that is not on
+# the list must never reach a process, and a name must arrive as one
+# argument however it is spelled.
+for path, body in [
+    ("/api/person", {"action": "delete-everything", "name": "Arjun"}),
+    ("/api/person", {"action": "ban", "name": ""}),
+    ("/api/gate", {"action": "maybe"}),
+    ("/api/bypass", {"action": "forever"}),
+    ("/api/setup", {"what": "rm -rf /"}),
+    ("/api/claudeat", {"path": ""}),
+    ("/api/enroll", {"name": ""}),
+    ("/api/modelkey", {"key": ""}),
+]:
+    ran.clear()
+    check("%s refuses %r" % (path, body), 400,
+          ask(path, LOCAL, json.dumps(body).encode()))
+    check("and ran nothing", [], ran)
+
+ran.clear()
+ask("/api/person", LOCAL,
+    json.dumps({"action": "ban", "name": "Somebody; rm -rf /"}).encode())
+check("a name is one argument, not a command line",
+      True, any(a[-1] == "Somebody; rm -rf /" for a in ran))
+
+ran.clear()
+ask("/api/banlast", LOCAL, json.dumps({}).encode())
+check("banning the last voice needs no label",
+      True, any(a[-3:] == ["voice", "ban", "last"] for a in ran))
+
+# ------------------------------------------------------------ who it knows
+#
+# The console draws a button per person, so it needs rows. It gets them
+# from the same command the terminal uses, which knows how to answer
+# twice - and the rows are tab-separated, which is the only reason a name
+# with a space in it survives. "Unwelcome 2 Sep" is the label banning an
+# unknown voice generates, so this is the ordinary case, not an exotic one.
+def answers(mapping, fallback=(True, "")):
+    def stub(args, timeout=60):
+        for needle, reply in mapping.items():
+            if needle in " ".join(args):
+                return reply
+        return fallback
+    return stub
+
+real_run = server.run
+server.run = answers({
+    "voice list --raw": (True, "Arjun\t3\t\nUnwelcome 2 Sep\t1\tbanned"),
+    "voice status": (True, "installed\t1\nenabled\t1\ngate\t0\n"
+                           "threshold\t0.78\nenrolled\t2\nbypass\t"),
+})
+request = urllib.request.Request(base + "/api/people", headers=LOCAL)
+with urllib.request.urlopen(request, timeout=5) as response:
+    people = json.load(response)
+server.run = real_run
+
+check("both people come back", 2, len(people["people"]))
+check("a name with a space in it survives", "Unwelcome 2 Sep", people["people"][1]["name"])
+check("the sample count is a number", 3, people["people"][0]["samples"])
+check("an empty third column is not a ban", False, people["people"][0]["banned"])
+check("and 'banned' is", True, people["people"][1]["banned"])
+check("it knows recognition is installed", True, people["installed"])
+check("and that the gate is off", False, people["gate"])
+check("no bypass is open", "", people["bypass"])
+
 # --------------------------------------------------------------- the token
 check("the token file is not readable by anyone else", "600",
       oct((pathlib.Path(home) / ".config/daily-welcome/console-token").stat().st_mode)[-3:])

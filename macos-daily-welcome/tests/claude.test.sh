@@ -84,3 +84,47 @@ contains "and one to say where it is"           "claudeat"   "$src"
 contains "and it writes the answer down"        "ORBIT_CLAUDE_BIN" "$src"
 contains "doctor asks the same way the app does" "claude_bin" \
   "$(cat "$TEST_ROOT/bin/doctor")"
+
+# Installing it, for the case where it genuinely is not there. Asked for
+# by name - "install claude code to orbit, because it seems to think it
+# isn't installed" - and the answer to that is usually "it is installed
+# and unfindable", so this looks before it downloads.
+wipe
+plant "$HOME/.local/bin/claude"
+out="$( PATH="/usr/bin:/bin"; claude_forget
+        "$TEST_ROOT/bin/daily-welcome" --install-claude 2>&1 )"
+contains "installing when it is already there installs nothing" "already here" "$out"
+ok "and does not fail for it" "0" \
+   "$( PATH="/usr/bin:/bin"; claude_forget
+       "$TEST_ROOT/bin/daily-welcome" --install-claude >/dev/null 2>&1; echo $? )"
+
+# npm is NAMED rather than found, so this decides for itself whether
+# there is one. Left to PATH, a Mac with Homebrew node would run the real
+# npm and download Claude Code in the middle of a test run.
+wipe
+out="$( PATH="/usr/bin:/bin"; claude_forget
+        ORBIT_NPM=/nowhere/npm "$TEST_ROOT/bin/daily-welcome" --install-claude 2>&1 )" \
+  && rc=0 || rc=1
+ok "with no npm to install it with, it stops" "1" "$rc"
+contains "and says what to install first" "nodejs.org" "$out"
+contains "rather than leaving you at a wall" "run this again" "$out"
+
+# npm there and refusing, which is what a global directory owned by root
+# looks like. The advice must be to fix that, not to reach for sudo.
+wipe
+stub="$WELCOME_STATE_DIR/npm-that-refuses"
+printf '#!/bin/sh\necho "EACCES: permission denied" >&2\nexit 243\n' > "$stub"
+chmod +x "$stub"
+out="$( PATH="/usr/bin:/bin"; claude_forget
+        ORBIT_NPM="$stub" "$TEST_ROOT/bin/daily-welcome" --install-claude 2>&1 )" \
+  && rc=0 || rc=1
+ok "an npm that refuses is a failure" "1" "$rc"
+contains "and the advice is to fix the prefix" "config set prefix" "$out"
+# It may MENTION sudo, to say not to. What it must never do is hand
+# somebody a line beginning with it: installing global npm packages as
+# root is how the directory ends up owned by root in the first place.
+ok "and never a command line starting with sudo" "" \
+   "$(printf '%s\n' "$out" | grep -E '^[[:space:]]*sudo ')"
+
+contains "the console can ask for it too" "installclaude" \
+  "$(cat "$TEST_ROOT/web/server.py")"

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Voice - OrbitAI</title>
-<meta name="description" content="Choose and tune the voice.">
+<title>People - OrbitAI</title>
+<meta name="description" content="Who your assistant listens to, and who it turns away.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Marcellus+SC&display=swap">
@@ -24,6 +24,7 @@
   <div class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></div>
 </div></nav>
 <main>
+
 <section id="pairing" hidden>
   <h2>Connection</h2>
   <div class="panel">
@@ -44,46 +45,77 @@
   </div>
 </section>
 <section>
-  <h1 style="font-size:28px">Voice</h1>
-  <p class="lede">The assistant speaks with an ElevenLabs voice. Without a key it
-  falls back to the best built-in macOS voice, so a missing key costs you the
-  voice, never the briefing.</p>
+  <h1 style="font-size:28px">People</h1>
+  <p class="lede">Orbit can tell voices apart. Record yours once and it greets
+  you by name; record the people you live with and it knows them too. Everything
+  on this page used to need a terminal.</p>
+  <div class="note" id="voiceState">Checking what is set up on your Mac&#8230;</div>
 </section>
 
 <section>
-  <h2>API key</h2>
+  <h2>Record a voice</h2>
   <div class="panel">
-    <div class="say"><input type="password" id="apiKey" placeholder="sk_...">
-      <button data-act="set-key">Save</button>
-      <button class="quiet" data-act="voices">List my voices</button></div>
-    <div class="note">Stored in the login Keychain, or in a file readable only by
-    you if the Keychain refuses to hand it back.</div>
-    <pre id="voiceOut"></pre>
+    <div class="say">
+      <input type="text" id="personName" data-enter="enroll"
+             placeholder="Their name, as you would say it out loud">
+      <button data-act="enroll">Record</button>
+    </div>
+    <div class="note">Click Record, then speak for a few seconds &#8212; what you
+    had for breakfast, what you are working on, anything. Orbit stays quiet and
+    will not act on it. Do it two or three times on different days and it gets
+    noticeably better at telling you from somebody who sounds like you.</div>
+    <pre id="enrollOut"></pre>
   </div>
 </section>
 
 <section>
-  <h2>Which voice</h2>
-  <div class="panel" id="voiceSettings"></div>
+  <h2>Voices it knows</h2>
+  <div class="panel" id="people"></div>
   <div class="bar">
-    <input type="text" id="preview" style="flex:1" aria-label="Line to preview"
-           value="Welcome back. Three reminders due today, one overdue.">
-    <button data-act="preview-voice">Preview</button>
+    <button class="quiet" data-act="people">Refresh</button>
+    <button class="quiet" data-act="who">Who just spoke?</button>
+    <button class="quiet" data-act="scores">Score that voice</button>
+  </div>
+  <pre id="peopleOut"></pre>
+  <div class="note">Check reads back how well somebody's recordings agree with
+  each other. One that agrees with none of the others caught the wrong person,
+  and it drags the average towards them &#8212; which is how a stranger ends up
+  being recognised as you. Prune drops those.</div>
+</section>
+
+<section>
+  <h2>Somebody you would rather it ignored</h2>
+  <div class="panel">
+    <div class="say">
+      <input type="text" id="banLabel" data-enter="banlast"
+             placeholder="A label for them - optional">
+      <button data-act="banlast">Ban whoever just spoke</button>
+    </div>
+    <div class="note">The voices worth banning are the ones with no name, so
+    this keeps the last thing it heard, labels it, and refuses it from then on.
+    It will not let you ban yourself.</div>
+    <pre id="banOut"></pre>
   </div>
 </section>
 
 <section>
-  <h2>Tone</h2>
-  <div class="panel" id="toneSettings"></div>
-  <div class="note">Emotion is read from your words, not your voice - prosody
-  analysis is not something this can do honestly. A clipped order gets a clipped
-  answer, a frustrated one loses the cheerfulness, and after ten at night
-  everything gets quieter.</div>
+  <h2>Turning voices away</h2>
+  <div class="panel" id="gateSettings"></div>
+  <div class="bar">
+    <button class="quiet" data-act="bypass" data-arg="start">Let anyone in for a while</button>
+    <button class="quiet" data-act="bypass" data-arg="end">Close that again</button>
+    <button class="quiet" data-act="refusals">What it says to strangers</button>
+  </div>
+  <pre id="gateOut"></pre>
+  <div class="note">Leave this off until you have checked it recognises you
+  &#8212; say something, then Score that voice. If it scores you below the
+  threshold, turning people away turns <em>you</em> away. Say the bypass code out
+  loud to wave a refused voice through for one conversation.</div>
 </section>
 </main>
 <footer>OrbitAI runs on your Mac. This page only ever talks to it directly. <a href="./privacy.html">Privacy</a>.
 <br><span class="affiliate">OrbitAI, a<a href="https://dailyos.uk" rel="noopener" aria-label="DailyOS"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="dos-mark" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1976a8"></stop><stop offset="1" stop-color="#21577d"></stop></linearGradient></defs><g fill="none" stroke="url(#dos-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path><path d="M8.5 12.2l2.4 2.4 4.6-5.4" stroke-width="2.4"></path></g></svg><span class="name"><span class="d">Daily</span><span class="os">OS</span></span></a>company</span></footer>
 <script src="./assets/app.js"></script>
-<script src="./assets/voice.js"></script>
+<script src="./assets/people.js"></script>
 </body>
 </html>

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy - OrbitAI</title>
+<meta name="description" content="What OrbitAI reads, what it keeps, and the one thing that leaves your Mac.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+<div class="sky"></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="./"><span class="ring"></span><span>OrbitAI</span></a>
+  <a class="link" href="./console.html">Console</a>
+  <a class="link" href="./voice.html">Voice</a>
+  <a class="link" href="./people.html">People</a>
+  <a class="link" href="./commands.html">Commands</a>
+  <a class="link" href="./macros.html">Macros</a>
+  <a class="link" href="./setup.html">Setup</a>
+  <span class="affiliate">OrbitAI, a<a href="https://dailyos.uk" rel="noopener" aria-label="DailyOS"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="dos-mark" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1976a8"></stop><stop offset="1" stop-color="#21577d"></stop></linearGradient></defs><g fill="none" stroke="url(#dos-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path><path d="M8.5 12.2l2.4 2.4 4.6-5.4" stroke-width="2.4"></path></g></svg><span class="name"><span class="d">Daily</span><span class="os">OS</span></span></a>company</span><div class="spacer"></div>
+  <div class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></div>
+</div></nav>
+<main>
+<section>
+  <h1 style="font-size:28px">Privacy</h1>
+  <p class="lede">OrbitAI runs on your Mac and reads things that are already on
+  it. There is no OrbitAI account and no server of ours for anything to be sent
+  to. This page is the specific version of that, including the parts that are
+  not so tidy.</p>
+</section>
+
+<section>
+  <h2>What it reads</h2>
+  <div class="grid two">
+    <div class="card"><h3>Only when you allow it</h3><p>Reminders, Calendar,
+      Contacts, Mail, Messages and Notes, through the same macOS permissions any
+      app has to ask for. Refuse any of them and it carries on without that
+      part rather than nagging you.</p></div>
+    <div class="card"><h3>Where it goes</h3><p>Into the sentence it says back to
+      you, and then out of memory. Nothing is copied into a database of its own,
+      and there is nowhere for it to be uploaded to.</p></div>
+  </div>
+  <div class="note">Messages needs Full Disk Access, which macOS never offers on
+  its own. That is a real permission with real reach, and it is the one we would
+  understand you refusing. Everything else keeps working without it.</div>
+</section>
+
+<section>
+  <h2>The microphone</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:14.5px;margin:0 0 12px">The menu bar app
+    keeps a few seconds of audio in memory so it can tell who spoke. When you
+    say something to it, that clip is written to a file in
+    <code>~/.local/state/daily-welcome</code> that only your account can read,
+    and the next thing you say overwrites it. Deleting the folder deletes all of
+    it.</p>
+    <p class="muted" style="font-size:14.5px;margin:0">Working out whose voice
+    it was happens on the Mac, with a model that is downloaded once and then run
+    locally. Recordings are never sent anywhere, and neither are the numbers
+    derived from them.</p>
+  </div>
+  <div class="note">Turning speech into text is the exception, and you choose
+  which way. By default macOS does it, which can involve Apple's servers, the
+  same as dictation anywhere else on the Mac. Switch on-device recognition on the
+  Setup page and no audio leaves the machine at all &#8212; at the cost of being
+  noticeably worse at unusual names.</div>
+</section>
+
+<section>
+  <h2>The one thing that leaves</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:14.5px;margin:0 0 12px">To understand a
+    sentence nobody anticipated, Orbit sends <em>that sentence</em> to a model,
+    and gets back which command you meant. What goes is the words you said, plus
+    a short list of the things it can do. What does not go: your files, your
+    mail, your messages, your calendar, or any recording.</p>
+    <p class="muted" style="font-size:14.5px;margin:0">Asking it a question is
+    different, and obviously so &#8212; a question goes to Claude the way a
+    question you typed would, and if you ask it to read your screen, it reads
+    your screen. That only happens when you ask.</p>
+  </div>
+  <div class="note">Three ways out of it, all on the Setup page: point it at a
+  model running on your own machine, so nothing leaves; or set understanding to
+  <em>rules</em>, which sends nothing anywhere and understands only the phrasings
+  in the Commands list; or leave it as it is, and know what it is.</div>
+</section>
+
+<section>
+  <h2>This website</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:14.5px;margin:0">No analytics, no cookies,
+    no accounts, no tracking. The pages that control your assistant talk from
+    your browser straight to your own Mac &#8212; requests never pass through
+    this site, and it could not read them if they did. Fonts come from Google,
+    which sees that a browser asked for a font.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Deleting it</h2>
+  <div class="panel">
+<pre>rm -rf ~/.local/state/daily-welcome     # recordings, logs, voice profiles
+rm -rf ~/.config/daily-welcome          # your settings
+rm -rf ~/Applications/DailyWelcome.app  # the app itself</pre>
+    <div class="note">Keys you gave it live in your login Keychain under
+    <code>daily-welcome</code>, and Keychain Access will delete them. Nothing
+    else needs undoing, because nothing was sent anywhere to undo.</div>
+  </div>
+</section>
+</main>
+<footer>OrbitAI runs on your Mac. This page only ever talks to it directly. <a href="./privacy.html">Privacy</a>.
+<br><span class="affiliate">OrbitAI, a<a href="https://dailyos.uk" rel="noopener" aria-label="DailyOS"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="dos-mark" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1976a8"></stop><stop offset="1" stop-color="#21577d"></stop></linearGradient></defs><g fill="none" stroke="url(#dos-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path><path d="M8.5 12.2l2.4 2.4 4.6-5.4" stroke-width="2.4"></path></g></svg><span class="name"><span class="d">Daily</span><span class="os">OS</span></span></a>company</span></footer>
+<script src="./assets/app.js"></script>
+</body>
+</html>

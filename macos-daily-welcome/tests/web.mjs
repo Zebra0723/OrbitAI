@@ -58,6 +58,13 @@ const BRIDGE = {
   '/api/state': () => ({
     settings: [
       { key: 'WELCOME_NAME', kind: 'text', label: 'Your name', help: 'what it calls you', value: 'Arjun' },
+      { key: 'ORBIT_WAKE_WORD', kind: 'text', label: 'Wake word', help: 'what it answers to', value: 'hey orbit' },
+      { key: 'ORBIT_WAKE_ALIASES', kind: 'text', label: 'Also counts', help: 'separated by |', value: 'or bit|orbid' },
+      { key: 'ORBIT_NLU', kind: 'select', label: 'Understanding', help: '', value: 'claude', choices: ['claude', 'openai', 'rules'] },
+      { key: 'ORBIT_ONDEVICE', kind: 'toggle', label: 'On-device', help: '', value: '0' },
+      { key: 'ORBIT_SPEAKER_ID', kind: 'toggle', label: 'Recognise voices', help: '', value: '1' },
+      { key: 'ORBIT_SPEAKER_REQUIRE_ENROLLED', kind: 'toggle', label: 'Turn strangers away', help: '', value: '0' },
+      { key: 'ORBIT_BYPASS_CODE', kind: 'text', label: 'Bypass code', help: '', value: 'bypass 727590' },
       { key: 'WELCOME_SPEAK', kind: 'toggle', label: 'Speak', help: 'out loud', value: '1' },
       { key: 'WELCOME_PAUSE_MS', kind: 'number', label: 'Pause', help: 'at a comma', value: '210' },
       { key: 'WELCOME_ELEVEN_VOICE_ID', kind: 'text', label: 'Voice', help: '', value: 'veda-sky' },
@@ -87,6 +94,37 @@ const BRIDGE = {
   '/api/key':      () => ({ ok: true, output: 'stored' }),
   '/api/contacts': () => ({ ok: true }),
   '/api/macros':   () => ({ ok: true }),
+
+  // The People page. Rows rather than the paragraph the terminal prints,
+  // because the page draws a button per person and cannot do that from
+  // prose.
+  '/api/people': () => ({
+    ok: true, installed: true, enabled: true, gate: false,
+    threshold: '0.78', bypass: '',
+    output: 'Arjun\t3\t\nUnwelcome 2 Sep\t1\tbanned',
+    people: [{ name: 'Arjun', samples: 3, banned: false },
+             { name: 'Unwelcome 2 Sep', samples: 1, banned: true }],
+  }),
+  '/api/who':      () => ({ ok: true, output: 'That last voice was Arjun (0.83 confidence, ok).' }),
+  '/api/scores':   () => ({ ok: true, output: 'Arjun 0.83\nSomebody 0.41' }),
+  '/api/refusals': () => ({ ok: true, output: 'I have no idea who you are.' }),
+  '/api/enroll':   () => ({ ok: true, output: 'Enrolled Arjun (3 samples).' }),
+  '/api/person':   () => ({ ok: true, output: 'done' }),
+  '/api/banlast':  () => ({ ok: true, output: 'Banned that voice.' }),
+  '/api/bypass':   () => ({ ok: true, output: 'Bypass closed.' }),
+  '/api/gate':     () => ({ ok: true, output: 'Nobody is turned away now.' }),
+
+  // The Setup page.
+  '/api/doctor':      () => ({ ok: true, output: 'everything it needs is here' }),
+  '/api/permissions': () => ({ ok: true, output: 'macOS will ask again' }),
+  '/api/models':      () => ({ ok: true, output: 'llama-3.3-70b-versatile' }),
+  '/api/braintest':   () => ({ ok: true, output: 'understood it' }),
+  '/api/modelkey':    () => ({ ok: true, output: 'stored in the Keychain' }),
+  '/api/claude':      () => ({ ok: true, output: '/Users/arjun/.nvm/versions/node/v22.3.0/bin/claude' }),
+  '/api/claudeat':    () => ({ ok: true, output: 'using that one' }),
+  '/api/installclaude': () => ({ ok: true, output: 'Claude Code is already here.' }),
+  '/api/setup':       () => ({ ok: true, output: 'installed' }),
+  '/api/preview':     () => ({ ok: true, output: 'said it' }),
 };
 
 const server = http.createServer((req, res) => {
@@ -189,7 +227,9 @@ for (const file of files) {
     const want = { 'console.html': ['Arjun', 'listening', 'Running', 'hey orbit',
                                     'what time is it', '2026-09-02'],
                    'macros.html': ['Mama', '+15551234567', 'good night'],
-                   'voice.html': ['veda-sky', 'sir'] }[file];
+                   'voice.html': ['veda-sky', 'sir'],
+                   'people.html': ['Arjun', '3 recordings', 'refused', 'bypass 727590'],
+                   'setup.html': ['hey orbit', 'bootstrap.sh'] }[file];
     if (want) for (const needle of want) {
       say(text.includes(needle), `${file}: shows "${needle}" from the bridge`,
           'the page fetched it and did not draw it');

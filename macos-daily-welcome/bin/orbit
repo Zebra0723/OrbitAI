@@ -1345,13 +1345,39 @@ case "${1:-}" in
         fi
         ;;
       list)
+        shift
         out="$(speaker_run list 2>/dev/null)"
+        # The console needs the rows, not the paragraph. Same source, so
+        # the page and the terminal can never disagree about who is
+        # enrolled - which they would the moment either grew its own
+        # reader for the same files.
+        if [ "${1:-}" = "--raw" ]; then
+          printf '%s' "$out" | awk -F'\t' 'NF { printf "%s\t%s\t%s\n", $1, $2, ($3 == "banned" ? "banned" : "") }'
+          exit 0
+        fi
         if [ -n "$out" ]; then
           printf 'Voices it knows:\n'
           printf '%s\n' "$out" | awk -F'\t' '{ printf "  %-16s %s %s\n", $1, $2, ($3 == "banned" ? "samples, BANNED" : "samples") }'
         else
           echo "Nobody has enrolled yet. Start with: orbit voice enroll <name>"
         fi
+        ;;
+      status)
+        # Everything the console needs to draw the page in one answer:
+        # whether recognition is installed at all, whether the gate is
+        # on, whether a bypass is open, and how many voices it knows.
+        # Three separate calls each paid the cost of starting Python.
+        printf 'installed\t%s\n' "$(speaker_installed && echo 1 || echo 0)"
+        printf 'enabled\t%s\n' "$ORBIT_SPEAKER_ID"
+        printf 'gate\t%s\n' "$ORBIT_SPEAKER_REQUIRE_ENROLLED"
+        printf 'threshold\t%s\n' "$ORBIT_SPEAKER_THRESHOLD"
+        printf 'enrolled\t%s\n' "$(speaker_enrolled_count 2>/dev/null || echo 0)"
+        if bypass_active; then
+          printf 'bypass\t%s\n' "$(bypass_minutes_left)"
+        else
+          printf 'bypass\t\n'
+        fi
+        exit 0
         ;;
       check|health)
         shift
