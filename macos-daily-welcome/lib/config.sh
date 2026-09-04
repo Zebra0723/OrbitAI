@@ -401,7 +401,17 @@
 # only the sentences they miss pay for a model. That one request now both
 # reads the sentence and writes the reply, rather than classifying and then
 # asking again.
-: "${ORBIT_NLU:=auto}"
+# claude: Claude Code works out what you meant. No key, no account, no
+# per-word cost, and nothing to sign up for - which is the whole reason
+# it is the default.
+#
+#   claude   Claude Code (the default)
+#   openai   any service speaking the OpenAI chat-completions shape -
+#            Groq and Gemini both do, and both have free tiers. Set it
+#            up with `daily-welcome --brain groq`.
+#   rules    the built-in rules only. No model, no network, no key.
+#   auto     rules first, then whichever of the above is configured.
+: "${ORBIT_NLU:=claude}"
 
 # gpt-4o-mini is the fast one. A larger model understands more and takes
 # noticeably longer to start talking, which on a voice assistant is the

@@ -81,13 +81,25 @@ async function api(path, body) {
 // own near-identical copy of this; now there is one.
 function settingRow(setting) {
   const name = esc(setting.label);
-  const control = setting.kind === "toggle"
-    ? `<button class="switch" role="switch" aria-label="${name}"
+  let control;
+  if (setting.kind === "toggle") {
+    control = `<button class="switch" role="switch" aria-label="${name}"
                aria-checked="${setting.value === "1"}"
-               data-act="toggle" data-arg="${esc(setting.key)}"></button>`
-    : `<input type="${setting.kind === "number" ? "number" : "text"}" step="0.05"
+               data-act="toggle" data-arg="${esc(setting.key)}"></button>`;
+  } else if (setting.kind === "select" && Array.isArray(setting.choices)) {
+    // A list of what is actually available beats a box you have to know
+    // what to type into. The voices come from this Mac; the rest are
+    // fixed lists that used to live in a --help somewhere.
+    const options = setting.choices.map((c) =>
+      `<option value="${esc(c)}"${c === setting.value ? " selected" : ""}>${esc(c)}</option>`
+    ).join("");
+    control = `<select aria-label="${name}" data-change="save"
+                       data-arg="${esc(setting.key)}">${options}</select>`;
+  } else {
+    control = `<input type="${setting.kind === "number" ? "number" : "text"}" step="0.05"
               aria-label="${name}" value="${esc(setting.value)}"
               data-change="save" data-arg="${esc(setting.key)}">`;
+  }
   return `<div class="row"><div><span>${name}</span>
     <span class="help">${esc(setting.help)}</span></div>
     <div class="control">${control}</div></div>`;

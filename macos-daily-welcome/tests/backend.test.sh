@@ -99,7 +99,11 @@ contains "groq points at groq"     "api.groq.com"          "$(switch groq)"
 contains "and names a groq model"  "llama"                 "$(switch groq)"
 contains "gemini points at google" "generativelanguage"    "$(switch gemini)"
 contains "ollama stays on this Mac" "localhost:11434"      "$(switch ollama)"
-contains "openai points at openai" "api.openai.com"        "$(switch openai)"
+# OpenAI is not offered any more - Claude is the default and the
+# alternatives are the ones with free tiers.
+ok "openai is not a choice" "2" \
+   "$( export WELCOME_CONFIG="$cfg"
+       "$TEST_ROOT/bin/daily-welcome" --brain openai >/dev/null 2>&1; echo $? )"
 contains "and each one turns the model path on" 'ORBIT_NLU="openai"' "$(switch groq)"
 contains "claude needs no key at all" 'ORBIT_NLU="claude"' "$(switch claude)"
 

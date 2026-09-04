@@ -57,9 +57,78 @@ SETTINGS = [
     ("ORBIT_REQUIRE_UNLOCKED", "toggle", "Only when unlocked", "Ignore commands while the screen is locked."),
     ("ORBIT_VIPS", "text", "Interrupt for", "Names worth interrupting you for, separated by |."),
     ("WELCOME_SECTIONS", "text", "Briefing sections", "In order: reminders calendar messages mail claude tasks."),
+
+    # Everything below here used to need a terminal. That is fine for the
+    # person who wrote it and is the whole barrier for everybody else, so
+    # anything you would reach for `daily-welcome --something` to change
+    # is a control on a page instead.
+    ("WELCOME_VOICE", "select", "Voice",
+     "system means whatever you picked in System Settings, which is the only way to reach a Siri voice.",
+     "@voices"),
+    ("WELCOME_TTS", "select", "Who speaks",
+     "auto tries ElevenLabs, then piper, then the built-in voice.",
+     ["auto", "elevenlabs", "piper", "say"]),
+    ("WELCOME_SPEAK_RATE", "number", "Speaking rate", "Words per minute. 175 is normal."),
+    ("WELCOME_PAUSE", "select", "Pauses",
+     "How long it rests at a comma.", ["short", "natural", "none"]),
+    ("WELCOME_PAUSE_MS", "number", "Pause length",
+     "Milliseconds at a comma, when pauses are short. 210 is the default."),
+    ("WELCOME_SAY_EMPHASIS", "toggle", "Lean on the important words",
+     "overdue, unread, late. Blunt on some voices."),
+    ("WELCOME_SAY_MODULATION", "number", "Pitch movement",
+     "0 to 100 for the built-in voice. Empty means the voice's own setting."),
+
+    ("ORBIT_NLU", "select", "How it understands you",
+     "A model is far better at phrasings nobody anticipated. rules needs no key at all.",
+     ["claude", "openai", "rules"]),
+    ("ORBIT_OPENAI_BASE", "select", "Which service",
+     "Anything speaking the OpenAI shape. Groq and Gemini have free tiers.",
+     ["https://api.groq.com/openai/v1",
+      "https://generativelanguage.googleapis.com/v1beta/openai",
+      "http://localhost:11434/v1"]),
+    ("ORBIT_OPENAI_MODEL", "text", "Model",
+     "Leave it and let Orbit ask the service what it serves today."),
+
+    ("ORBIT_SPEAKER_ID", "toggle", "Recognise voices",
+     "Keeps a few seconds of microphone audio on this Mac to tell people apart."),
+    ("ORBIT_SPEAKER_REQUIRE_ENROLLED", "toggle", "Turn away voices it does not know",
+     "Off unless you have checked it recognises you. A wrong guess stops it working for you."),
+    ("ORBIT_BYPASS_CODE", "text", "Bypass code",
+     "Said out loud to wave somebody through for one conversation."),
 ]
 
 TOGGLES = {name for name, kind, *_ in SETTINGS if kind == "toggle"}
+
+
+def installed_voices():
+    """The voices `say` can name, plus "system" for the one macOS is set
+    to - which is the only route to a Siri voice, since `say -v` cannot
+    ask for one."""
+    ok, out = run(["/bin/bash", "-c",
+                   "say -v '?' 2>/dev/null | sed -E 's/[[:space:]]+[a-z]{2}(_[A-Z]{2})?[[:space:]]+#.*$//; s/[[:space:]]+$//'"],
+                  timeout=15)
+    voices = [v.strip() for v in out.splitlines() if v.strip()] if ok else []
+    return ["system"] + voices
+
+
+def setting_rows():
+    """The settings, with any @-reference in the choices resolved."""
+    values = config_values()
+    rows = []
+    for name, kind, label, help_, *rest in SETTINGS:
+        choices = rest[0] if rest else None
+        if choices == "@voices":
+            choices = installed_voices()
+        row = {"key": name, "kind": kind, "label": label, "help": help_,
+               "value": values.get(name, "")}
+        if choices:
+            row["choices"] = choices
+            # A value that is not on the list still has to be shown, or
+            # opening the page would silently change it.
+            if row["value"] and row["value"] not in choices:
+                row["choices"] = [row["value"]] + list(choices)
+        rows.append(row)
+    return rows
 
 
 def token():
@@ -330,11 +399,7 @@ class Console(BaseHTTPRequestHandler):
 
         if path == "/api/state":
             return self.send(200, json.dumps({
-                "settings": [
-                    {"key": k, "kind": kind, "label": label, "help": help_,
-                     "value": config_values().get(k, "")}
-                    for k, kind, label, help_ in SETTINGS
-                ],
+                "settings": setting_rows(),
                 "status": status(),
                 "contacts": read_pairs(CONTACTS),
                 "macros": read_pairs(MACROS),
@@ -348,6 +413,26 @@ class Console(BaseHTTPRequestHandler):
             ok, out = run([ORBIT, "selftest"], timeout=120)
             # Strip the colour codes; the page does its own styling.
             return self.send(200, json.dumps({"ok": ok, "output": re.sub(r"\x1b\[[0-9;]*m", "", out)}))
+
+        if path == "/api/doctor":
+            ok, out = run([WELCOME, "--doctor"], timeout=180)
+            return self.send(200, json.dumps(
+                {"ok": ok, "output": re.sub(r"\x1b\[[0-9;]*m", "", out)}))
+
+        if path == "/api/people":
+            # Who is enrolled, and whether the gate is on. Its own call
+            # rather than part of state: it shells out to Python and the
+            # rest of the page should not wait for that.
+            ok, out = run([ORBIT, "voice", "list"], timeout=30)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/models":
+            ok, out = run([WELCOME, "--brain", "models"], timeout=45)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/braintest":
+            ok, out = run([WELCOME, "--brain", "test"], timeout=60)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
 
         if path == "/api/briefing":
             ok, out = run([WELCOME, "--print"], timeout=90)
@@ -404,6 +489,60 @@ class Console(BaseHTTPRequestHandler):
             write_pairs(MACROS, data.get("rows", []),
                         "# One phrase, several commands, separated by ; or then.")
             return self.send(200, json.dumps({"ok": True}))
+
+        if path == "/api/enroll":
+            # Recording somebody's voice takes as long as it takes them to
+            # say a couple of sentences.
+            name = (data.get("name") or "").strip()
+            if not name:
+                return self.send(400, json.dumps({"error": "no name"}))
+            ok, out = run([ORBIT, "voice", "enroll", name], timeout=90)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/person":
+            # ban, unban, forget, check, prune - one verb, one name.
+            action = data.get("action", "")
+            name = (data.get("name") or "").strip()
+            if action not in ("ban", "unban", "forget", "check", "prune"):
+                return self.send(400, json.dumps({"error": "not a thing it does"}))
+            if not name:
+                return self.send(400, json.dumps({"error": "no name"}))
+            ok, out = run([ORBIT, "voice", action, name], timeout=60)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/gate":
+            action = data.get("action", "")
+            if action not in ("on", "off", "status"):
+                return self.send(400, json.dumps({"error": "no"}))
+            ok, out = run([ORBIT, "voice", "gate", action], timeout=30)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/modelkey":
+            # The key for whichever service understands you. Handed over
+            # on stdin, never as an argument - an argument is in the
+            # process list and in shell history.
+            key = (data.get("key") or "").strip()
+            if not key:
+                return self.send(400, json.dumps({"error": "no key"}))
+            try:
+                done = subprocess.run([WELCOME, "--set-openai-key"], input=key + "\n",
+                                      capture_output=True, text=True, timeout=60)
+                return self.send(200, json.dumps({"ok": done.returncode == 0,
+                                                  "output": (done.stdout or done.stderr).strip()}))
+            except subprocess.TimeoutExpired:
+                return self.send(200, json.dumps({"ok": False, "output": "timed out"}))
+
+        if path == "/api/setup":
+            what = data.get("what", "")
+            if what not in ("piper", "speaker"):
+                return self.send(400, json.dumps({"error": "no"}))
+            ok, out = run([WELCOME, "--setup-" + what], timeout=600)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
+        if path == "/api/preview":
+            # Say one line in whatever the settings currently are.
+            ok, out = run([WELCOME, "--test-voice"], timeout=90)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
 
         if path == "/api/key":
             key = (data.get("key") or "").strip()

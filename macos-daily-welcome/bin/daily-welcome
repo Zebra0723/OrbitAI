@@ -62,7 +62,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --reset-permissions   make macOS ask about access again
   daily-welcome --set-key       store your ElevenLabs API key in the Keychain
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
-  daily-welcome --brain groq | gemini | ollama | openai | claude
+  daily-welcome --brain claude | groq | gemini | ollama
   daily-welcome --brain test    ask it one real question and show the answer
   daily-welcome --brain models  what that service actually serves today
   daily-welcome --set-openai-key   store the key for whichever of those you chose
@@ -631,8 +631,6 @@ case "$MODE" in
                model="gemini-2.0-flash";               where="aistudio.google.com/apikey" ;;
       ollama)  base="http://localhost:11434/v1";       model="llama3.2"
                where="nothing - it runs on this Mac" ;;
-      openai)  base="https://api.openai.com/v1";       model="gpt-4o-mini"
-               where="platform.openai.com/api-keys" ;;
       claude|off)
                grep -v '^ORBIT_NLU=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
                { cat "$cfg.tmp"; printf 'ORBIT_NLU="claude"\n'; } > "$cfg"
@@ -640,13 +638,12 @@ case "$MODE" in
                echo "Using Claude Code. No key, slower to start talking."
                exit 0 ;;
       *)
-        echo "daily-welcome --brain groq | gemini | ollama | openai | claude" >&2
+        echo "daily-welcome --brain claude | groq | gemini | ollama" >&2
         echo >&2
         echo "  groq    free, and the fastest of them        console.groq.com" >&2
         echo "  gemini  free tier                            aistudio.google.com" >&2
         echo "  ollama  entirely on this Mac, no account     ollama.com" >&2
-        echo "  openai  pay as you go" >&2
-        echo "  claude  no key at all, slower to start" >&2
+        echo "  claude  no key at all - the default" >&2
         echo >&2
         echo "  now: $ORBIT_OPENAI_MODEL at $ORBIT_OPENAI_BASE" >&2
         exit 2 ;;

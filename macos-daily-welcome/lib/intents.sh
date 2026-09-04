@@ -791,9 +791,11 @@ parse_intent() {
   _try_system "$text"      && return 0
   # The rules have had their go. Anything they could not place is handed
   # to a model, which is far better at the phrasings nobody anticipated.
+  # Only when a hosted service is actually the chosen one. It used to run
+  # on anything that was not "rules", which meant the default reached for
+  # a key nobody had set.
   case "$ORBIT_NLU" in
-    rules|off) ;;   # rules only, no model, no network
-    *) openai_intent "$text" && return 0 ;;
+    openai|auto) openai_intent "$text" && return 0 ;;
   esac
 
   _try_readback "$text"    && return 0
