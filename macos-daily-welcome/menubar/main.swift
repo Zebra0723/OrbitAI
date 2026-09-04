@@ -18,6 +18,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var lastRunItem: NSMenuItem!
     private var listeningItem: NSMenuItem!
+    /// The console server, once it has been asked for.
+    private var consoleTask: Process?
     private var backstopTimer: Timer?
     private let listener = OrbitListener()
 
@@ -238,7 +240,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Greet Me Again Today", #selector(resetToday), ""))
         menu.addItem(.separator())
 
-        menu.addItem(item("Edit Settings\u{2026}", #selector(editSettings), ","))
+        // Everything the terminal could do, on a page. Reaching it used
+        // to mean opening Terminal and typing `orbit console`, which is
+        // the whole barrier for anybody who does not already live there.
+        menu.addItem(item("Settings and Setup\u{2026}", #selector(openConsole), ","))
+        menu.addItem(item("Edit the Settings File\u{2026}", #selector(editSettings), ""))
         menu.addItem(item("Open Log", #selector(openLog), ""))
         menu.addItem(.separator())
 
@@ -294,6 +300,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func muteToday()     { run(["--mute-today"]) }
     @objc private func resetToday()    { run(["--reset"]) }
 
+    /// Starts the console and opens it.
+    ///
+    /// Served from this Mac, so the page is same-origin: no address to
+    /// type, no token to paste, nothing to understand about ports. It
+    /// stays running until the app quits.
+    @objc private func openConsole() {
+        if consoleTask == nil || !(consoleTask?.isRunning ?? false) {
+            // `orbit console` serves the page AND opens it, so there is
+            // no address to type and no port to know about.
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: "/bin/bash")
+            task.arguments = [orbitPath, "console"]
+            task.standardOutput = FileHandle.nullDevice
+            task.standardError = FileHandle.nullDevice
+            try? task.run()
+            consoleTask = task
+        } else {
+            // Already running from a previous click; just bring it up.
+            let open = Process()
+            open.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            open.arguments = ["http://127.0.0.1:7717/"]
+            try? open.run()
+        }
+    }
+
     @objc private func editSettings() {
         let path = configPath
         if !FileManager.default.fileExists(atPath: path) {
@@ -314,7 +345,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSWorkspace.shared.open(URL(fileURLWithPath: path))
     }
 
-    @objc private func quit() { NSApp.terminate(nil) }
+    /// Leaves nothing running behind it.
+    private func stopConsole() {
+        if let task = consoleTask, task.isRunning { task.terminate() }
+        consoleTask = nil
+    }
+
+    @objc private func quit() {
+        stopConsole()
+        NSApp.terminate(nil)
+    }
 
     // MARK: - Running the script
 

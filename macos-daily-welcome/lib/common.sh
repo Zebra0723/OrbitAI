@@ -243,6 +243,14 @@ orbit_widen_path() {
   local extra dir
   extra="$HOME/.local/bin:$HOME/.claude/local:$HOME/bin:$HOME/.npm-global/bin"
   extra="$extra:$HOME/.bun/bin:$HOME/.volta/bin:/opt/homebrew/bin:/usr/local/bin"
+  extra="$extra:$HOME/Library/pnpm:$HOME/.claude/bin"
+  # nvm and fnm put the node version in the path, so the directory has to
+  # be found rather than named. Newest first.
+  for dir in $(ls -td "$HOME"/.nvm/versions/node/*/bin \
+                      "$HOME"/.local/share/fnm/node-versions/*/installation/bin \
+                      2>/dev/null | head -3); do
+    extra="$extra:$dir"
+  done
   for dir in $(printf '%s' "$extra" | tr ':' ' '); do
     case ":$PATH:" in
       *":$dir:"*) ;;
@@ -252,18 +260,69 @@ orbit_widen_path() {
   export PATH
 }
 
-# Where Claude Code actually is. `command -v` first, then the places it
-# installs itself.
+# Where Claude Code actually is.
+#
+# The menu bar app inherits launchd's PATH, not the one your shell builds
+# at login, so "it works when I type it and not when I say it" is the
+# usual shape of this. A fixed list of directories is not enough either:
+# under nvm the binary lives at
+# ~/.nvm/versions/node/v22.11.0/bin/claude, with the version in the
+# middle, and fnm, pnpm and asdf all do something similar. Those have to
+# be searched for rather than guessed.
+#
+# The answer is remembered, because globbing a few directory trees on
+# every spoken sentence is not free.
+_claude_cache() { printf '%s/claude-path' "$WELCOME_STATE_DIR"; }
+
 claude_bin() {
-  local candidate
+  local candidate cached
+
+  # Set by hand, or written by `daily-welcome --find-claude`.
+  if [ -n "${ORBIT_CLAUDE_BIN:-}" ] && [ -x "$ORBIT_CLAUDE_BIN" ]; then
+    printf '%s' "$ORBIT_CLAUDE_BIN"; return 0
+  fi
+
+  cached="$(cat "$(_claude_cache)" 2>/dev/null)"
+  if [ -n "$cached" ] && [ -x "$cached" ]; then printf '%s' "$cached"; return 0; fi
+
   candidate="$(command -v claude 2>/dev/null)"
-  if [ -n "$candidate" ]; then printf '%s' "$candidate"; return 0; fi
+  if [ -n "$candidate" ]; then _claude_remember "$candidate"; return 0; fi
+
   for candidate in "$HOME/.claude/local/claude" "$HOME/.local/bin/claude" \
-                   "$HOME/.bun/bin/claude" "/opt/homebrew/bin/claude" \
-                   "/usr/local/bin/claude"; do
-    [ -x "$candidate" ] && { printf '%s' "$candidate"; return 0; }
+                   "$HOME/.bun/bin/claude" "$HOME/.volta/bin/claude" \
+                   "$HOME/.npm-global/bin/claude" "$HOME/bin/claude" \
+                   "/opt/homebrew/bin/claude" "/usr/local/bin/claude"; do
+    [ -x "$candidate" ] && { _claude_remember "$candidate"; return 0; }
   done
+
+  # The version-numbered ones. Newest first, since a stale node version
+  # left behind by an upgrade often still has an older copy in it.
+  for candidate in $(ls -td "$HOME"/.nvm/versions/node/*/bin/claude \
+                            "$HOME"/.local/share/fnm/node-versions/*/installation/bin/claude \
+                            "$HOME"/Library/pnpm/claude \
+                            "$HOME"/.asdf/installs/nodejs/*/bin/claude \
+                            "$HOME"/.local/state/fnm_multishells/*/bin/claude \
+                            2>/dev/null); do
+    [ -x "$candidate" ] && { _claude_remember "$candidate"; return 0; }
+  done
+
+  # Whatever npm itself thinks its global bin is - the one place that is
+  # right by definition, and slow enough to be the last thing tried.
+  if command -v npm >/dev/null 2>&1; then
+    candidate="$(npm prefix -g 2>/dev/null)/bin/claude"
+    [ -x "$candidate" ] && { _claude_remember "$candidate"; return 0; }
+  fi
+
   return 1
 }
+
+_claude_remember() {
+  mkdir -p "$WELCOME_STATE_DIR" 2>/dev/null
+  printf '%s' "$1" > "$(_claude_cache)" 2>/dev/null
+  printf '%s' "$1"
+}
+
+# Forget it, for when Claude Code moves or is reinstalled.
+claude_forget() { rm -f "$(_claude_cache)" 2>/dev/null; }
 
 have_claude() { claude_bin >/dev/null 2>&1; }

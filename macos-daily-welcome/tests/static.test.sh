@@ -30,10 +30,13 @@ for f in "$TEST_ROOT"/menubar/*.swift; do
   counts="$(python3 - "$f" <<'PY'
 import re, sys
 src = open(sys.argv[1]).read()
-src = re.sub(r'//[^\n]*', '', src)
-src = re.sub(r'/\*.*?\*/', '', src, flags=re.S)
+# Strings BEFORE comments. The other way round, the "//" inside a URL in
+# a string literal reads as the start of a comment and eats the rest of
+# the line - including whatever brackets were closing on it.
 src = re.sub(r'"""(?:.|\n)*?"""', '""', src)
 src = re.sub(r'"(?:\\.|[^"\\\n])*"', '""', src)
+src = re.sub(r'//[^\n]*', '', src)
+src = re.sub(r'/\*.*?\*/', '', src, flags=re.S)
 for op, cl in (("{", "}"), ("(", ")"), ("[", "]")):
     print("%d %d" % (src.count(op), src.count(cl)))
 PY

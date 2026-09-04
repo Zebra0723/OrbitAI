@@ -1,32 +1,64 @@
-/* OrbitAI - galaxy minimalist.
+/* OrbitAI - sky.
    One stylesheet for every page: the site is small enough that splitting
    it would cost more requests than it saves bytes. */
 
 :root {
-  /* Sitefold's palette: warm paper, near-black ink, one rust accent, and
-     a black button. Light, not dark - the galaxy went with the rebrand. */
-  --paper: #f4f1ea;
-  --paper-2: #efebe2;
-  --panel: #faf8f4;
-  --line: #ded8cc;
-  --line-soft: #e8e3d8;
-  --ink: #191713;
-  --dim: #5d574d;
-  --faint: #8b8478;
-  --accent: #cc4415;
-  --accent-dim: #a83a13;
-  --button: #191713;
-  --button-ink: #f4f1ea;
-  --good: #2f6b4f;
-  --bad: #a8321f;
+  /* Sky blue on pale daylight, with deep navy for the ink. The blues run
+     from almost-white to the colour of a clear sky at noon; the darkest
+     is what the sky does at night, and carries the text. */
+  --paper: #eef6fd;
+  --paper-2: #e2eef9;
+  --panel: #ffffff;
+  --line: #c6dcef;
+  --line-soft: #dceaf7;
+  --ink: #0c2439;
+  --dim: #45607a;
 
-  /* Instrument Serif is Sitefold's brand serif - the DailyOS repo says so
-     where it recreates their wordmark. Inter carries everything read
-     rather than displayed; the mono is for the letterspaced eyebrows. */
-  --display: "Instrument Serif", Georgia, "Times New Roman", serif;
-  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  /* Two accents, not one. #38a3e8 is the sky and reads beautifully as a
+     border, a glow or a dot, and fails contrast as small text on a pale
+     background - so anything you have to READ uses the darker one. */
+  --accent: #1372b8;
+  --accent-bright: #38a3e8;
+  --accent-dim: #0d5a94;
+  --faint: #546f86;
+
+  --button: #1372b8;
+  --button-ink: #ffffff;
+  --good: #1c7a5a;
+  --bad: #b3392a;
+
+  /* Marcellus throughout. It is a Roman-inscription serif with one
+     weight and no italic, so emphasis here is size, letterspacing and
+     colour rather than bold - a synthetic bold on a face cut like this
+     thickens the wrong strokes. Terminal output stays monospaced,
+     because output that does not line up is output you cannot read. */
+  --display: "Marcellus", Georgia, "Times New Roman", serif;
+  --sans: "Marcellus", Georgia, "Times New Roman", serif;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
   --wrap: 1100px;
+}
+
+/* Night, for anyone whose system is set to it. Same hues, turned over:
+   the pale sky becomes the dark one, and the accent brightens because a
+   blue that reads well on white disappears on navy. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #08151f;
+    --paper-2: #0c1e2c;
+    --panel: #102434;
+    --line: #1e3d54;
+    --line-soft: #17303f;
+    --ink: #e6f2fb;
+    --dim: #9db8cd;
+    --faint: #7794ab;
+    --accent: #63b8f0;
+    --accent-bright: #8fd0f8;
+    --accent-dim: #a5d9fa;
+    --button: #38a3e8;
+    --button-ink: #06131c;
+    --good: #4fbf95;
+    --bad: #e8776a;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -36,19 +68,24 @@ body {
   min-height: 100vh;
   background: var(--paper);
   color: var(--ink);
-  font: 15px/1.65 var(--sans);
-  font-feature-settings: "cv11", "ss01";
+  font: 16.5px/1.72 var(--sans);
   -webkit-font-smoothing: antialiased;
 }
 
 /* The sky: nebulae that drift, stars that don't. */
-.sky { position: fixed; inset: 0; z-index: -1; background: var(--paper); }
+.sky {
+  position: fixed; inset: 0; z-index: -1;
+  background:
+    radial-gradient(ellipse 120% 70% at 50% -10%,
+      color-mix(in srgb, var(--accent-bright) 18%, transparent), transparent 60%),
+    var(--paper);
+}
 /* The faint ruled grid, as on their own pages. */
 .sky::after {
   content: ""; position: absolute; inset: 0;
   background-image:
-    linear-gradient(to right, rgba(25,23,19,.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(25,23,19,.045) 1px, transparent 1px);
+    linear-gradient(to right, color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px);
   background-size: 96px 96px;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
 }
@@ -57,7 +94,7 @@ body {
 .nav {
   position: sticky; top: 0; z-index: 10;
   backdrop-filter: blur(16px);
-  background: rgba(244,241,234,.82);
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
   border-bottom: 1px solid var(--line);
 }
 .nav-inner {
@@ -75,8 +112,11 @@ body {
   top: -2.5px; left: 50%; margin-left: -2px;
 }
 .brand span {
-  font-family: var(--sans);
-  font-size: 13.5px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
+  /* Small caps rather than a heavier weight: Marcellus is cut at one
+     weight, and asking a browser for 600 makes it thicken the strokes
+     itself, which on a face like this lands on the wrong ones. */
+  font-family: "Marcellus SC", var(--display);
+  font-size: 14.5px; font-weight: 400; letter-spacing: .18em; text-transform: uppercase;
 }
 .nav a.link {
   color: var(--dim); text-decoration: none; font-size: 13.5px;
@@ -86,7 +126,7 @@ body {
 .nav a.link[aria-current=page] { color: var(--accent); border-bottom-color: var(--accent-dim); }
 .nav .spacer { flex: 1; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
-.dot.on { background: var(--good); box-shadow: 0 0 8px rgba(47,107,79,.35); }
+.dot.on { background: var(--good); box-shadow: 0 0 8px color-mix(in srgb, var(--good) 40%, transparent); }
 .dot.off { background: var(--bad); }
 .nav .state { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--faint); }
 
@@ -100,8 +140,8 @@ h1 {
   text-wrap: balance;
 }
 h2 {
-  font-family: var(--mono);
-  font-size: 11px; font-weight: 400; letter-spacing: .18em; text-transform: uppercase;
+  font-family: "Marcellus SC", var(--display);
+  font-size: 13px; font-weight: 400; letter-spacing: .16em; text-transform: uppercase;
   color: var(--faint); margin: 0 0 18px; padding-bottom: 11px;
   border-bottom: 1px solid var(--line);
   display: flex; align-items: center; gap: 14px;
@@ -147,7 +187,7 @@ section { margin-bottom: 52px; }
 .row .control { flex: none; }
 
 input[type=text], input[type=number], input[type=password], select, textarea {
-  background: #fffdf9; border: 1px solid var(--line); color: var(--ink);
+  background: var(--panel); border: 1px solid var(--line); color: var(--ink);
   padding: 8px 11px; border-radius: 7px; font: 13px var(--mono); min-width: 230px;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-dim); }
@@ -162,7 +202,7 @@ button, .btn {
   transition: background .15s, border-color .15s, color .15s;
 }
 .btn { display: inline-flex; align-items: center; text-decoration: none; }
-button:hover, .btn:hover { background: #2c2822; border-color: var(--accent); }
+button:hover, .btn:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
 button.quiet, .btn.quiet { border-color: var(--line); color: var(--dim); background: transparent; }
 button.quiet:hover, .btn.quiet:hover { color: var(--ink); border-color: var(--faint); }
 button.big, .btn.big { padding: 11px 22px; font-size: 14px; }
@@ -171,7 +211,7 @@ button:focus-visible, .btn:focus-visible, .switch:focus-visible {
 }
 
 .switch { width: 42px; height: 24px; border-radius: 12px; border: 1px solid var(--line);
-          background: #fffdf9; position: relative; cursor: pointer; padding: 0; }
+          background: var(--panel); position: relative; cursor: pointer; padding: 0; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
                  border-radius: 50%; background: var(--faint); transition: transform .18s, background .18s; }
 .switch[aria-checked=true] { border-color: var(--accent-dim); background: var(--button); }
@@ -187,7 +227,7 @@ button:focus-visible, .btn:focus-visible, .switch:focus-visible {
 .tile .k { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
 .tile .v {
   font-family: var(--display);
-  font-size: 19px; margin-top: 6px; font-weight: 500;
+  font-size: 21px; margin-top: 6px; font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 .tile .v.on { color: var(--good); }
@@ -258,9 +298,9 @@ footer { border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5
 .affiliate a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
 .affiliate svg { width: 17px; height: 17px; flex: none; }
 .affiliate .name {
-  font-size: 14.5px; font-weight: 700; letter-spacing: -.02em; text-transform: none;
+  font-size: 15.5px; font-weight: 400; letter-spacing: .01em; text-transform: none;
 }
-.affiliate .name .d { color: #1976a8; }
+.affiliate .name .d { color: var(--accent); }
 .affiliate .name .os { color: var(--ink); }
 
 /* In the nav it sits behind a hairline, as theirs does. */

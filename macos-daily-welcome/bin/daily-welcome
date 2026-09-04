@@ -62,6 +62,7 @@ daily-welcome - a once-a-day spoken welcome and briefing for macOS
   daily-welcome --reset-permissions   make macOS ask about access again
   daily-welcome --set-key       store your ElevenLabs API key in the Keychain
   daily-welcome --check-key     where the key is, and whether ElevenLabs likes it
+  daily-welcome --find-claude   find Claude Code and remember where it is
   daily-welcome --brain claude | groq | gemini | ollama
   daily-welcome --brain test    ask it one real question and show the answer
   daily-welcome --brain models  what that service actually serves today
@@ -124,6 +125,8 @@ while [ $# -gt 0 ]; do
     --setup-piper) MODE=setuppiper ;;
     --mac-voices)  MODE=macvoices ;;
     --best-voice)  MODE=bestvoice ;;
+    --find-claude) MODE=findclaude ;;
+    --claude-at)   MODE=claudeat; shift; VOICE_ARG="${1:-}" ;;
     --brain)       shift
                    case "${1:-}" in
                      test|check) MODE=braintest ;;
@@ -703,6 +706,58 @@ case "$MODE" in
       echo "$model is a starting guess. Once there is a key, --brain test"
       echo "asks $VOICE_ARG what it actually serves and settles on one."
     fi
+    exit 0
+    ;;
+  findclaude)
+    # "It works when I type it and not when I say it" is almost always
+    # this: the menu bar app inherits launchd's PATH, not the one your
+    # shell builds at login, and under nvm the binary has a node version
+    # in the middle of its path. Found once, written down, done with.
+    claude_forget
+    echo "Looking for Claude Code."
+    echo
+    if found="$(claude_bin)"; then
+      printf '  Found: %s\n' "$found"
+      version="$("$found" --version 2>/dev/null | head -1)"
+      [ -n "$version" ] && printf '  Version: %s\n' "$version"
+
+      cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+      mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+      grep -v '^ORBIT_CLAUDE_BIN=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+      { cat "$cfg.tmp"; printf 'ORBIT_CLAUDE_BIN="%s"\n' "$found"; } > "$cfg"
+      rm -f "$cfg.tmp"
+      echo
+      echo "Written down, so the menu bar app finds it too."
+      echo "Restart it:  orbit listen restart"
+    else
+      echo "  Not found anywhere I know to look:"
+      echo "    the PATH, ~/.claude/local, ~/.local/bin, ~/.bun/bin,"
+      echo "    ~/.volta/bin, ~/.npm-global/bin, /opt/homebrew/bin,"
+      echo "    nvm, fnm, pnpm, asdf, and whatever npm calls its global bin."
+      echo
+      echo "  Install it:  npm install -g @anthropic-ai/claude-code"
+      echo "  Then run this again."
+      echo
+      echo "  Already installed? Say where, and it will be remembered:"
+      echo "    which claude"
+      echo "    daily-welcome --claude-at /the/path/it/printed"
+      exit 1
+    fi
+    exit 0
+    ;;
+  claudeat)
+    [ -n "${VOICE_ARG:-}" ] || { echo "daily-welcome --claude-at /path/to/claude" >&2; exit 2; }
+    if [ ! -x "$VOICE_ARG" ]; then
+      echo "daily-welcome: $VOICE_ARG is not something that can be run." >&2
+      exit 1
+    fi
+    cfg="${WELCOME_CONFIG:-$HOME/.config/daily-welcome/config.sh}"
+    mkdir -p "$(dirname "$cfg")"; touch "$cfg"
+    grep -v '^ORBIT_CLAUDE_BIN=' "$cfg" > "$cfg.tmp" 2>/dev/null || : > "$cfg.tmp"
+    { cat "$cfg.tmp"; printf 'ORBIT_CLAUDE_BIN="%s"\n' "$VOICE_ARG"; } > "$cfg"
+    rm -f "$cfg.tmp"
+    claude_forget
+    echo "Claude Code is at $VOICE_ARG. Restart the app: orbit listen restart"
     exit 0
     ;;
   brainmodels)

@@ -342,10 +342,21 @@ printf '  the wake word, so it separates a hearing problem from a wake-word one.
 
 head_ "Optional extras"
 
-if command -v claude >/dev/null 2>&1; then
-  ok "Claude Code is installed (repo jobs and freeform commands work)"
+# Not `command -v`: this shell has your PATH and the menu bar app has
+# launchd's, so asking the way a shell would answers the wrong question.
+if found="$(claude_bin 2>/dev/null)"; then
+  ok "Claude Code: $found"
+  if [ "$ORBIT_NLU" = "claude" ] && [ -z "${ORBIT_CLAUDE_BIN:-}" ]; then
+    case "$found" in
+      "$HOME"/.nvm/*|"$HOME"/.local/share/fnm/*|"$HOME"/.asdf/*|"$HOME"/Library/pnpm/*)
+        warn "That path has a node version in it, so it moves when node is upgraded."
+        fix "daily-welcome --find-claude   (writes it down)" ;;
+    esac
+  fi
 else
-  warn "No claude command - \"tell Claude to...\" and freeform commands are off."
+  bad "Claude Code was not found, and it is what understands you."
+  bad_note "It may be installed and simply not on the PATH a menu bar app gets."
+  fix "daily-welcome --find-claude"
 fi
 
 if command -v icalBuddy >/dev/null 2>&1; then

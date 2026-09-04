@@ -234,6 +234,68 @@ for (const file of files) {
   say(overflow <= 1, `${file}: fits a phone`, `${overflow}px of sideways scroll at 375px`);
   await page.setViewportSize({ width: 1280, height: 800 });
 
+  // Text has to be readable against what is behind it. A palette can be
+  // swapped in an afternoon and a contrast failure is invisible to
+  // whoever chose the colours, because they already know what it says.
+  const faint = await page.evaluate(() => {
+    // Browsers answer in whatever syntax they feel like - rgb(12, 36, 57),
+    // rgba(...), and color(srgb 0.93 0.96 0.99 / 0.82) where the channels
+    // run 0 to 1 rather than 0 to 255. Reading the second as the first
+    // turns a pale blue into near-black and invents failures.
+    const parse = (c) => {
+      const n = (c.match(/[\d.]+(?=\s|,|\)|$)/g) || []).map(Number);
+      if (n.length < 3) return null;
+      const scale = /color\(/.test(c) ? 255 : 1;
+      const alpha = n.length > 3 ? n[3] : (/\/\s*[\d.]+/.test(c)
+        ? Number(c.match(/\/\s*([\d.]+)/)[1]) : 1);
+      return [n[0] * scale, n[1] * scale, n[2] * scale, alpha];
+    };
+    const lum = (rgb) => {
+      const [r, g, b] = rgb.map((v) => {
+        const x = v / 255;
+        return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    // What is really behind the text: each semi-transparent layer
+    // composited over the one below it, ending at the page background.
+    const ground = (el) => {
+      const layers = [];
+      for (let n = el; n; n = n.parentElement) {
+        const p = parse(getComputedStyle(n).backgroundColor);
+        if (p && p[3] > 0) {
+          layers.push(p);
+          if (p[3] >= 1) break;
+        }
+      }
+      const page = parse(getComputedStyle(document.body).backgroundColor);
+      let out = (page && page[3] >= 1) ? page.slice(0, 3) : [255, 255, 255];
+      for (const [r, g, b, a] of layers.reverse()) {
+        out = [r * a + out[0] * (1 - a),
+               g * a + out[1] * (1 - a),
+               b * a + out[2] * (1 - a)];
+      }
+      return out;
+    };
+    const bad = [];
+    for (const el of document.querySelectorAll('p, li, h1, h2, h3, span, a, label, td, th')) {
+      const text = (el.textContent || '').trim();
+      if (!text || el.children.length) continue;
+      const style = getComputedStyle(el);
+      if (style.visibility === 'hidden' || style.display === 'none') continue;
+      const size = parseFloat(style.fontSize);
+      const fg = parse(style.color);
+      if (!fg || fg[3] < 0.9) continue;   // faded on purpose
+      const [l1, l2] = [lum(fg.slice(0, 3)), lum(ground(el))].sort((a, b) => b - a);
+      const ratio = (l1 + 0.05) / (l2 + 0.05);
+      // 3:1 is the bar for large text, 4.5:1 for everything else.
+      const need = size >= 24 ? 3 : 4.5;
+      if (ratio < need) bad.push(`${text.slice(0, 28)} (${ratio.toFixed(2)}:1 at ${size}px)`);
+    }
+    return [...new Set(bad)].slice(0, 6);
+  });
+  say(faint.length === 0, `${file}: every piece of text is readable`, faint.join('; '));
+
   const dead = await page.$$eval('a[href]', as => as.map(a => a.getAttribute('href'))
     .filter(h => h === '#' || h === '' || h === 'javascript:void(0)'));
   say(dead.length === 0, `${file}: no link that goes nowhere`, dead.join(', '));
