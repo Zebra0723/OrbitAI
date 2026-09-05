@@ -124,6 +124,16 @@ const BRIDGE = {
   '/api/claudeat':    () => ({ ok: true, output: 'using that one' }),
   '/api/installclaude': () => ({ ok: true, output: 'Claude Code is already here.' }),
   '/api/setup':       () => ({ ok: true, output: 'installed' }),
+
+  // The phone.
+  '/api/hello':  () => ({ orbit: true, name: 'Arjuns-MacBook.local',
+                          pairing: true, paired: true }),
+  '/api/pair':   () => ({ ok: true, token: 'pretend-token' }),
+  '/api/token':  () => ({ ok: true, token: 'pretend-token' }),
+  '/api/ask':    () => ({ ok: true, speak: "It's seven o'clock in the evening.",
+                          confirm: false, token: '' }),
+  '/api/run':    () => ({ ok: true, speak: 'Sent.' }),
+  '/api/cancel': () => ({ ok: true, speak: 'Cancelled.' }),
   '/api/preview':     () => ({ ok: true, output: 'said it' }),
 };
 
@@ -192,7 +202,13 @@ for (const file of files) {
   });
 
   const res = await page.goto(base + file, { waitUntil: 'load' });
-  await page.waitForTimeout(200);
+  // Wait for the page to stop asking for things, not for a guess at how
+  // long that takes. Every page here draws itself from what the bridge
+  // sends, so a fixed 200ms was a race the fast pages happened to win -
+  // the phone page, which decides whether you are signed in before it
+  // renders anything at all, lost it every time.
+  await page.waitForLoadState('networkidle').catch(() => {});
+  await page.waitForTimeout(100);
 
   say(res.status() === 200, `${file} is served`, 'status ' + res.status());
   say(errors.length === 0, `${file} loads clean`, errors.join('\n    '));
@@ -229,7 +245,11 @@ for (const file of files) {
                    'macros.html': ['Mama', '+15551234567', 'good night'],
                    'voice.html': ['veda-sky', 'sir'],
                    'people.html': ['Arjun', '3 recordings', 'refused', 'bypass 727590'],
-                   'setup.html': ['hey orbit', 'bootstrap.sh'] }[file];
+                   'setup.html': ['hey orbit', 'bootstrap.sh'],
+                   // innerText is the RENDERED text, and the small-caps
+                   // headings here are uppercased by CSS - so these are
+                   // words the stylesheet does not touch.
+                   'phone.html': ['Briefing', 'Sign out', 'Restart Orbit'] }[file];
     if (want) for (const needle of want) {
       say(text.includes(needle), `${file}: shows "${needle}" from the bridge`,
           'the page fetched it and did not draw it');

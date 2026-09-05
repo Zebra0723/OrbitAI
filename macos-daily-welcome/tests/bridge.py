@@ -214,6 +214,120 @@ check("it knows recognition is installed", True, people["installed"])
 check("and that the gate is off", False, people["gate"])
 check("no bypass is open", "", people["bypass"])
 
+# ------------------------------------------------------- a phone on the wifi
+#
+# The whole basis of the old rule was that the bridge could only be
+# reached from the Mac, so anything that got here could have read the
+# token file anyway. Put it on the Wi-Fi for a phone and that stops being
+# true: the phone's page and a neighbour's page are the SAME ORIGIN as
+# each other, and same-origin used to mean "no token needed".
+#
+# So the address a connection comes from decides it, and nothing a
+# request says about itself can change that. These pretend to be from
+# elsewhere on the network.
+class FromTheWifi:
+    """The handler, answering as though the connection came from a phone.
+
+    Only the two things the decision reads are supplied - the headers and
+    the address it came from - so this cannot accidentally pass by way of
+    something the real handler would have had and this does not.
+    """
+    from_this_mac = server.Console.from_this_mac
+    authorised = server.Console.authorised
+
+    def __init__(self, headers, address="192.168.1.44"):
+        self.headers = headers
+        self.client_address = (address, 51000)
+
+
+def asks(headers, address="192.168.1.44"):
+    return FromTheWifi(headers, address).authorised()
+
+
+PHONE = {"Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "cors",
+         "Sec-Fetch-Dest": "empty", "Origin": "http://mac.local:7717"}
+check("a phone claiming same-origin is not the Mac", False, asks(PHONE))
+check("with the token it is let in", True,
+      asks({**PHONE, "X-Orbit-Token": TOKEN}))
+check("a nearly-right token is still wrong", False,
+      asks({**PHONE, "X-Orbit-Token": TOKEN[:-1] + "x"}))
+# Sec-Fetch-Site: none is what a TYPED address looks like, and typing an
+# address is exactly what somebody on your Wi-Fi would do.
+check("nor does typing the address by hand count", False,
+      asks({**PHONE, "Sec-Fetch-Site": "none"}))
+# No Sec-Fetch headers at all is curl, which off the Mac is a script on
+# somebody else's machine.
+check("curl from another machine is refused", False, asks({}))
+check("curl from another machine with the token is fine", True,
+      asks({"X-Orbit-Token": TOKEN}))
+check("and the Mac itself still needs nothing", True,
+      asks({"Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Dest": "empty"}, address="127.0.0.1"))
+
+# ---------------------------------------------------------- the pairing code
+#
+# Six digits is only safe because there are five guesses and ten minutes.
+server.PAIR.update(code="", expires=0, tries=0)
+code = server.pair_code(fresh=True)
+check("the code is six digits", True, len(code) == 6 and code.isdigit())
+
+granted, why = server.pair_redeem("000000" if code != "000000" else "111111")
+check("a wrong code gets nothing", None, granted)
+check("and is counted", 1, server.PAIR["tries"])
+
+granted, why = server.pair_redeem(code)
+check("the right code hands over the token", TOKEN, granted)
+# Somebody reading it off your screen a minute later has nothing.
+again, why = server.pair_redeem(code)
+check("and only once", None, again)
+check("saying so", True, "expired" in why)
+
+# Five wrong guesses and the code is gone, rather than being guessable at
+# leisure by anything that can reach the sign-in page.
+server.PAIR.update(code="123456", expires=time.time() + 600, tries=0)
+for n in range(server.PAIR_TRIES):
+    server.pair_redeem("000000")
+granted, why = server.pair_redeem("123456")
+check("five wrong guesses burns the code", None, granted)
+check("even for somebody who then gets it right", True, "wrong tries" in why)
+
+# Expiry is checked before anything else.
+server.PAIR.update(code="123456", expires=time.time() - 1, tries=0)
+granted, why = server.pair_redeem("123456")
+check("an expired code is no code", None, granted)
+
+# Spaces are how a person types "418 902" off a screen.
+server.PAIR.update(code="418902", expires=time.time() + 600, tries=0)
+granted, _ = server.pair_redeem("418 902")
+check("typed with a space, as it is shown", TOKEN, granted)
+
+# The pairing endpoint itself: a page that did not ask permission must
+# not be able to sit there guessing.
+server.PAIR.update(code="418902", expires=time.time() + 600, tries=0)
+check("an image tag cannot guess codes", 403,
+      ask("/api/pair", IMG, json.dumps({"code": "418902"}).encode()))
+check("and the code survives, unguessed", "418902", server.PAIR["code"])
+
+# ------------------------------------------------------------- what runs
+#
+# Nothing started by the console came from the microphone, so the voice
+# gate must not judge it - otherwise a paired phone stops working
+# whenever the last person to speak near the Mac was a stranger.
+# Read from the file: server.run is replaced above by a stub that records
+# what would have run, so asking the live function proves nothing.
+check("the console says its commands are not spoken", True,
+      "ORBIT_FROM_CONSOLE" in (ROOT / "web" / "server.py").read_text())
+check("and orbit knows to skip the voice gate for those", True,
+      "ORBIT_FROM_CONSOLE" in (ROOT / "bin" / "orbit").read_text())
+
+# A plan token is minted by orbit and looks like it. Anything else never
+# reaches a process.
+for bad in ["", "; rm -rf /", "../../etc/passwd", "a b", "x" * 100]:
+    ran.clear()
+    check("a plan token of %r is refused" % bad, 400,
+          ask("/api/run", LOCAL, json.dumps({"token": bad}).encode()))
+    check("and nothing ran", [], ran)
+
 # --------------------------------------------------------------- the token
 check("the token file is not readable by anyone else", "600",
       oct((pathlib.Path(home) / ".config/daily-welcome/console-token").stat().st_mode)[-3:])

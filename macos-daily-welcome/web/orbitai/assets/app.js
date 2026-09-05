@@ -52,12 +52,33 @@ document.addEventListener("keydown", (event) => {
 });
 
 
-const LOCAL = ["127.0.0.1", "localhost"].includes(location.hostname);
+// Three places this page can be, and they want different things.
+//
+//   the Mac's own browser  same origin, no token - it IS the Mac
+//   a phone on the Wi-Fi   same origin, token REQUIRED
+//   a deployed copy        cross origin, token required
+//
+// These used to be one flag, which was fine until the bridge could be on
+// the Wi-Fi: the phone is same-origin too, and same-origin was taken to
+// mean "no token needed" - which would have handed the Mac to anybody in
+// the building who typed the address. So they are two questions now.
+// Where the bridge is: served over plain http means the bridge served
+// this page, so its own origin is the bridge.
+const SERVED_BY_BRIDGE = location.protocol === "http:";
+// Whether a token is needed: only the Mac itself is exempt, and that is
+// decided by the address the request comes FROM, on the server side.
+// This just decides whether to bother storing one.
+const LOOPBACK = ["127.0.0.1", "localhost"].includes(location.hostname);
+const LOCAL = LOOPBACK;
+
 const store = {
-  get bridge() { return LOCAL ? "" : (localStorage.getItem("orbit.bridge") || "http://127.0.0.1:7717"); },
+  get bridge() {
+    return SERVED_BY_BRIDGE ? "" : (localStorage.getItem("orbit.bridge") || "http://127.0.0.1:7717");
+  },
   set bridge(v) { localStorage.setItem("orbit.bridge", v); },
-  get token() { return LOCAL ? "" : (localStorage.getItem("orbit.token") || ""); },
+  get token() { return LOOPBACK ? "" : (localStorage.getItem("orbit.token") || ""); },
   set token(v) { localStorage.setItem("orbit.token", v); },
+  clear() { localStorage.removeItem("orbit.token"); },
 };
 
 async function api(path, body) {
@@ -65,7 +86,7 @@ async function api(path, body) {
     headers: { "Content-Type": "application/json" },
     ...(body ? { method: "POST", body: JSON.stringify(body) } : {}),
   };
-  if (!LOCAL && store.token) options.headers["X-Orbit-Token"] = store.token;
+  if (store.token) options.headers["X-Orbit-Token"] = store.token;
 
   const response = await fetch(store.bridge + path, options);
   if (response.status === 403) throw new Error("not paired");
@@ -132,6 +153,14 @@ async function act(outId, working, fn) {
 function explain(error) {
   const message = String((error && error.message) || error);
   if (message === "not paired") {
+    if (SERVED_BY_BRIDGE) {
+      // The bridge served this page, so it is right there - what is
+      // missing is proof of who is asking. That happens once, on the
+      // Orbit page, with the code the Mac is showing.
+      return "Not signed in yet.\n\n" +
+        "Open Orbit on this device and enter the code your Mac is showing.\n" +
+        "If it is not showing one, run this on the Mac: orbit console --phone";
+    }
     return "Not connected.\n\n" +
       "Enter the bridge address and pairing token at the top of this page.\n" +
       "On the Mac, run: orbit console --bridge";
@@ -173,7 +202,10 @@ async function heartbeat() {
 // Pairing, shown only on the deployed copy and only until it works.
 function mountPairing() {
   const box = $("pairing");
-  if (!box || LOCAL) return;
+  // Only the deployed copy needs to be told where the bridge is. When the
+  // bridge served this page there is nothing to type, on the Mac or on a
+  // phone - a phone signs in with a code on the Orbit page instead.
+  if (!box || SERVED_BY_BRIDGE) return;
   box.hidden = false;
   $("bridgeUrl").value = store.bridge;
   $("bridgeToken").value = store.token;

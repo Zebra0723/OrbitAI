@@ -253,3 +253,23 @@ ok "and reports one when there is" "yes" \
    "$("$TEST_ROOT/bin/orbit" voice status 2>/dev/null \
       | awk -F'\t' '$1 == "bypass" { print ($2 != "") ? "yes" : "no" }')"
 "$TEST_ROOT/bin/orbit" voice bypass end >/dev/null 2>&1
+
+# ------------------------------------------------- the console is not a voice
+#
+# The gate asks who is speaking into the microphone. The console and the
+# phone did not speak into anything - they proved who they were with a
+# pairing token - so the gate has nothing to say about them. Without
+# this, a paired phone stops working whenever the last voice heard near
+# the Mac happened to be a stranger's, which is not a rule anybody could
+# have guessed from the outside.
+reset
+printf 'unknown' > "$SPEAKER_WHO"
+ok "a stranger at the microphone is still refused" "yes" \
+   "$(refused "$(says unknown "what time is it")")"
+ok "but the same request from the console is not" "no" \
+   "$(refused "$(ORBIT_FROM_CONSOLE=1 says unknown "what time is it")")"
+# And it is narrow: it says "this did not come from the microphone", not
+# "let everything through". A ban is a decision somebody made about a
+# person, and the phone is not that person.
+ok "a deliberate ban is still a ban at the microphone" "yes" \
+   "$(refused "$(says banned "what time is it")")"

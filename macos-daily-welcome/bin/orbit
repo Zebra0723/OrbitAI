@@ -70,6 +70,7 @@ orbit - voice commands for daily-welcome
   orbit warm                     pre-render the lines it says most
   orbit greeting                 the line for a wake word with no command
   orbit console                  open the OrbitAI console in a browser
+  orbit console --phone          put it on the Wi-Fi so a phone can use it
   orbit memory [show|events|add|forget|clear]  what it remembers, and did
   orbit voice [enroll|who|test|check|ban|unban|forget]   who is speaking
   orbit log                      what it heard, how it read it, how long it took
@@ -147,6 +148,14 @@ save_plan() {
 # could confirm your message while you were still deciding.
 speaker_check() {
   SPEAKER=""
+
+  # This gate is about who is speaking into the microphone. A request that
+  # did not come from the microphone is not something it can judge: the
+  # console and the phone authenticate with a pairing token instead, and
+  # asking them to also sound like somebody only means the last voice
+  # heard in the room decides whether your phone works.
+  [ "${ORBIT_FROM_CONSOLE:-}" = "1" ] && return 0
+
   speaker_enabled || return 0
 
   local line
@@ -1044,6 +1053,14 @@ case "${1:-}" in
       --token)
         python3 -c "import sys; sys.path.insert(0, '$ROOT/web'); import server; print(server.token())"
         exit 0 ;;
+      --phone|--iphone|--lan)
+        # Puts the bridge on the Wi-Fi so a phone can reach it, for as
+        # long as this runs and no longer. Deliberately not a setting:
+        # something that can send mail and place calls should be on the
+        # network because somebody is standing there having decided so,
+        # not because a config file said 1 eight months ago.
+        shift
+        export ORBIT_CONSOLE_LAN=1 ;;
       --bridge)
         shift ;;   # same server, just not opening a browser
     esac

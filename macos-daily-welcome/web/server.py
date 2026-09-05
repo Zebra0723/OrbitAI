@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """OrbitAI console - a local web app for managing the assistant.
 
-It binds to localhost only. Everything it shows is read from the same
-files and commands the assistant itself uses, and everything it changes is
-written back to them, so the console and the voice never disagree about
-what the settings are.
+Everything it shows is read from the same files and commands the
+assistant itself uses, and everything it changes is written back to
+them, so the console and the voice never disagree about what the
+settings are.
+
+It binds to localhost, unless started with `orbit console --phone`, which
+puts it on the Wi-Fi for as long as that runs so a phone can reach it.
+Off the loopback address the pairing token is required for everything -
+see Console.from_this_mac for why "same origin" stops being an answer the
+moment a second device can ask.
 
 Started with `orbit console`; stopped with ctrl-c.
 """
@@ -148,6 +154,91 @@ def token():
     return TOKEN_FILE.read_text().strip()
 
 
+# The pairing code, and the phone it lets in.
+#
+# A phone cannot be same-origin-trusted the way the Mac's own browser is:
+# on a shared Wi-Fi, "same origin" is anybody in the building. So a phone
+# is let in only by presenting the token, and the token is only handed
+# over in exchange for a six-digit code that the Mac shows on its own
+# screen. Somebody who is not standing in front of the Mac never sees it.
+PAIR = {"code": "", "expires": 0.0, "tries": 0}
+PAIR_MINUTES = 10
+PAIR_TRIES = 5
+
+
+def pair_code(fresh=False):
+    """The code currently on the Mac's screen, minted on demand."""
+    now = time.time()
+    if fresh or not PAIR["code"] or now > PAIR["expires"]:
+        # secrets, not random: this is the whole lock. randbelow, not a
+        # slice of a hex token, because a code has to be six DIGITS to be
+        # readable off a screen and typed on a phone.
+        PAIR.update(code="%06d" % secrets.randbelow(1000000),
+                    expires=now + PAIR_MINUTES * 60, tries=0)
+    return PAIR["code"]
+
+
+def pair_open():
+    """Is there a code somebody could still use?"""
+    return bool(PAIR["code"]) and time.time() <= PAIR["expires"] \
+        and PAIR["tries"] < PAIR_TRIES
+
+
+def pair_redeem(given):
+    """Trades a correct code for the token, once."""
+    given = re.sub(r"\D", "", str(given or ""))
+    if not PAIR["code"] or time.time() > PAIR["expires"]:
+        return None, "that code has expired - ask the Mac for a new one"
+    # Burnt by wrong guesses, which is a different thing from expired and
+    # worth saying so: it means somebody has been trying. The code itself
+    # is deliberately left in place rather than blanked, so that this
+    # answer survives instead of decaying into "expired".
+    if PAIR["tries"] >= PAIR_TRIES:
+        return None, "too many wrong tries - ask the Mac for a new one"
+    if not secrets.compare_digest(given, PAIR["code"]):
+        PAIR["tries"] += 1
+        left = PAIR_TRIES - PAIR["tries"]
+        if left <= 0:
+            return None, "too many wrong tries - ask the Mac for a new one"
+        return None, "not that code (%d %s left)" % (left, "try" if left == 1 else "tries")
+    # Spent. A code read off a shoulder five minutes later is no use.
+    PAIR["code"] = ""
+    return token(), ""
+
+
+def lan_mode():
+    return os.environ.get("ORBIT_CONSOLE_LAN", "") == "1"
+
+
+def lan_addresses(port):
+    """Where a phone on the same Wi-Fi should point its browser.
+
+    The .local name first: it survives the router handing out a
+    different address tomorrow, which a typed-in IP does not.
+    """
+    places = []
+    host = os.uname().nodename
+    if host:
+        # macOS reports "Name.local" already; a bare name gets the suffix
+        # so Bonjour can answer for it.
+        name = host if host.endswith(".local") else host + ".local"
+        places.append(f"http://{name}:{port}")
+    seen = set(places)
+    try:
+        import socket
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            address = info[4][0]
+            if address.startswith("127."):
+                continue
+            url = f"http://{address}:{port}"
+            if url not in seen:
+                seen.add(url)
+                places.append(url)
+    except Exception:  # noqa: BLE001 - a machine with no network is not an error
+        pass
+    return places
+
+
 def origin_allowed(origin):
     """Which sites may talk to the bridge."""
     if not origin:
@@ -180,12 +271,31 @@ def origin_allowed(origin):
 def run(args, timeout=60):
     """Runs a command and returns (ok, output)."""
     try:
-        done = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+        # Nothing started here came from the microphone, so the voice gate
+        # must not judge it - a paired phone would otherwise stop working
+        # whenever the last person to speak near the Mac was a stranger.
+        # What authenticates these is the pairing token.
+        env = dict(os.environ, ORBIT_FROM_CONSOLE="1")
+        done = subprocess.run(args, capture_output=True, text=True,
+                              timeout=timeout, env=env)
         return done.returncode == 0, (done.stdout or done.stderr).strip()
     except subprocess.TimeoutExpired:
         return False, "timed out"
     except Exception as exc:  # noqa: BLE001 - reported, not raised
         return False, str(exc)
+
+
+def last_json(out):
+    """The JSON line orbit ends with, or an empty dict.
+
+    orbit prints one line of JSON after anything it wanted to say on the
+    way, so the last line is the answer and the rest is commentary.
+    """
+    try:
+        parsed = json.loads(out.splitlines()[-1])
+        return parsed if isinstance(parsed, dict) else {}
+    except (json.JSONDecodeError, IndexError, AttributeError):
+        return {}
 
 
 def config_values():
@@ -314,6 +424,7 @@ class Console(BaseHTTPRequestHandler):
         dest = self.headers.get("Sec-Fetch-Dest", "")
         mode = self.headers.get("Sec-Fetch-Mode", "")
         site = self.headers.get("Sec-Fetch-Site", "")
+        here = self.from_this_mac()
 
         if dest or mode or site:
             # A browser. It has told us what kind of request this is.
@@ -321,22 +432,43 @@ class Console(BaseHTTPRequestHandler):
                 return False          # an image, a frame, a form - not an API call
             if mode == "no-cors":
                 return False          # a request made without asking permission
-            if site in ("same-origin", "none"):
+            if site in ("same-origin", "none") and here:
                 return True           # the console this server served, or a typed URL
-            # Anywhere else has to be allowed AND carry the token.
-            if not origin_allowed(self.headers.get("Origin", "")):
+            # Anywhere else has to be allowed AND carry the token. A phone
+            # is "same-origin" too once the bridge is on the Wi-Fi, which
+            # is exactly why being same-origin is no longer enough on its
+            # own - see from_this_mac.
+            if site not in ("same-origin", "none") and \
+                    not origin_allowed(self.headers.get("Origin", "")):
                 return False
             return secrets.compare_digest(self.headers.get("X-Orbit-Token", ""), token())
 
         # No Sec-Fetch headers at all: not a browser. curl, or a script on
-        # this Mac, which could read the token file anyway - the server is
-        # bound to the loopback address and nothing else can reach it.
+        # this Mac, which could read the token file anyway.
         origin = self.headers.get("Origin", "")
-        if not origin or origin.startswith("http://127.0.0.1") or origin.startswith("http://localhost"):
+        if here and (not origin or origin.startswith("http://127.0.0.1")
+                     or origin.startswith("http://localhost")):
             return True
-        if not origin_allowed(origin):
+        if origin and not origin_allowed(origin) and not here:
             return False
         return secrets.compare_digest(self.headers.get("X-Orbit-Token", ""), token())
+
+    def from_this_mac(self):
+        """Did this request come from the machine the bridge is running on?
+
+        Everything used to lean on the server being bound to the loopback
+        address, so anything that could reach it was already on the Mac
+        and could have read the token file anyway. On the Wi-Fi that stops
+        being true, and "same-origin" starts meaning "anybody in the
+        building who typed the address" - the phone's page and a stranger's
+        page are the same origin as each other.
+
+        So the address the connection came from decides it, rather than
+        anything the request says about itself. Off the Mac, the token is
+        required, whatever the headers claim.
+        """
+        address = (self.client_address or ("",))[0]
+        return address.startswith("127.") or address in ("::1", "localhost")
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -388,13 +520,27 @@ class Console(BaseHTTPRequestHandler):
                     kind = kind or {
                         ".css": "text/css", ".js": "text/javascript",
                         ".json": "application/json", ".html": "text/html; charset=utf-8",
+                        # The home-screen icon and the manifest. Served as
+                        # octet-stream they are ignored, and "Add to Home
+                        # Screen" quietly falls back to a screenshot.
+                        ".png": "image/png", ".svg": "image/svg+xml",
+                        ".webmanifest": "application/manifest+json",
                     }.get(candidate.suffix, "application/octet-stream")
                     return self.send(200, candidate.read_bytes(), kind)
 
         # Lets the deployed console confirm it has reached the right Mac
         # before it asks for anything.
         if path == "/api/hello":
-            return self.send(200, json.dumps({"orbit": True, "name": os.uname().nodename}))
+            # Answered before the token is checked, because a phone that
+            # has not paired yet still needs to know it reached the right
+            # Mac and whether pairing is open.
+            return self.send(200, json.dumps({
+                "orbit": True,
+                "name": os.uname().nodename,
+                "pairing": pair_open(),
+                "paired": self.from_this_mac() or secrets.compare_digest(
+                    self.headers.get("X-Orbit-Token", ""), token()),
+            }))
 
         if not self.authorised():
             return self.send(403, json.dumps({"error": "pair this site first"}))
@@ -406,6 +552,13 @@ class Console(BaseHTTPRequestHandler):
                 "contacts": read_pairs(CONTACTS),
                 "macros": read_pairs(MACROS),
             }))
+
+        if path == "/api/token":
+            # For the one step of the Siri shortcut that has to be typed
+            # by hand. Behind the same check as everything else, so it is
+            # readable from the Mac itself or from a phone that has
+            # already paired - and from nowhere else.
+            return self.send(200, json.dumps({"ok": True, "token": token()}))
 
         if path == "/api/voices":
             ok, out = run([WELCOME, "--voices"], timeout=40)
@@ -495,6 +648,21 @@ class Console(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urllib.parse.urlparse(self.path).path
+
+        # The one POST that cannot require the token, since it is how you
+        # get the token. It is rate-limited and one-shot instead.
+        if path == "/api/pair":
+            # Only a real browser fetch, and never a request a page can
+            # make without asking: a site you happened to visit must not
+            # be able to sit there guessing six digits.
+            if self.headers.get("Sec-Fetch-Dest", "empty") != "empty" or \
+                    self.headers.get("Sec-Fetch-Mode", "cors") == "no-cors":
+                return self.send(403, json.dumps({"error": "no"}))
+            granted, why = pair_redeem(self.body().get("code", ""))
+            if not granted:
+                return self.send(403, json.dumps({"error": why}))
+            return self.send(200, json.dumps({"ok": True, "token": granted}))
+
         if not self.authorised():
             return self.send(403, json.dumps({"error": "pair this site first"}))
         data = self.body()
@@ -525,6 +693,39 @@ class Console(BaseHTTPRequestHandler):
             except (json.JSONDecodeError, IndexError):
                 parsed = {"speak": out}
             return self.send(200, json.dumps({"ok": ok, "result": parsed}))
+
+        if path == "/api/ask":
+            # /api/command with the answer at the top level. Shortcuts on
+            # an iPhone reads a dictionary value by key, and walking into
+            # result.speak is four more taps to set up and one more thing
+            # to get wrong - in the one step of the shortcut that somebody
+            # actually has to type by hand.
+            text = (data.get("text") or "").strip()
+            if not text:
+                return self.send(400, json.dumps({"error": "no command", "speak": ""}))
+            ok, out = run([ORBIT, "plan", text], timeout=120)
+            parsed = last_json(out)
+            return self.send(200, json.dumps({
+                "ok": ok,
+                "speak": parsed.get("speak", out),
+                "confirm": bool(parsed.get("confirm")),
+                "token": parsed.get("token", ""),
+            }))
+
+        if path in ("/api/run", "/api/cancel"):
+            # The yes, and the no. Spoken aloud these are a word; from a
+            # phone they have to be an endpoint, or everything that waits
+            # for confirmation is simply unavailable there - which is
+            # everything worth being careful about.
+            plan = (data.get("token") or "").strip()
+            # A plan token is minted by orbit and looks it. Anything else
+            # never reaches a process.
+            if not re.fullmatch(r"[A-Za-z0-9_-]{4,64}", plan):
+                return self.send(400, json.dumps({"error": "not a plan"}))
+            verb = "run" if path.endswith("run") else "cancel"
+            ok, out = run([ORBIT, verb, plan], timeout=120)
+            return self.send(200, json.dumps(
+                {"ok": ok, "speak": last_json(out).get("speak", out)}))
 
         if path == "/api/listen":
             action = data.get("action", "status")
@@ -651,14 +852,39 @@ class Console(BaseHTTPRequestHandler):
 
 def main():
     port = int(os.environ.get("ORBIT_CONSOLE_PORT", "7717"))
-    # Localhost only. This thing can send mail and place calls; it has no
-    # business listening on a network interface.
-    server = ThreadingHTTPServer(("127.0.0.1", port), Console)
-    url = f"http://127.0.0.1:{port}"
-    print(f"OrbitAI bridge on {url}")
-    print(f"Pairing token: {token()}")
-    print("ctrl-c to stop")
-    if shutil.which("open") and "--no-open" not in sys.argv:
+    # Loopback unless asked otherwise. This thing can send mail and place
+    # calls, so it has no business on a network interface by default - and
+    # when it is on one, the address a request came from decides whether
+    # the token is optional, never the headers. See Console.from_this_mac.
+    local_only = "127.0.0.1"
+    every_interface = "0.0.0.0"  # noqa: S104 - deliberate, and only with ORBIT_CONSOLE_LAN
+    server = ThreadingHTTPServer(
+        (every_interface if lan_mode() else local_only, port), Console)
+    url = f"http://{local_only}:{port}"
+
+    if lan_mode():
+        code = pair_code(fresh=True)
+        print("Orbit on your phone")
+        print()
+        print("  1. On the phone, open Safari and go to:")
+        for place in lan_addresses(port):
+            print(f"       {place}/phone")
+        print()
+        print("  2. It will ask for this code:")
+        print(f"       {code[:3]} {code[3:]}")
+        print()
+        print("  3. Then Share, Add to Home Screen, and it opens like an app.")
+        print()
+        print(f"The code works once, within {PAIR_MINUTES} minutes.")
+        print("While this runs, anything on your Wi-Fi can reach the sign-in")
+        print("page - not Orbit itself, which needs the code first.")
+        print("ctrl-c to stop.")
+    else:
+        print(f"OrbitAI bridge on {url}")
+        print(f"Pairing token: {token()}")
+        print("ctrl-c to stop")
+
+    if shutil.which("open") and "--no-open" not in sys.argv and not lan_mode():
         subprocess.run(["open", url], capture_output=True)
     try:
         server.serve_forever()

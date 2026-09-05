@@ -312,3 +312,88 @@ footer .affiliate { margin-top: 14px; }
 @media (max-width: 860px) {
   .nav .affiliate { display: none; }   /* it lives in the footer on narrow screens */
 }
+
+/* --------------------------------------------------------------- a phone
+ *
+ * The same palette and the same face, at arm's length instead of on a
+ * desk. Bigger type, bigger targets - 44px is the smallest thing a thumb
+ * hits reliably, and this page is used one-handed - and no navigation,
+ * because there is one thing to do here.
+ *
+ * Added to the home screen it opens without Safari's chrome, so the top
+ * and bottom padding come from the safe area rather than from nothing:
+ * without them the first line sits under the notch and the last button
+ * under the home indicator.
+ */
+body.phone { font-size: 17px; }
+
+.phone-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: max(14px, env(safe-area-inset-top)) 20px 12px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px);
+}
+.phone-main {
+  max-width: 620px; margin: 0 auto;
+  padding: 24px 20px calc(40px + env(safe-area-inset-bottom));
+}
+.phone-foot {
+  padding: 0 20px calc(28px + env(safe-area-inset-bottom));
+  max-width: 620px; margin: 0 auto;
+  font-size: 13px; color: var(--faint); line-height: 1.6;
+}
+.phone-h1 { font-size: 26px; margin: 0 0 6px; }
+.phone-h2 {
+  font-family: "Marcellus SC", "Marcellus", Georgia, serif;
+  font-size: 13px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--faint); margin: 28px 0 12px;
+}
+
+/* One tap target per row, full width. A row of small buttons is a row of
+ * near misses on a phone. */
+.block { display: block; width: 100%; }
+button.big, .btn.big { min-height: 50px; font-size: 17px; }
+body.phone button { min-height: 46px; }
+
+.ask textarea {
+  width: 100%; box-sizing: border-box; resize: none;
+  font: inherit; line-height: 1.5; padding: 14px 15px; margin: 0 0 12px;
+  color: var(--ink); background: var(--paper-2);
+  border: 1px solid var(--line); border-radius: 12px;
+}
+.ask textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* The code box. Wide, spaced digits, so six of them are readable at a
+ * glance against six on a screen across the room. */
+input.code {
+  width: 100%; box-sizing: border-box; margin: 0 0 12px;
+  font-family: "Marcellus", Georgia, serif;
+  font-size: 30px; letter-spacing: 0.28em; text-align: center;
+  padding: 14px 10px; color: var(--ink); background: var(--paper-2);
+  border: 1px solid var(--line); border-radius: 12px;
+}
+input.code:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.reply {
+  min-height: 76px; margin: 18px 0 0; padding: 16px 17px;
+  font-size: 17px; line-height: 1.6; white-space: pre-wrap;
+  color: var(--ink); background: var(--paper-2);
+  border: 1px solid var(--line); border-radius: 12px;
+}
+.reply:empty { display: none; }
+
+.confirm {
+  margin: 14px 0 0; padding: 15px 16px; border-radius: 12px;
+  border: 1px solid var(--accent); background: var(--paper-2);
+}
+.confirm p { margin: 0 0 12px; font-size: 16px; line-height: 1.55; }
+.confirm .bar { margin: 0; }
+
+/* Two per row on a phone, one per row on the narrowest ones. */
+.quick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quick button { width: 100%; }
+@media (max-width: 360px) { .quick { grid-template-columns: 1fr; } }
+
+body.phone .note { font-size: 13.5px; }
+body.phone pre { font-size: 13.5px; white-space: pre-wrap; }

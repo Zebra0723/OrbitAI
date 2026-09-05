@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iPhone - OrbitAI</title>
+<meta name="description" content="Orbit on your iPhone: the app on your home screen, and Hey Siri.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+<div class="sky"></div>
+<nav class="nav"><div class="nav-inner">
+  <a class="brand" href="./"><span class="ring"></span><span>OrbitAI</span></a>
+  <a class="link" href="./console.html">Console</a>
+  <a class="link" href="./voice.html">Voice</a>
+  <a class="link" href="./people.html">People</a>
+  <a class="link" href="./commands.html">Commands</a>
+  <a class="link" href="./macros.html">Macros</a>
+  <a class="link" href="./iphone.html">iPhone</a>
+  <a class="link" href="./setup.html">Setup</a>
+  <span class="affiliate">OrbitAI, a<a href="https://dailyos.uk" rel="noopener" aria-label="DailyOS"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="dos-mark" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1976a8"></stop><stop offset="1" stop-color="#21577d"></stop></linearGradient></defs><g fill="none" stroke="url(#dos-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path><path d="M8.5 12.2l2.4 2.4 4.6-5.4" stroke-width="2.4"></path></g></svg><span class="name"><span class="d">Daily</span><span class="os">OS</span></span></a>company</span><div class="spacer"></div>
+  <div class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></div>
+</div></nav>
+<main>
+<section>
+  <h1 style="font-size:28px">Orbit on your iPhone</h1>
+  <p class="lede">Two things, and you probably want both. An Orbit icon on your
+  home screen that talks to your Mac, and &#8220;Hey Siri, ask Orbit&#8221; for
+  when your hands are busy. Neither needs the App Store, and nothing here costs
+  anything.</p>
+  <div class="note">Being straight about the shape of it: the assistant is the
+  Mac. Your phone is a way to reach it, so the Mac has to be awake and on the
+  same Wi-Fi. An iPhone will not let any app but Siri listen for a wake word in
+  the background, which is why the hands-free half of this goes through Siri
+  rather than around it.</div>
+</section>
+
+<section>
+  <h2>1. On the Mac, open it up for one session</h2>
+  <div class="panel">
+<pre>orbit console --phone</pre>
+    <div class="note">It prints the address to type on the phone and a six-digit
+    code, and it stays running until you press ctrl-C. Only then is Orbit
+    reachable from the Wi-Fi &#8212; it is not a setting, because something that
+    can send mail and place calls should be on the network because you decided
+    so just now, not because a file said so eight months ago.</div>
+  </div>
+</section>
+
+<section>
+  <h2>2. On the phone, open it and sign in</h2>
+  <div class="grid two">
+    <div class="card"><h3>Type the address</h3><p>The one the Mac printed &#8212;
+      usually your Mac&#8217;s name followed by <code>.local:7717/phone</code>.
+      Safari, not Chrome, if you want the home screen part to work
+      properly.</p></div>
+    <div class="card"><h3>Then the code</h3><p>Six digits, from the Mac&#8217;s
+      screen. It works once and expires after ten minutes, so somebody reading
+      it over your shoulder afterwards has nothing. The phone remembers the
+      real key and never shows it.</p></div>
+  </div>
+  <div class="note">Then <strong>Share &#8594; Add to Home Screen</strong>. It
+  gets an icon, opens without Safari&#8217;s address bar, and behaves like an
+  app, because at that point it is one. Signing in again later is only needed if
+  you sign out or clear Safari&#8217;s data.</div>
+</section>
+
+<section>
+  <h2>3. Hey Siri, ask Orbit</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:14.5px;margin:0 0 12px">This is the
+    hands-free half. Open <strong>Shortcuts</strong> on the iPhone, make a new
+    shortcut with four actions, and name it <strong>Ask Orbit</strong> &#8212;
+    the name is what you say to Siri, so name it something you can say.</p>
+    <div class="grid two" style="margin:0 0 12px">
+      <div class="card"><h3>1. Dictate Text</h3><p>Leave it as it is. This is
+        what turns what you said into words.</p></div>
+      <div class="card"><h3>2. Get Contents of URL</h3><p>The address the Mac
+        printed, with <code>/api/ask</code> on the end. Method
+        <strong>POST</strong>. One header:
+        <code>X-Orbit-Token</code>, set to the key from the button below. Request
+        body <strong>JSON</strong>, one field called <code>text</code>, set to
+        the Dictated Text.</p></div>
+      <div class="card"><h3>3. Get Dictionary Value</h3><p>Key
+        <code>speak</code>. That is the sentence Orbit wants to say
+        back.</p></div>
+      <div class="card"><h3>4. Speak Text</h3><p>Fed with that value. Now your
+        phone says the answer out loud, in Siri&#8217;s voice, while the Mac does
+        the thing in yours.</p></div>
+    </div>
+    <div class="bar">
+      <button data-act="show-token">Show the key for step 2</button>
+      <button class="quiet" data-act="hide-token">Hide it again</button>
+    </div>
+    <pre id="tokenOut"></pre>
+    <div class="note">Say &#8220;Hey Siri, Ask Orbit&#8221; and it will ask what
+    you want. Anything Orbit would want a spoken yes for comes back as a question
+    rather than being done &#8212; say it again as a plain instruction from the
+    app if you meant it.</div>
+  </div>
+</section>
+
+<section>
+  <h2>When you are not at home</h2>
+  <div class="grid two">
+    <div class="card"><h3>The honest answer</h3><p>Out of the house, none of this
+      reaches your Mac, and that is on purpose: the alternative is a hole in your
+      router pointed at a program that can read your mail.</p></div>
+    <div class="card"><h3>If you want it anyway</h3><p>Install
+      <a href="https://tailscale.com" rel="noopener">Tailscale</a> on the Mac and
+      the phone and sign both into the same account. The Mac then has an address
+      that works from anywhere, over an encrypted link, with nothing exposed to
+      the internet. Use that address instead of the <code>.local</code> one.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>An Android phone, or an iPad</h2>
+  <div class="panel">
+    <p class="muted" style="font-size:14.5px;margin:0">The same page works on
+    both. On Android, Chrome offers <em>Install app</em> instead of Add to Home
+    Screen, and the Siri part has an equivalent in Google Assistant routines
+    pointed at the same address. An iPad is an iPhone here in every way that
+    matters.</p>
+  </div>
+</section>
+</main>
+<footer>OrbitAI runs on your Mac. This page only ever talks to it directly. <a href="./privacy.html">Privacy</a>.
+<br><span class="affiliate">OrbitAI, a<a href="https://dailyos.uk" rel="noopener" aria-label="DailyOS"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="dos-mark" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1976a8"></stop><stop offset="1" stop-color="#21577d"></stop></linearGradient></defs><g fill="none" stroke="url(#dos-mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path><path d="M8.5 12.2l2.4 2.4 4.6-5.4" stroke-width="2.4"></path></g></svg><span class="name"><span class="d">Daily</span><span class="os">OS</span></span></a>company</span></footer>
+<script src="./assets/app.js"></script>
+<script src="./assets/iphone.js"></script>
+</body>
+</html>

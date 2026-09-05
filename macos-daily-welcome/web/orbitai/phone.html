@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orbit</title>
+<meta name="description" content="Orbit, on your phone.">
+<meta name="theme-color" content="#eef6fd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#08151f" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Orbit">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Marcellus+SC&display=swap">
+<link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body class="phone">
+<div class="sky"></div>
+
+<header class="phone-top">
+  <span class="brand"><span class="ring"></span><span>Orbit</span></span>
+  <span class="state"><span class="dot" id="navDot"></span><span id="navState">connecting</span></span>
+</header>
+
+<main class="phone-main">
+
+<!-- Before pairing. The only thing on screen until the code is right. -->
+<section id="signin" hidden>
+  <h1 class="phone-h1">Sign in</h1>
+  <p class="lede" id="signinWhere">Finding your Mac&#8230;</p>
+  <div class="panel">
+    <input type="text" id="pairCode" class="code" inputmode="numeric"
+           autocomplete="one-time-code" maxlength="7" data-enter="pair"
+           aria-label="The six-digit code on your Mac" placeholder="000 000">
+    <button class="big block" data-act="pair-phone">Sign in</button>
+    <pre id="signinOut"></pre>
+    <div class="note">Your Mac is showing a six-digit code. It is good once,
+    for ten minutes. If there isn&#8217;t one on screen, run
+    <code>orbit console --phone</code> on the Mac.</div>
+  </div>
+</section>
+
+<!-- After pairing. -->
+<section id="app" hidden>
+  <div class="ask">
+    <textarea id="askText" rows="2" data-enter="ask" enterkeyhint="send"
+      aria-label="What do you want it to do?"
+      placeholder="Tell it what to do. Tap the mic on the keyboard to talk."></textarea>
+    <button class="big block" data-act="ask">Send</button>
+  </div>
+
+  <div class="reply" id="reply" aria-live="polite"></div>
+
+  <div class="confirm" id="confirm" hidden>
+    <p id="confirmText"></p>
+    <div class="bar">
+      <button data-act="confirm" data-arg="yes">Yes, do it</button>
+      <button class="quiet" data-act="confirm" data-arg="no">No</button>
+    </div>
+  </div>
+
+  <h2 class="phone-h2">Quick things</h2>
+  <div class="quick">
+    <button class="quiet" data-act="quick" data-arg="briefing">Briefing</button>
+    <button class="quiet" data-act="quick" data-arg="what is next">What&#8217;s next</button>
+    <button class="quiet" data-act="quick" data-arg="any messages">Messages</button>
+    <button class="quiet" data-act="quick" data-arg="what time is it">Time</button>
+  </div>
+
+  <h2 class="phone-h2">The Mac</h2>
+  <div class="quick">
+    <button class="quiet" data-act="listen" data-arg="on">Start listening</button>
+    <button class="quiet" data-act="listen" data-arg="off">Stop listening</button>
+    <button class="quiet" data-act="listen" data-arg="restart">Restart Orbit</button>
+    <button class="quiet" data-act="forget-phone">Sign out</button>
+  </div>
+  <div class="note">Everything you send is carried out on the Mac and spoken
+  there. Anything it cannot undo comes back here for a yes first.</div>
+</section>
+
+</main>
+
+<footer class="phone-foot">
+  Orbit runs on your Mac. This page talks to it directly, over your own Wi-Fi.
+  <a href="./privacy.html">Privacy</a>. A <a href="https://dailyos.uk" rel="noopener">DailyOS</a> company.
+</footer>
+
+<script src="./assets/app.js"></script>
+<script src="./assets/phone.js"></script>
+</body>
+</html>
