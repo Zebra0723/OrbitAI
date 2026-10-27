@@ -40,8 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.titlebarAppearsTransparent = true
             window.titleVisibility = .hidden
             window.isMovableByWindowBackground = true
-            window.appearance = NSAppearance(named: .darkAqua) // Orbit is always night
-            window.backgroundColor = NSColor(Theme.sky)
+            window.appearance = NSAppearance(named: .darkAqua) // Orbit is always graphite
+            window.backgroundColor = NSColor(Theme.ground)
             window.minSize = NSSize(width: 920, height: 600)
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(
@@ -133,17 +133,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         }
     }
 
-    var icon: String {
-        switch self {
-        case .talk: return "waveform"
-        case .conversations: return "text.bubble"
-        case .memory: return "sparkles.rectangle.stack"
-        case .stats: return "chart.bar.xaxis"
-        case .macros: return "square.stack.3d.up"
-        case .people: return "person.2"
-        case .settings: return "slider.horizontal.3"
-        }
-    }
+    var number: String { Format.index((AppSection.allCases.firstIndex(of: self) ?? 0) + 1) }
 }
 
 @MainActor
@@ -157,73 +147,68 @@ struct RootView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            sidebar
-            Rectangle().fill(Theme.hairline).frame(width: 1)
-            ZStack {
-                StarField().opacity(0.6)
-                Group {
-                    switch navigation.section {
-                    case .talk: TalkView(store: store)
-                    case .conversations: ConversationsView(store: store)
-                    case .memory: MemoryView(store: store)
-                    case .stats: StatsView(store: store)
-                    case .macros: ConfEditor(kind: .macros, store: store)
-                    case .people: ConfEditor(kind: .people, store: store)
-                    case .settings: SettingsView(store: store)
-                    }
+            rail
+            VRule()
+            Group {
+                switch navigation.section {
+                case .talk: TalkView(store: store)
+                case .conversations: ConversationsView(store: store)
+                case .memory: MemoryView(store: store)
+                case .stats: StatsView(store: store)
+                case .macros: ConfEditor(kind: .macros, store: store)
+                case .people: ConfEditor(kind: .people, store: store)
+                case .settings: SettingsView(store: store)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.skyGradient)
+            .background(Theme.ground)
         }
         .ignoresSafeArea()
-        .foregroundStyle(Theme.starlight)
-        .tint(Theme.amber)
-        .overlay(alignment: .top) {
-            if !OrbitPaths.isInstalled {
-                Text("Orbit isn't installed on this Mac yet. Run install.sh in the OrbitAI repo.")
-                    .font(Theme.caption(12))
-                    .foregroundStyle(Theme.sky)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .background(Theme.amber, in: Capsule())
-                    .padding(.top, 14)
-            }
-        }
+        .foregroundStyle(Theme.ink)
+        .tint(Theme.ink)
     }
 
-    private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 10) {
-                OrbitMark(active: false)
-                    .frame(width: 24, height: 24)
+    private var rail: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 11) {
+                OrbitGlyph(live: store.listener.isLive)
+                    .frame(width: 18, height: 18)
                 Text("Orbit")
-                    .font(Theme.display(21))
+                    .font(Theme.display(17))
+                    .tracking(-0.3)
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 52)
-            .padding(.bottom, 26)
+            .padding(.top, 56)
+            .padding(.bottom, 40)
 
-            ForEach(AppSection.allCases) { section in
-                SidebarRow(section: section, selected: navigation.section == section) {
-                    navigation.section = section
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(AppSection.allCases) { section in
+                    RailItem(section: section, selected: navigation.section == section) {
+                        navigation.section = section
+                    }
                 }
             }
 
             Spacer()
 
-            ListenerBadge(status: store.listener)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 18)
+            if !OrbitPaths.isInstalled {
+                Text("Orbit isn't installed on this Mac. Run install.sh in the OrbitAI repo.")
+                    .font(Theme.body(11.5))
+                    .foregroundStyle(Theme.ink2)
+                    .padding(.bottom, 18)
+            }
+
+            Rule()
+            StatusLine(status: store.listener)
+                .padding(.vertical, 16)
         }
-        .padding(.horizontal, 10)
-        .frame(width: 220)
+        .padding(.horizontal, 24)
+        .frame(width: 216)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(Theme.sidebar)
+        .background(Theme.ground)
     }
 }
 
-private struct SidebarRow: View {
+private struct RailItem: View {
     let section: AppSection
     let selected: Bool
     let action: () -> Void
@@ -231,22 +216,23 @@ private struct SidebarRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 11) {
-                Image(systemName: section.icon)
-                    .font(.system(size: 13))
-                    .frame(width: 18)
-                    .foregroundStyle(selected ? Theme.amber : Theme.dim)
+            HStack(spacing: 14) {
+                Text(section.number)
+                    .font(Theme.mono(10.5))
+                    .foregroundStyle(selected ? Theme.ink2 : Theme.ink3)
                 Text(section.title)
-                    .font(.system(size: 13.5, weight: selected ? .semibold : .regular, design: .rounded))
-                    .foregroundStyle(selected ? Theme.starlight : Theme.dim)
+                    .font(Theme.body(13.5, weight: selected ? .medium : .regular))
+                    .foregroundStyle(selected || hovering ? Theme.ink : Theme.ink2)
                 Spacer()
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(selected ? Theme.cardHigh : (hovering ? Theme.card : .clear))
-            )
+            .frame(height: 30)
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(Theme.ink)
+                    .frame(width: 2, height: 14)
+                    .offset(x: -24)
+                    .opacity(selected ? 1 : 0)
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -254,109 +240,35 @@ private struct SidebarRow: View {
     }
 }
 
-/// The microphone's state, at the bottom of the sidebar.
-struct ListenerBadge: View {
+extension ListenerStatus {
+    /// Hearing, thinking, or speaking right now.
+    var isLive: Bool { appRunning && !paused && ["capturing", "confirming", "working", "speaking"].contains(state) }
+
+    var line: String {
+        if !appRunning { return "Menu bar app off" }
+        if paused { return "Microphone off" }
+        switch state {
+        case "listening", "idle": return "Waiting for \u{201C}\(wake.isEmpty ? "hey orbit" : wake)\u{201D}"
+        case "capturing", "confirming": return "On air"
+        case "working": return "Working"
+        case "speaking": return "Speaking"
+        default: return state.capitalized
+        }
+    }
+}
+
+/// The tally and one line of state, at the foot of the rail.
+struct StatusLine: View {
     let status: ListenerStatus
 
-    private var description: (String, Color) {
-        if !status.appRunning { return ("Menu bar app not running", Theme.faint) }
-        if status.paused { return ("Microphone off", Theme.faint) }
-        switch status.state {
-        case "listening", "idle": return ("Listening for \u{201C}\(status.wake.isEmpty ? "hey orbit" : status.wake)\u{201D}", Theme.good)
-        case "capturing", "confirming": return ("Hearing you", Theme.amber)
-        case "working": return ("Working", Theme.amber)
-        case "speaking": return ("Speaking", Theme.ring)
-        default: return (status.state.capitalized, Theme.dim)
-        }
-    }
-
     var body: some View {
-        let info = description
-        HStack(spacing: 8) {
-            Circle().fill(info.1).frame(width: 7, height: 7)
-                .shadow(color: info.1.opacity(0.7), radius: 4)
-            Text(info.0)
-                .font(Theme.caption(11.5))
-                .foregroundStyle(Theme.dim)
+        HStack(spacing: 10) {
+            Tally(live: status.isLive)
+            Text(status.line.uppercased())
+                .font(Theme.mono(10, weight: .medium))
+                .tracking(0.8)
+                .foregroundStyle(status.isLive ? Theme.ink : Theme.ink3)
                 .lineLimit(2)
         }
-    }
-}
-
-// MARK: - The mark
-
-/// A planet with a tilted ring and a small moon going round it.
-struct OrbitMark: View {
-    var active: Bool
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: false)) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            let speed = active ? 1.6 : 0.35
-            let angle = t * speed
-            GeometryReader { proxy in
-                let size = min(proxy.size.width, proxy.size.height)
-                let ringW = size * 0.98, ringH = size * 0.36
-                // Moon position on the tilted ellipse.
-                let mx = cos(angle) * ringW / 2, my = sin(angle) * ringH / 2
-                let tilt = -0.42
-                let rx = mx * cos(tilt) - my * sin(tilt), ry = mx * sin(tilt) + my * cos(tilt)
-                let moonInFront = sin(angle) > 0
-                ZStack {
-                    if !moonInFront { moon(size).offset(x: rx, y: ry) }
-                    Circle()
-                        .fill(RadialGradient(colors: [Color(red: 1, green: 0.86, blue: 0.62), Theme.amber,
-                                                      Color(red: 0.78, green: 0.45, blue: 0.2)],
-                                             center: UnitPoint(x: 0.35, y: 0.3), startRadius: 0, endRadius: size * 0.36))
-                        .frame(width: size * 0.5, height: size * 0.5)
-                        .shadow(color: Theme.amber.opacity(active ? 0.8 : 0.45), radius: active ? size * 0.3 : size * 0.15)
-                    Ellipse()
-                        .stroke(Theme.ring.opacity(0.85), lineWidth: max(1, size * 0.045))
-                        .frame(width: ringW, height: ringH)
-                        .rotationEffect(.radians(tilt))
-                    if moonInFront { moon(size).offset(x: rx, y: ry) }
-                }
-                .frame(width: proxy.size.width, height: proxy.size.height)
-            }
-        }
-    }
-
-    private func moon(_ size: CGFloat) -> some View {
-        Circle()
-            .fill(Theme.starlight)
-            .frame(width: size * 0.13, height: size * 0.13)
-            .shadow(color: Theme.starlight.opacity(0.8), radius: size * 0.06)
-    }
-}
-
-/// A faint, fixed field of stars behind every page.
-struct StarField: View {
-    private struct Star { let x, y, r, a: CGFloat }
-    private static let stars: [Star] = {
-        var generator = SeededGenerator(seed: 27)
-        return (0..<90).map { _ in
-            Star(x: .random(in: 0...1, using: &generator), y: .random(in: 0...1, using: &generator),
-                 r: .random(in: 0.4...1.3, using: &generator), a: .random(in: 0.15...0.55, using: &generator))
-        }
-    }()
-
-    var body: some View {
-        Canvas { context, size in
-            for star in Self.stars {
-                let rect = CGRect(x: star.x * size.width, y: star.y * size.height, width: star.r * 2, height: star.r * 2)
-                context.fill(Path(ellipseIn: rect), with: .color(Theme.starlight.opacity(star.a)))
-            }
-        }
-        .allowsHitTesting(false)
-    }
-}
-
-/// Deterministic so the stars don't jump around between launches.
-struct SeededGenerator: RandomNumberGenerator {
-    private var state: UInt64
-    init(seed: UInt64) { state = seed }
-    mutating func next() -> UInt64 {
-        state = state &* 6364136223846793005 &+ 1442695040888963407
-        return state
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Macros ("good night = dark mode; turn off wifi") and nicknames
-/// ("mama = +15551234567"), edited as rows and saved to Orbit's files.
+/// ("mama = +15551234567"), edited as a table and saved to Orbit's files.
 struct ConfEditor: View {
     enum Kind {
         case macros, people
@@ -9,18 +9,17 @@ struct ConfEditor: View {
         var title: String { self == .macros ? "Macros" : "People" }
         var subtitle: String {
             self == .macros
-                ? "One phrase, several commands. Say the phrase and Orbit runs each command in order."
-                : "Who you mean when you say a name. Anyone not listed is looked up in Contacts."
+                ? "One phrase, several commands. Say the phrase and Orbit runs each command in order. Separate steps with semicolons."
+                : "Who you mean when you say a name. Anyone not listed here is looked up in Contacts."
         }
         var namePlaceholder: String { self == .macros ? "good night" : "mama" }
         var valuePlaceholder: String {
-            self == .macros ? "dark mode; turn off wifi; set a timer for 5 minutes" : "+15551234567 or an email"
+            self == .macros ? "dark mode; turn off wifi; set a timer for 5 minutes" : "+15551234567"
         }
         var nameHeader: String { self == .macros ? "When you say" : "Name" }
         var valueHeader: String { self == .macros ? "Orbit does" : "Number or email" }
-        var emptyText: String {
-            self == .macros ? "No macros yet. Add one below." : "No nicknames yet. Add one below."
-        }
+        var addTitle: String { self == .macros ? "Add macro" : "Add person" }
+        var file: String { self == .macros ? "macros.conf" : "contacts.conf" }
     }
 
     let kind: Kind
@@ -43,85 +42,87 @@ struct ConfEditor: View {
 
     var body: some View {
         Page {
-            PageHeader(title: kind.title, subtitle: kind.subtitle) {
+            PageTitle(kicker: "~/.config/daily-welcome/\(kind.file)", title: kind.title, subtitle: kind.subtitle) {
                 HStack(spacing: 8) {
                     if dirty {
                         Button("Revert") { load() }
-                            .buttonStyle(OrbitButtonStyle())
+                            .buttonStyle(InstrumentButtonStyle())
                     }
                     Button("Save") { save() }
-                        .buttonStyle(OrbitButtonStyle(kind: .primary))
+                        .buttonStyle(InstrumentButtonStyle(kind: .primary))
                         .disabled(!dirty)
+                        .opacity(dirty ? 1 : 0.35)
                 }
             }
 
-            Card(padding: 0) {
-                VStack(spacing: 0) {
-                    HStack(spacing: 14) {
-                        SectionLabel(kind.nameHeader).frame(width: 200, alignment: .leading)
-                        SectionLabel(kind.valueHeader)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 16) {
+                    MonoLabel("#").frame(width: 32, alignment: .leading)
+                    MonoLabel(kind.nameHeader).frame(width: 200, alignment: .leading)
+                    MonoLabel(kind.valueHeader)
+                    Spacer()
+                }
+                .padding(.bottom, 10)
+                Rule(strong: true)
+
+                ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                    HStack(spacing: 16) {
+                        Text(Format.index(index + 1))
+                            .font(Theme.mono(11))
+                            .foregroundStyle(Theme.ink3)
+                            .frame(width: 32, alignment: .leading)
+                        TextField(kind.namePlaceholder, text: binding(row.id, \.name))
+                            .textFieldStyle(.plain)
+                            .font(Theme.body(13.5, weight: .medium))
+                            .frame(width: 200)
+                        TextField(kind.valuePlaceholder, text: binding(row.id, \.value))
+                            .textFieldStyle(.plain)
+                            .font(Theme.mono(12.5))
+                            .foregroundStyle(Theme.ink2)
+                        Button {
+                            rows.removeAll { $0.id == row.id }
+                        } label: {
+                            Text("Remove")
+                                .font(Theme.mono(10.5))
+                                .foregroundStyle(Theme.ink3)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .frame(height: 44)
+                    .overlay(alignment: .bottom) { Rule() }
+                }
+
+                Button {
+                    rows.append(Row(name: "", value: ""))
+                } label: {
+                    HStack(spacing: 16) {
+                        Text("+")
+                            .font(Theme.mono(13))
+                            .frame(width: 32, alignment: .leading)
+                        Text(kind.addTitle.uppercased())
+                            .font(Theme.mono(10.5, weight: .medium))
+                            .tracking(1.2)
                         Spacer()
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    Hairline()
-
-                    if rows.isEmpty {
-                        Text(kind.emptyText)
-                            .font(Theme.body(13))
-                            .foregroundStyle(Theme.dim)
-                            .padding(20)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    ForEach($rows) { $row in
-                        HStack(spacing: 14) {
-                            TextField(kind.namePlaceholder, text: $row.name)
-                                .orbitField()
-                                .frame(width: 200)
-                            TextField(kind.valuePlaceholder, text: $row.value)
-                                .orbitField()
-                            Button {
-                                rows.removeAll { $0.id == row.id }
-                            } label: {
-                                Image(systemName: "minus.circle")
-                                    .font(.system(size: 15))
-                                    .foregroundStyle(Theme.faint)
-                            }
-                            .buttonStyle(.plain)
-                            .help("Remove")
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                    }
-
-                    Hairline()
-                    Button {
-                        rows.append(Row(name: "", value: ""))
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "plus")
-                            Text(kind == .macros ? "Add a macro" : "Add a person")
-                        }
-                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Theme.amber)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 13)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.ink2)
+                    .frame(height: 44)
+                    .contentShape(Rectangle())
                 }
-            }
-
-            if kind == .macros {
-                Text("Each step is an ordinary Orbit command, separated by semicolons, so a macro can do anything you could say.")
-                    .font(Theme.caption(11.5))
-                    .foregroundStyle(Theme.faint)
+                .buttonStyle(.plain)
             }
         }
         .onAppear { if !loaded { load() } }
         .onChange(of: saved) { _, _ in if !dirty { load() } }
+    }
+
+    /// A binding to one field of one row, found by id so removing rows can't misalign it.
+    private func binding(_ id: UUID, _ field: WritableKeyPath<Row, String>) -> Binding<String> {
+        Binding(
+            get: { rows.first { $0.id == id }?[keyPath: field] ?? "" },
+            set: { value in
+                if let index = rows.firstIndex(where: { $0.id == id }) { rows[index][keyPath: field] = value }
+            }
+        )
     }
 
     private func load() {

@@ -57,29 +57,25 @@ struct SettingsView: View {
 
     var body: some View {
         Page {
-            PageHeader(title: "Settings", subtitle: "Saved to ~/.config/daily-welcome/config.sh, the same file the terminal uses.")
+            PageTitle(kicker: "~/.config/daily-welcome/config.sh", title: "Settings",
+                      subtitle: "The same file the terminal uses. Changes apply to Orbit's next turn.")
 
             microphone
             voiceTools
 
-            ForEach(Self.groups, id: \.title) { group in
-                VStack(alignment: .leading, spacing: 10) {
-                    SectionLabel(group.title)
-                    Card(padding: 0) {
-                        VStack(spacing: 0) {
-                            ForEach(Array(group.settings.enumerated()), id: \.element.key) { index, setting in
-                                if index > 0 { Hairline() }
-                                row(setting)
-                            }
-                        }
-                        .padding(.horizontal, 20)
+            ForEach(Array(Self.groups.enumerated()), id: \.element.title) { index, group in
+                VStack(alignment: .leading, spacing: 0) {
+                    SectionHeader(index: Format.index(index + 3), title: group.title)
+                        .padding(.bottom, 4)
+                    ForEach(group.settings, id: \.key) { setting in
+                        row(setting)
                     }
                 }
             }
 
-            Text("Orbit only speaks when someone speaks to it. There is no setting that changes that.")
-                .font(Theme.caption(11.5))
-                .foregroundStyle(Theme.faint)
+            Text("Orbit only speaks when someone speaks to it. No setting changes that.")
+                .font(Theme.mono(11))
+                .foregroundStyle(Theme.ink3)
         }
         .task { values = await OrbitCLI.settingValues(Self.allKeys) }
     }
@@ -87,63 +83,69 @@ struct SettingsView: View {
     // MARK: - Microphone
 
     private var microphone: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionLabel("Microphone")
-            Card {
-                HStack(spacing: 16) {
-                    OrbitMark(active: store.listener.appRunning && !store.listener.paused)
-                        .frame(width: 44, height: 44)
-                    VStack(alignment: .leading, spacing: 4) {
-                        ListenerBadge(status: store.listener)
-                        Text(store.listener.appRunning
-                             ? "The menu bar app listens for the wake word. Option-Space skips it."
-                             : "Start the menu bar app so Orbit can hear you.")
-                            .font(Theme.caption(11.5))
-                            .foregroundStyle(Theme.faint)
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(index: "01", title: "Microphone")
+                .padding(.bottom, 4)
+            HStack(spacing: 18) {
+                OrbitGlyph(live: store.listener.isLive)
+                    .frame(width: 30, height: 30)
+                VStack(alignment: .leading, spacing: 5) {
+                    StatusLine(status: store.listener)
+                    Text(store.listener.appRunning
+                         ? "The menu bar app listens for the wake word. Option-Space skips it."
+                         : "Start the menu bar app so Orbit can hear you.")
+                        .font(Theme.body(12.5))
+                        .foregroundStyle(Theme.ink3)
+                }
+                Spacer()
+                if store.listener.appRunning {
+                    Button(store.listener.paused ? "Turn on" : "Turn off") {
+                        Task { await store.setListening(store.listener.paused) }
                     }
-                    Spacer()
-                    if store.listener.appRunning {
-                        Button(store.listener.paused ? "Turn on" : "Turn off") {
-                            Task { await store.setListening(store.listener.paused) }
-                        }
-                        .buttonStyle(OrbitButtonStyle(kind: store.listener.paused ? .primary : .secondary))
-                    } else {
-                        Button("Start it") { startMenuBarApp() }
-                            .buttonStyle(OrbitButtonStyle(kind: .primary))
-                    }
+                    .buttonStyle(InstrumentButtonStyle(kind: store.listener.paused ? .primary : .ghost))
+                } else {
+                    Button("Start it") { startMenuBarApp() }
+                        .buttonStyle(InstrumentButtonStyle(kind: .primary))
                 }
             }
+            .padding(.vertical, 18)
+            .overlay(alignment: .bottom) { Rule() }
         }
     }
 
     private var voiceTools: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionLabel("Voice check")
-            Card {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 8) {
-                        Button("Test the voice") { runTool(["--test-voice"]) }
-                            .buttonStyle(OrbitButtonStyle(kind: .primary))
-                        Button("Stop talking") { Task { _ = await OrbitCLI.orbit(["hush"]) } }
-                            .buttonStyle(OrbitButtonStyle())
-                        Button("Check the install") { runTool(["--doctor"], timeout: 120) }
-                            .buttonStyle(OrbitButtonStyle())
-                        if busy { ProgressView().controlSize(.small).padding(.leading, 6) }
-                    }
-                    if !output.isEmpty {
-                        ScrollView {
-                            Text(output)
-                                .font(Theme.mono(11.5))
-                                .foregroundStyle(Theme.dim)
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .frame(maxHeight: 220)
-                        .padding(12)
-                        .background(Theme.sky.opacity(0.6), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(index: "02", title: "Diagnostics")
+                .padding(.bottom, 4)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 8) {
+                    Button("Test voice") { runTool(["--test-voice"]) }
+                        .buttonStyle(InstrumentButtonStyle(kind: .primary))
+                    Button("Stop talking") { Task { _ = await OrbitCLI.orbit(["hush"]) } }
+                        .buttonStyle(InstrumentButtonStyle())
+                    Button("Check install") { runTool(["--doctor"], timeout: 120) }
+                        .buttonStyle(InstrumentButtonStyle())
+                    if busy {
+                        MonoLabel("Running…").padding(.leading, 8)
                     }
                 }
+                if !output.isEmpty {
+                    ScrollView {
+                        Text(output)
+                            .font(Theme.mono(11.5))
+                            .foregroundStyle(Theme.ink2)
+                            .lineSpacing(3)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                    }
+                    .frame(maxHeight: 240)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(Theme.rule, lineWidth: 1))
+                }
             }
+            .padding(.vertical, 18)
+            .overlay(alignment: .bottom) { Rule() }
         }
     }
 
@@ -151,18 +153,21 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func row(_ setting: Setting) -> some View {
-        HStack(alignment: .center, spacing: 18) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(setting.label).font(Theme.body())
+        HStack(alignment: .center, spacing: 24) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(setting.label)
+                    .font(Theme.body(13.5, weight: .medium))
+                    .foregroundStyle(Theme.ink)
                 Text(setting.help)
-                    .font(Theme.caption(11.5))
-                    .foregroundStyle(Theme.faint)
+                    .font(Theme.body(12.5))
+                    .foregroundStyle(Theme.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 20)
+            Spacer(minLength: 24)
             control(setting)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
+        .overlay(alignment: .bottom) { Rule() }
     }
 
     @ViewBuilder
@@ -183,7 +188,7 @@ struct SettingsView: View {
                 }
             }
             .labelsHidden()
-            .frame(width: 170)
+            .frame(width: 180)
         case .text, .number:
             SettingField(value: values[setting.key] ?? "", numeric: { if case .number = setting.kind { return true }; return false }()) {
                 save(setting.key, $0)
@@ -222,8 +227,8 @@ private struct SettingField: View {
 
     var body: some View {
         TextField("", text: $text)
-            .orbitField()
-            .frame(width: numeric ? 90 : 220)
+            .instrumentField(mono: numeric)
+            .frame(width: numeric ? 90 : 240)
             .multilineTextAlignment(numeric ? .trailing : .leading)
             .focused($focused)
             .onAppear { text = value }

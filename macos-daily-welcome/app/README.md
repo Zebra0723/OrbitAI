@@ -11,6 +11,14 @@ only adds a place to look and type.
 
 Orbit only speaks when someone speaks to it. Typing in Talk counts; nothing else does.
 
+## Design
+
+Orbit looks like an instrument, not an app: graphite and off-white, hairline rules
+instead of boxes, SF Pro Display for headlines and SF Mono for every label, time,
+and index. There is one colour, the red on-air light, and it means exactly one
+thing: Orbit is hearing you or working. The mark is a single ring with one body on
+it, which travels the ring while Orbit is live.
+
 ## Build
 
 Install Orbit first (`./install.sh` in `macos-daily-welcome`), then:

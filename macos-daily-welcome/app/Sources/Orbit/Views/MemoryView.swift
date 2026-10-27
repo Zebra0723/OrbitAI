@@ -8,11 +8,11 @@ struct MemoryView: View {
 
     var body: some View {
         Page {
-            PageHeader(title: "Memory",
-                       subtitle: "What Orbit knows about you. It notes new things as you talk; you can add and remove them here.") {
+            PageTitle(kicker: "\(Format.index(store.facts.count)) facts", title: "Memory",
+                      subtitle: "What Orbit knows about you. It notes new things as you talk; add or remove them here.") {
                 if !store.facts.isEmpty {
                     Button("Clear all") { confirmingClear = true }
-                        .buttonStyle(OrbitButtonStyle(kind: .destructive))
+                        .buttonStyle(InstrumentButtonStyle(kind: .destructive))
                         .confirmationDialog("Forget everything Orbit knows about you?", isPresented: $confirmingClear) {
                             Button("Forget everything", role: .destructive) { store.clearFacts() }
                         } message: {
@@ -22,31 +22,25 @@ struct MemoryView: View {
             }
 
             HStack(spacing: 10) {
-                TextField("Something for Orbit to remember", text: $draft)
-                    .orbitField()
+                TextField("Something Orbit should remember", text: $draft)
+                    .instrumentField()
                     .onSubmit(add)
                 Button("Remember", action: add)
-                    .buttonStyle(OrbitButtonStyle(kind: .primary))
+                    .buttonStyle(InstrumentButtonStyle(kind: .primary))
                     .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
             }
 
-            if store.facts.isEmpty {
-                Card {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Nothing remembered yet")
-                            .font(Theme.title())
-                        Text("Tell Orbit things like \u{201C}my sister is called Priya\u{201D} and it keeps them.")
-                            .font(Theme.body(13))
-                            .foregroundStyle(Theme.dim)
-                    }
-                }
-            } else {
-                Card(padding: 0) {
-                    VStack(spacing: 0) {
-                        ForEach(Array(store.facts.enumerated()), id: \.element.id) { index, fact in
-                            if index > 0 { Hairline() }
-                            FactRow(fact: fact) { store.deleteFact(fact) }
-                        }
+            VStack(alignment: .leading, spacing: 0) {
+                SectionHeader(index: "01", title: "Known")
+                    .padding(.bottom, 6)
+                if store.facts.isEmpty {
+                    Text("Nothing yet. Tell Orbit \u{201C}my sister is called Priya\u{201D} and it keeps it.")
+                        .font(Theme.body(13.5))
+                        .foregroundStyle(Theme.ink3)
+                        .padding(.vertical, 14)
+                } else {
+                    ForEach(Array(store.facts.enumerated()), id: \.element.id) { index, fact in
+                        FactRow(number: index + 1, fact: fact) { store.deleteFact(fact) }
                     }
                 }
             }
@@ -61,31 +55,34 @@ struct MemoryView: View {
 }
 
 private struct FactRow: View {
+    let number: Int
     let fact: Fact
     let onDelete: () -> Void
     @State private var hovering = false
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 14) {
-            Circle().fill(Theme.amber).frame(width: 5, height: 5)
-                .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(fact.text)
-                    .font(Theme.body(14))
-                    .textSelection(.enabled)
-                if !fact.date.isEmpty {
-                    Text("Noted \(fact.date)")
-                        .font(Theme.caption(11))
-                        .foregroundStyle(Theme.faint)
-                }
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text(Format.index(number))
+                .font(Theme.mono(11))
+                .foregroundStyle(Theme.ink3)
+                .frame(width: 48, alignment: .leading)
+            Text(fact.text)
+                .font(Theme.body(14))
+                .foregroundStyle(Theme.ink)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if hovering {
+                Button("Forget", action: onDelete)
+                    .buttonStyle(InstrumentButtonStyle(kind: .destructive))
+            } else {
+                Text(fact.date)
+                    .font(Theme.mono(11))
+                    .foregroundStyle(Theme.ink3)
             }
-            Spacer()
-            Button("Forget", action: onDelete)
-                .buttonStyle(OrbitButtonStyle(kind: .destructive))
-                .opacity(hovering ? 1 : 0)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 13)
+        .frame(minHeight: 30)
+        .padding(.vertical, 8)
+        .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
     }

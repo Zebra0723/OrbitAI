@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Every conversation, newest first, with what Orbit did along the way.
+/// Every conversation, newest first, as a log, with what Orbit did along the way.
 struct ConversationsView: View {
     @ObservedObject var store: OrbitStore
     @AppStorage("showActivity") private var showActivity = true
@@ -19,62 +19,63 @@ struct ConversationsView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            list.frame(width: 320)
-            Rectangle().fill(Theme.hairline).frame(width: 1)
+            index.frame(width: 300)
+            VRule()
             if let selected {
                 detail(selected).id(selected.id)
             } else {
-                VStack(spacing: 14) {
-                    OrbitMark(active: false).frame(width: 56, height: 56).opacity(0.7)
-                    Text("Nothing said yet")
-                        .font(Theme.display(22))
-                    Text("Say \u{201C}hey orbit\u{201D}, or use Talk. Every conversation shows up here.")
-                        .font(Theme.body(13))
-                        .foregroundStyle(Theme.dim)
+                VStack(alignment: .leading, spacing: 14) {
+                    MonoLabel("Empty")
+                    Headline(text: "Nothing said yet.", size: 34, color: Theme.ink3)
+                    Text("Say \u{201C}hey orbit\u{201D} or use Talk. Every conversation lands here.")
+                        .font(Theme.body(13.5))
+                        .foregroundStyle(Theme.ink3)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(56)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
     }
 
-    private var list: some View {
+    // MARK: - Index
+
+    private var index: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Conversations")
-                    .font(Theme.display(24))
+            VStack(alignment: .leading, spacing: 18) {
+                MonoLabel("\(Format.index(store.sessions.count)) conversations")
                 HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.faint)
-                    TextField("Search everything said", text: $query)
+                    Text("/")
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.ink3)
+                    TextField("Search", text: $query)
                         .textFieldStyle(.plain)
                         .font(Theme.body(13))
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Theme.card, in: Capsule())
-                .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+                .padding(.horizontal, 11)
+                .frame(height: 32)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(Theme.rule, lineWidth: 1))
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 48)
-            .padding(.bottom, 14)
+            .padding(.horizontal, 24)
+            .padding(.top, 56)
+            .padding(.bottom, 18)
 
-            Hairline()
+            Rule()
 
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(filtered) { session in
-                        SessionRow(session: session, selected: session.id == selected?.id) {
+                        IndexRow(session: session, selected: session.id == selected?.id) {
                             selectedID = session.id
                         }
                     }
                 }
-                .padding(10)
             }
             .scrollIndicators(.hidden)
         }
-        .background(Theme.sidebar.opacity(0.5))
     }
+
+    // MARK: - Detail
 
     private func detail(_ session: Session) -> some View {
         // What Orbit did between the first word and a few minutes after the last.
@@ -91,30 +92,20 @@ struct ConversationsView: View {
             $0.element.date == $1.element.date ? $0.offset < $1.offset : $0.element.date < $1.element.date
         }.map(\.element)
 
-        return Page(maxWidth: 820) {
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 8) {
-                    SectionLabel("\(Format.day(session.start)), \(Format.time(session.start))")
-                    Text(session.title)
-                        .font(Theme.display(26))
-                        .textSelection(.enabled)
-                }
-                Spacer(minLength: 20)
-                Toggle(isOn: $showActivity) {
-                    Text("Show what Orbit did")
-                        .font(Theme.caption(12))
-                        .foregroundStyle(Theme.dim)
-                }
-                .toggleStyle(.switch)
-                .controlSize(.small)
+        return Page(maxWidth: 900) {
+            PageTitle(kicker: "\(Format.day(session.start)) · \(Format.clock(session.start))–\(Format.clock(session.end))",
+                      title: session.title) {
+                Toggle(isOn: $showActivity) { MonoLabel("Actions") }
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
             }
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(ordered.enumerated()), id: \.offset) { _, item in
                     if let turn = item.turn {
-                        Bubble(turn: turn)
+                        LogLine(turn: turn)
                     } else if let event = item.event {
-                        ActivityLine(event: event)
+                        ActionLine(event: event)
                     }
                 }
             }
@@ -122,7 +113,7 @@ struct ConversationsView: View {
     }
 }
 
-private struct SessionRow: View {
+private struct IndexRow: View {
     let session: Session
     let selected: Bool
     let action: () -> Void
@@ -130,23 +121,31 @@ private struct SessionRow: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("\(Format.day(session.start).uppercased())  \(Format.clock(session.start))")
+                        .font(Theme.mono(10.5))
+                        .tracking(0.6)
+                        .foregroundStyle(Theme.ink3)
+                    Spacer()
+                    Text(Format.index(session.turns.filter { $0.role == .user }.count))
+                        .font(Theme.mono(10.5))
+                        .foregroundStyle(Theme.ink3)
+                }
                 Text(session.title)
-                    .font(.system(size: 13.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(Theme.starlight)
+                    .font(Theme.body(13.5, weight: selected ? .medium : .regular))
+                    .foregroundStyle(selected ? Theme.ink : Theme.ink2)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                Text("\(Format.day(session.start)), \(Format.time(session.start))  ·  \(session.turns.filter { $0.role == .user }.count) said")
-                    .font(Theme.caption(11))
-                    .foregroundStyle(Theme.faint)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(selected ? Theme.cardHigh : (hovering ? Theme.card : .clear))
-            )
+            .background(selected ? Theme.surface : (hovering ? Theme.surface.opacity(0.5) : Color.clear))
+            .overlay(alignment: .leading) {
+                Rectangle().fill(Theme.ink).frame(width: 2).opacity(selected ? 1 : 0)
+            }
+            .overlay(alignment: .bottom) { Rule() }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -154,48 +153,27 @@ private struct SessionRow: View {
     }
 }
 
-/// You on the right, Orbit on the left, like any conversation.
-private struct Bubble: View {
-    let turn: Turn
-
-    var body: some View {
-        let mine = turn.role == .user
-        HStack {
-            if mine { Spacer(minLength: 80) }
-            VStack(alignment: mine ? .trailing : .leading, spacing: 5) {
-                Text(turn.text)
-                    .font(.system(size: 14.5, design: .rounded))
-                    .foregroundStyle(mine ? Theme.sky : Theme.starlight)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 15)
-                    .padding(.vertical, 10)
-                    .background(mine ? Theme.amber : Theme.cardHigh,
-                                in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                Text(Format.time(turn.date))
-                    .font(Theme.caption(10.5))
-                    .foregroundStyle(Theme.faint)
-                    .padding(.horizontal, 6)
-            }
-            if !mine { Spacer(minLength: 80) }
-        }
-    }
-}
-
-private struct ActivityLine: View {
+/// 09:42   →   Messaged Mama: running late
+private struct ActionLine: View {
     let event: Event
 
     var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .strokeBorder(Theme.ring, lineWidth: 1.5)
-                .frame(width: 9, height: 9)
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text(Format.clock(event.date))
+                .font(Theme.mono(11))
+                .foregroundStyle(Theme.ink3)
+                .frame(width: 64, alignment: .leading)
+            Text("→")
+                .font(Theme.mono(11))
+                .foregroundStyle(Theme.ink3)
+                .frame(width: 70, alignment: .leading)
             Text(event.summary)
-                .font(Theme.caption(12))
-                .foregroundStyle(Theme.ring)
-            Text(Format.time(event.date))
-                .font(Theme.caption(10.5))
-                .foregroundStyle(Theme.faint)
+                .font(Theme.mono(12))
+                .foregroundStyle(Theme.ink2)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity)
+        .padding(.vertical, 9)
+        .overlay(alignment: .bottom) { Rule() }
     }
 }
