@@ -2,7 +2,8 @@
 # Handing work to Claude Code in one of your repos, and reporting back.
 #
 # Jobs run detached: you say "tell Claude to debug the dailyos repo", it
-# starts, and Orbit says so when it finishes (see watch.sh).
+# starts, and "what did Claude do" reads back how it went. Orbit never
+# brings it up on its own.
 
 _jobs_dir() { printf '%s/claude-jobs' "$WELCOME_STATE_DIR"; }
 
@@ -63,7 +64,7 @@ claude_dispatch() {
     printf 'started\t%s\n' "$(date '+%Y-%m-%d %H:%M')"
   } > "$meta"
 
-  # Detached: the watch reports the outcome later, nobody waits here.
+  # Detached: nobody waits here; "what did Claude do" reads the outcome.
   (
     cd "$dir" 2>/dev/null || exit 1
     # shellcheck disable=SC2086

@@ -25,8 +25,12 @@ daily-welcome --test-voice   # hear the voice now
 Then say **"Hey Orbit, what time is it"** to check the ears work.
 
 If `swiftc` isn't installed (`xcode-select --install` gets it), the installer
-skips the menu bar app and falls back to a background check every two minutes
-for proactive alerts. Voice commands need the app.
+skips the menu bar app. Voice commands need the app; the `orbit` command still
+works from Terminal.
+
+**Orbit only speaks when someone speaks to it.** It never talks on a timer, when
+the Mac wakes, when you unlock it, or because something happened. An always-on
+Mac is no sign that anybody is awake.
 
 ## The voice
 
@@ -326,8 +330,6 @@ written next - where a list of app names would have been out of date the week
 it was written. On macOS below 14.4 there is no per-process audio API, so it
 falls back to a list of known call apps, which is less exact.
 
-The proactive alerts hold off too, so nothing talks over the call.
-
 Pressing Option-Space during a call overrides all of it for a minute: an
 explicit ask always beats a guess about what you are doing.
 
@@ -584,7 +586,7 @@ lib/memory.sh           what was said and done, and dropping a subject
 lib/slots.sh            the half-finished request, and its one question
 lib/speaker.py          who is speaking: embeddings, matching, banning
 tests/run               the whole test suite; see tests/README.md
-menubar/main.swift      the menu bar app and its timers
+menubar/main.swift      the menu bar app, menu, and microphone restarts
 menubar/listener.swift  wake word, command capture, yes/no loop
 launchd/*.template      login agent, one per install mode
 install.sh              build, install, load

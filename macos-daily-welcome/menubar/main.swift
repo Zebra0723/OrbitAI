@@ -1,14 +1,13 @@
-// DailyWelcome - a menu bar agent for macOS.
+// DailyWelcome - Orbit's menu bar app for macOS.
 //
-// It owns no windows and has no Dock icon (LSUIElement). Its whole job is
-// to notice that the Mac just came back to life and hand off to the
-// daily-welcome shell script, which decides whether today's greeting is
-// still owed.
+// It owns no windows and has no Dock icon (LSUIElement). It listens for the
+// wake word and hands what you say to the orbit shell script. Orbit only
+// ever speaks in answer to someone: nothing here talks on a timer, on wake,
+// or on unlock.
 //
-// Waking is watched three ways, because no single one covers every case:
+// Waking is still watched, but only to bring the microphone back:
 //   - didWake / screensDidWake     lid opened, machine resumed
 //   - com.apple.screenIsUnlocked   you actually unlocked it
-//   - a 5-minute backstop timer    a wake we somehow missed
 
 import Cocoa
 import EventKit
@@ -19,7 +18,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var listeningItem: NSMenuItem!
     /// The console server, once it has been asked for.
     private var consoleTask: Process?
-    private var backstopTimer: Timer?
     private let listener = OrbitListener()
 
     // MARK: - Paths
@@ -108,10 +106,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self, selector: #selector(machineCameBack(_:)),
             name: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil)
 
-        backstopTimer = Timer.scheduledTimer(timeInterval: 300, target: self,
-                                             selector: #selector(backstopTick),
-                                             userInfo: nil, repeats: true)
-
         listener.orbitPath = orbitPath
         listener.wakeWord = wakeWord
         listener.statusPath = stateDir + "/listener-status"
@@ -177,7 +171,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        backstopTimer?.invalidate()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         DistributedNotificationCenter.default().removeObserver(self)
     }
@@ -189,18 +182,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // Sleep is where the microphone usually gets lost.
             self?.listener.restartIfNeeded()
         }
-    }
-
-    @objc private func backstopTick() {
-        // Every five minutes, ask whether anything is worth saying unprompted.
-        // Everything that decides "worth" lives in the shell, including
-        // quiet hours and the rate limit.
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = [orbitPath, "watch"]
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        try? process.run()
     }
 
     // MARK: - Menu

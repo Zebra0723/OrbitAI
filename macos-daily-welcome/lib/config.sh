@@ -175,13 +175,6 @@
 # Macros: one phrase, several commands.
 : "${ORBIT_MACROS_FILE:=$HOME/.config/daily-welcome/macros.conf}"
 
-# Speaking first: a meeting about to start, a job Claude finished, mail
-# from someone on the list. Quiet hours are shared with tone.
-: "${ORBIT_PROACTIVE:=1}"
-: "${ORBIT_PROACTIVE_GAP_SECONDS:=600}"
-: "${ORBIT_MEETING_WARNING_MINUTES:=5}"
-: "${ORBIT_VIPS:=}"
-
 # Voice commands only while the Mac is unlocked - the nearest thing to
 # knowing who is speaking that doesn't involve guessing.
 : "${ORBIT_REQUIRE_UNLOCKED:=1}"

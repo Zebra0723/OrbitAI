@@ -56,14 +56,12 @@ SETTINGS = [
     ("ORBIT_LISTEN", "toggle", "Listening", "Opens the microphone for the wake word."),
     ("ORBIT_CONVERSATION", "toggle", "Conversation mode", "Keep listening after a reply until you say thanks."),
     ("ORBIT_MATCH_TONE", "toggle", "Match my tone", "Clipped questions get clipped answers."),
-    ("ORBIT_PROACTIVE", "toggle", "Speak first", "Meetings starting, jobs finishing, mail from the list."),
     ("ORBIT_FREEFORM", "toggle", "Freeform commands", "Claude writes a command for anything not in the catalogue."),
     ("ORBIT_ONDEVICE", "toggle", "On-device recognition", "Keeps audio on this Mac. Hears invented names badly."),
     ("ORBIT_PAUSE_ON_CALL", "toggle", "Pause while you're on a call", "Shuts the microphone whenever another app is recording."),
     ("ORBIT_CALL_IGNORE", "text", "Never counts as a call", "Bundle ids to ignore, separated by commas."),
     ("ORBIT_CONFIRM_CALLS", "toggle", "Confirm calls", "Say the name back before dialling."),
     ("ORBIT_REQUIRE_UNLOCKED", "toggle", "Only when unlocked", "Ignore commands while the screen is locked."),
-    ("ORBIT_VIPS", "text", "Interrupt for", "Names worth interrupting you for, separated by |."),
 
     # Everything below here used to need a terminal. That is fine for the
     # person who wrote it and is the whole barrier for everybody else, so

@@ -35,7 +35,6 @@ welcome_load_user_config
 . "$ROOT/lib/ask.sh"
 . "$ROOT/lib/tone.sh"
 . "$ROOT/lib/macros.sh"
-. "$ROOT/lib/watch.sh"
 . "$ROOT/lib/nlu_openai.sh"
 . "$ROOT/lib/nlu_claude.sh"
 . "$ROOT/lib/emoji.sh"
@@ -585,7 +584,7 @@ run_plan() {
       claude_dispatch "$DIR" "$TASK" >/dev/null
       rm -f "$file"
       memory_log_event claude "Sent Claude into $REPO to $TASK"
-      emit "Claude is on it. I'll tell you when it's done." false ""
+      emit "Claude is on it. Ask me what Claude did to hear how it went." false ""
       ;;
     mail_send)
       local result
@@ -919,12 +918,10 @@ case "${1:-}" in
     esac
     ;;
   watch)
-    # One announcement or nothing. Called on a timer by the menu bar app.
-    line="$(watch_once)" || exit 0
-    [ -z "$line" ] && exit 0
-    speak_async "$line"
-    [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
-    printf '%s\n' "$line"
+    # Orbit used to speak first on a timer: meetings, finished jobs, mail.
+    # It doesn't any more - it only ever talks when someone talks to it.
+    # Older menu bar builds still call this every few minutes; say nothing.
+    exit 0
     ;;
   memory)
     shift
@@ -1087,7 +1084,7 @@ case "${1:-}" in
       "Added to your reminders." "Copied." "Next." "Back one." \
       "I didn't catch that. Try: message Mom saying I'm running late." \
       "That request has expired. Say it again." \
-      "Claude is on it. I'll tell you when it's done."
+      "Claude is on it. Ask me what Claude did to hear how it went."
     do
       [ -z "$line" ] && continue
       if eleven_cache_line "$line"; then

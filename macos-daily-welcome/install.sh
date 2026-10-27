@@ -14,7 +14,6 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 STATE_DIR="$HOME/.local/state/daily-welcome"
 LOG="$STATE_DIR/agent.log"
 CONFIG="$HOME/.config/daily-welcome/config.sh"
-INTERVAL="${DAILY_WELCOME_INTERVAL:-120}"
 WAKE_WORD="${ORBIT_WAKE_WORD:-hey Orbit}"
 AGENT_PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 WANT_APP=1
@@ -190,7 +189,7 @@ PLIST
 
   Without it there is no menu bar icon, no "Hey Orbit" listening, and
   macOS never asks for any permissions - there's no app to ask for them.
-  Proactive alerts still work, on a timer.
+  The orbit command still works from Terminal.
 
   To get the whole thing:
 
@@ -213,25 +212,25 @@ if [ "$BUILT_APP" -eq 1 ]; then
       -e "s|@@LOG@@|$LOG|g" \
       -e "s|@@PATH@@|$AGENT_PATH|g" \
       "$ROOT/launchd/com.arjun.dailywelcome.app.plist.template" > "$PLIST"
+
+  if ! launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null; then
+    echo "  (launchctl wouldn't load it; trying the older command)"
+    launchctl load -w "$PLIST" 2>/dev/null || true
+  fi
+  launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
+
+  sleep 2
+  if ! pgrep -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" >/dev/null 2>&1; then
+    echo
+    echo "  The app was built but isn't running. $ROOT/bin/doctor will say why."
+  fi
 else
-  sed -e "s|@@LABEL@@|$LABEL|g" \
-      -e "s|@@ORBIT@@|$ORBIT_LINK|g" \
-      -e "s|@@LOG@@|$LOG|g" \
-      -e "s|@@PATH@@|$AGENT_PATH|g" \
-      -e "s|@@INTERVAL@@|$INTERVAL|g" \
-      "$ROOT/launchd/com.arjun.dailywelcome.script.plist.template" > "$PLIST"
-fi
-
-if ! launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null; then
-  echo "  (launchctl wouldn't load it; trying the older command)"
-  launchctl load -w "$PLIST" 2>/dev/null || true
-fi
-launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
-
-sleep 2
-if [ "$BUILT_APP" -eq 1 ] && ! pgrep -f "DailyWelcome.app/Contents/MacOS/DailyWelcome" >/dev/null 2>&1; then
-  echo
-  echo "  The app was built but isn't running. $ROOT/bin/doctor will say why."
+  # Without the app there is nothing to run at login: Orbit only speaks
+  # when spoken to, and the app is what listens. An agent left over from
+  # an older install would run a timer that no longer does anything.
+  launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
+  rm -f "$PLIST"
+  echo "  Skipped: without the menu bar app there is nothing to start at login."
 fi
 
 # --- 5. done ---------------------------------------------------------------
