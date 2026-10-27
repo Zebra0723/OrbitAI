@@ -5,13 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Console - OrbitAI</title>
 <meta name="description" content="Status and control for the assistant on your Mac.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Marcellus+SC&display=swap">
 <link rel="stylesheet" href="./assets/styles.css">
 </head>
 <body>
-<div class="sky"></div>
 <nav class="nav"><div class="nav-inner">
   <a class="brand" href="./"><span class="ring"></span><span>OrbitAI</span></a>
   <a class="link" href="./console.html">Console</a>
@@ -54,6 +50,28 @@
     <button class="quiet" data-act="selftest">Self-test</button>
   </div>
   <pre id="out"></pre>
+</section>
+
+<section>
+  <h2>Sound</h2>
+  <div class="panel">
+    <div class="mute">
+      <span class="now" id="muteNow">&#8212;</span>
+      <button class="quiet" data-act="mute" data-arg="30m">30 min</button>
+      <button class="quiet" data-act="mute" data-arg="1h">1 hour</button>
+      <button class="quiet" data-act="mute" data-arg="8h">8 hours</button>
+      <button class="quiet" data-act="mute" data-arg="">Until I unmute</button>
+    </div>
+    <div class="say" style="margin-top:12px">
+      <input type="text" id="muteFor" data-enter="mute-for" aria-label="Mute for how long"
+             placeholder="45m, 3h, until 7:30, until 7pm">
+      <button class="quiet" data-act="mute-for">Mute</button>
+      <button data-act="unmute">Unmute</button>
+    </div>
+    <div class="note">Muted means silent: no voice, no chime, no timer, whatever
+    asks. It still answers here in text. Orbit never speaks unless spoken to,
+    muted or not.</div>
+  </div>
 </section>
 
 <section>

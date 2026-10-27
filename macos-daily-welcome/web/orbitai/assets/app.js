@@ -223,7 +223,7 @@ async function pair() {
 
 // Marks the current page in the nav without every page hardcoding it.
 function markNav() {
-  const here = location.pathname.replace(/\/$/, "").split("/").pop() || "index";
+  const here = location.pathname.replace(/\/$/, "").split("/").pop().replace(/\.html$/, "") || "index";
   $$(".nav a.link").forEach((a) => {
     const target = a.getAttribute("href").replace(/^\.\//, "").replace(/\.html$/, "") || "index";
     if (target === here || (here === "index" && target === "")) a.setAttribute("aria-current", "page");

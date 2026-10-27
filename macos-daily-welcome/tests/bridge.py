@@ -141,6 +141,17 @@ check("and nothing was run", [], ran)
 check("a setting the console does not manage is refused", 400,
       ask("/api/setting", LOCAL, json.dumps({"key": "PATH", "value": "/evil"}).encode()))
 
+ran.clear()
+check("a mute length that is not a length is refused", 400,
+      ask("/api/mute", LOCAL, json.dumps({"length": "--help; rm -rf /"}).encode()))
+check("and nothing was run for it", [], ran)
+ask("/api/mute", LOCAL, json.dumps({"length": "until 7:30"}).encode())
+check("a real length reaches orbit mute as one argument",
+      True, any(a[-2:] == ["mute", "until 7:30"] for a in ran))
+ran.clear()
+ask("/api/mute", LOCAL, json.dumps({"off": True}).encode())
+check("and off unmutes", True, any(a[-1] == "unmute" for a in ran))
+
 # Arguments go to a process as arguments, never through a shell.
 ran.clear()
 ask("/api/say", LOCAL, json.dumps({"text": "hello; touch /tmp/pwned"}).encode())

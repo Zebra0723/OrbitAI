@@ -734,6 +734,18 @@ class Console(BaseHTTPRequestHandler):
             ok, out = run([ORBIT, "listen", action], timeout=30)
             return self.send(200, json.dumps({"ok": ok, "output": out}))
 
+        if path == "/api/mute":
+            # How long is read by orbit itself; all this checks is that it
+            # looks like a length and not like anything else.
+            if data.get("off"):
+                ok, out = run([ORBIT, "unmute"], timeout=15)
+                return self.send(200, json.dumps({"ok": ok, "output": out}))
+            length = str(data.get("length") or "").strip()
+            if not re.fullmatch(r"[A-Za-z0-9 :.']{0,40}", length):
+                return self.send(400, json.dumps({"error": "not a length"}))
+            ok, out = run([ORBIT, "mute"] + ([length] if length else []), timeout=15)
+            return self.send(200, json.dumps({"ok": ok, "output": out}))
+
         if path == "/api/contacts":
             write_pairs(CONTACTS, data.get("rows", []),
                         "# Nicknames for the people you message and call by voice.")

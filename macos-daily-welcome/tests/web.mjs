@@ -90,6 +90,7 @@ const BRIDGE = {
   '/api/command':  () => ({ ok: true, result: { speak: "It's seven o'clock in the evening.",
                                                 confirm: false, token: '' } }),
   '/api/listen':   () => ({ ok: true, output: 'listening' }),
+  '/api/mute':     () => ({ ok: true, output: 'Muted for 1 hour.' }),
   '/api/key':      () => ({ ok: true, output: 'stored' }),
   '/api/contacts': () => ({ ok: true }),
   '/api/macros':   () => ({ ok: true }),

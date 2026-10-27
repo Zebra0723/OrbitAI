@@ -7,12 +7,13 @@ let state = null;
 
 const OFFLINE_TILES = [
   ["App", "not connected"], ["Ears", "not connected"],
-  ["Last greeting", "not connected"], ["Wake word", "not connected"],
+  ["Sound", "not connected"], ["Wake word", "not connected"],
 ];
 
 async function load() {
   state = await api("/api/state");
   drawTiles();
+  drawMute();
   drawSettings();
   drawHeard();
   return state;
@@ -44,6 +45,13 @@ function muteText(muted) {
   return "muted until " + until.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+function drawMute() {
+  const muted = state.status.muted;
+  const now = $("muteNow");
+  now.textContent = muted ? muteText(muted) : "Sound on";
+  now.classList.toggle("on", Boolean(muted));
+}
+
 // An empty page is indistinguishable from a broken one, so say which.
 function drawOffline() {
   $("tiles").innerHTML = OFFLINE_TILES.map(([k, v]) =>
@@ -68,6 +76,13 @@ on("listen", (action) => listen(action));
 on("selftest", () => selftest());
 on("command", () => command());
 on("say", () => say());
+on("mute", (length) => mute(length || ""));
+on("mute-for", () => {
+  const length = $("muteFor").value.trim();
+  if (!length) return out("out", "Say how long first: 45m, 3h, until 7:30.");
+  return mute(length);
+});
+on("unmute", () => mute(null));
 on("toggle", (key, element) => toggle(key, element));
 on("save", (key, element) => save(key, element));
 
@@ -99,6 +114,16 @@ function listen(action) {
     const result = await api("/api/listen", { action });
     load().catch(() => {});
     return result.output || "Done.";
+  });
+}
+
+// null unmutes; "" mutes until unmuted; anything else is a length.
+function mute(length) {
+  return act("out", "Working...", async () => {
+    const result = await api("/api/mute", length === null ? { off: true } : { length });
+    if (result.ok && length) $("muteFor").value = "";
+    load().catch(() => {});
+    return result.output || (result.ok ? "Done." : "That didn't work.");
   });
 }
 

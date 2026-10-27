@@ -20,12 +20,11 @@ import zlib
 HERE = pathlib.Path(__file__).resolve().parent
 SITE = HERE.parent
 
-# The palette, from styles.css. Deep navy ground, because a home screen
-# is mostly other people's white icons, and the sky blue ring on top.
-GROUND = (12, 36, 57)
-RING = (56, 163, 232)
-GLOW = (19, 114, 184)
-DOT = (226, 238, 249)
+# The palette, from styles.css and Orbit.app: graphite ground, an
+# off-white ring, and the one red body riding on it.
+GROUND = (11, 11, 12)
+RING = (238, 236, 231)
+DOT = (255, 74, 61)
 
 
 def blend(under, over, alpha):
@@ -49,16 +48,17 @@ def coverage(distance, edge, softness=1.0):
 def draw(size):
     """One icon, as rows of RGB bytes.
 
-    A ring with a dot inside it - the same mark as the wordmark on the
-    site, which is a circle with a smaller circle riding on its edge.
+    A thin ring with one red body riding on it - the same mark as the
+    wordmark on the site and the Orbit.app icon.
     """
     middle = (size - 1) / 2
-    radius = size * 0.30          # the ring's centre line
-    thickness = size * 0.055
-    dot_at = size * 0.30          # the dot rides on the ring, up and right
-    dot_radius = size * 0.085
-    dot_x = middle + dot_at * 0.707
-    dot_y = middle - dot_at * 0.707
+    radius = size * 0.28          # the ring's centre line
+    thickness = size * 0.034
+    dot_at = size * 0.28          # the body rides on the ring, at the top
+    dot_radius = size * 0.07
+    dot_x = middle
+    dot_y = middle - dot_at
+    halo = dot_radius + size * 0.03   # a gap of ground around the body
 
     rows = []
     for y in range(size):
@@ -67,18 +67,19 @@ def draw(size):
             dx, dy = x - middle, y - middle
             from_middle = (dx * dx + dy * dy) ** 0.5
 
-            # A soft glow behind everything, brightest in the middle, so
-            # the icon does not read as a flat rectangle.
-            pixel = blend(GROUND, GLOW, max(0.0, 0.22 - from_middle / size * 0.3))
+            pixel = GROUND
+            ddx, ddy = x - dot_x, y - dot_y
+            from_dot = (ddx * ddx + ddy * ddy) ** 0.5
 
-            # The ring: inside the outer edge and outside the inner one.
+            # The ring: inside the outer edge and outside the inner one,
+            # broken where the body sits so the two never touch.
             ring = min(coverage(from_middle, radius + thickness / 2),
-                       1.0 - coverage(from_middle, radius - thickness / 2))
+                       1.0 - coverage(from_middle, radius - thickness / 2),
+                       1.0 - coverage(from_dot, halo))
             if ring > 0:
                 pixel = blend(pixel, RING, ring)
 
-            ddx, ddy = x - dot_x, y - dot_y
-            dot = coverage((ddx * ddx + ddy * ddy) ** 0.5, dot_radius)
+            dot = coverage(from_dot, dot_radius)
             if dot > 0:
                 pixel = blend(pixel, DOT, dot)
 
