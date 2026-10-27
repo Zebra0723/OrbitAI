@@ -13,6 +13,12 @@ It lives in the menu bar. No Terminal, no Dock icon, no windows.
 
 This is self-contained and unrelated to the rest of the repo; it just lives here.
 
+## The app
+
+`app/` builds **Orbit.app**, a window for typing to Orbit, reading every
+conversation, and managing its memory, macros, people, and settings. See
+`app/README.md`.
+
 ## Install
 
 ```bash
@@ -590,4 +596,5 @@ menubar/main.swift      the menu bar app, menu, and microphone restarts
 menubar/listener.swift  wake word, command capture, yes/no loop
 launchd/*.template      login agent, one per install mode
 install.sh              build, install, load
+app/                    Orbit.app: talk, conversations, memory, stats, settings
 ```
