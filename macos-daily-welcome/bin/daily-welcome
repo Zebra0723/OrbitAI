@@ -323,6 +323,7 @@ case "$MODE" in
     }
     # Speaks exactly what it is given, with nothing added.
     say_speak_raw() {
+      orbit_muted && return 0   # muted: no sound, whatever asked for it
       local v; v="$(resolve_voice)"
       if [ -n "$v" ]; then say -v "$v" -r "$WELCOME_SPEAK_RATE" "$1" >/dev/null 2>&1
       else say -r "$WELCOME_SPEAK_RATE" "$1" >/dev/null 2>&1; fi

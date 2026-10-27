@@ -96,12 +96,28 @@ final class OrbitListener: NSObject {
     var pauseOnCall = true
 
     /// A note left while a call is in progress, so the shell side holds
-    /// off too: no proactive alerts, no briefing read over the top.
+    /// off too: nothing read over the top.
     var callPath: String = ""
 
     /// Where to leave a note about what the ears are doing. A menu bar app
     /// has nowhere to show an error, so `doctor` reads this instead.
     var statusPath: String = ""
+
+    /// `orbit mute` writes this: the epoch second the mute ends, or "never".
+    /// While it is in force this app makes no sound at all - no reply, no
+    /// chime - whatever happens.
+    var mutePath: String = ""
+
+    /// The same rule as orbit_muted in common.sh. Anything unreadable in the
+    /// file counts as muted: a broken mute must fail silent, not talking.
+    private var isMuted: Bool {
+        guard !mutePath.isEmpty, FileManager.default.fileExists(atPath: mutePath) else { return false }
+        let text = ((try? String(contentsOfFile: mutePath, encoding: .utf8)) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if text == "never" { return true }
+        guard let until = TimeInterval(text) else { return true }
+        return Date().timeIntervalSince1970 < until
+    }
 
     /// The distinctive part of the wake phrase. Recognisers drop the "hey"
     /// far more often than they drop the name.
@@ -116,7 +132,7 @@ final class OrbitListener: NSObject {
     /// Words the commands are built from. Given to the recogniser as
     /// context so short instructions aren't reinterpreted as prose.
     private let commandVocabulary = [
-        "brief me", "mute", "unmute", "volume up", "volume down",
+        "mute yourself", "unmute yourself", "mute", "unmute", "volume up", "volume down",
         "take a screenshot", "lock my Mac", "what time is it",
         "read my messages", "what's on my calendar", "hang up",
         "set a timer", "remind me to", "message", "FaceTime", "Claude",
@@ -128,7 +144,7 @@ final class OrbitListener: NSObject {
         "mute", "unmute", "stop", "pause", "play", "volume up", "volume down",
         "louder", "quieter", "brighter", "dimmer", "next", "next song",
         "next track", "screenshot", "lock", "hang up", "dark mode",
-        "light mode", "brief me", "what time is it",
+        "light mode", "what time is it",
     ]
 
     /// Extra spellings that count as the wake word. Recognisers hear a
@@ -1314,11 +1330,13 @@ final class OrbitListener: NSObject {
         }
     }
 
-    /// Speaks through orbit (so it uses the same voice as the briefing),
+    /// Speaks through orbit (so it uses the same voice as everything else),
     /// with the microphone closed so it doesn't hear itself.
     /// Plays audio orbit already rendered. Nothing is launched, so this
     /// starts in milliseconds where a shell round trip took a moment.
     private func play(_ path: String, saying text: String, then: @escaping () -> Void) {
+        // Muted: carry on exactly as if it had been said, without a sound.
+        if isMuted { then(); return }
         guard !path.isEmpty, FileManager.default.fileExists(atPath: path) else {
             say(text, then: then)
             return
@@ -1351,7 +1369,7 @@ final class OrbitListener: NSObject {
     }
 
     private func say(_ text: String, then: @escaping () -> Void) {
-        guard !text.isEmpty else { then(); return }
+        guard !text.isEmpty, !isMuted else { then(); return }
 
         // The microphone stays open while it talks, so "stop" works. Its
         // own words come back through the mic, which is why stopWord()
@@ -1393,6 +1411,7 @@ final class OrbitListener: NSObject {
     }
 
     private func chime(_ name: String) {
+        guard !isMuted else { return }
         NSSound(named: NSSound.Name(name))?.play()
     }
 

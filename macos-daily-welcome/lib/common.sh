@@ -6,6 +6,37 @@ welcome_log() {
   printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2
 }
 
+# ------------------------------------------------------------------ mute
+#
+# While Orbit is muted it makes no sound at all - no answers, no chimes,
+# nothing - whatever happens. Every function that can make a sound asks
+# this first, and the menu bar app reads the same file before it plays
+# anything. Muting ends only when its time runs out or someone unmutes it.
+#
+# The file holds the epoch second the mute ends, or "never" for "until I
+# unmute". Anything else in it counts as muted: a mute that has gone wrong
+# must fail silent, never fail talking.
+
+orbit_mute_file() { printf '%s/muted-until' "${WELCOME_STATE_DIR:-$HOME/.local/state/daily-welcome}"; }
+
+orbit_muted() {
+  local file until
+  file="$(orbit_mute_file)"
+  [ -f "$file" ] || return 1
+  until="$(tr -d '[:space:]' < "$file" 2>/dev/null)"
+  case "$until" in
+    never) return 0 ;;
+    ''|*[!0-9]*) return 0 ;;
+  esac
+  if [ "$(date +%s)" -lt "$until" ]; then
+    return 0
+  fi
+  # Its time is up. Clearing it here means "still muted?" and "unmuted"
+  # can never disagree.
+  rm -f "$file"
+  return 1
+}
+
 # Where the last failure's stderr is kept. It goes in a file rather than a
 # variable because callers wrap this in $( ), and a subshell can't hand a
 # variable back to its parent - "it didn't work" is not a diagnosis, and
@@ -132,8 +163,8 @@ _file_age_seconds() {
 
 # True while another app has the microphone - which is what a call looks
 # like from here. The menu bar app is the one doing the detecting; it
-# leaves this note so the briefing and the proactive alerts can hold off
-# too, rather than talking over the call the listener just stepped out of.
+# leaves this note so nothing else talks over the call the listener just
+# stepped out of.
 on_a_call() {
   [ "$ORBIT_PAUSE_ON_CALL" = "1" ] || return 1
   [ -s "$WELCOME_STATE_DIR/on-call" ] || return 1

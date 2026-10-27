@@ -68,7 +68,8 @@ slot_is_new_command() {
   local lower
   lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
   case "$lower" in
-    "what time"*|"what is the time"*|"brief me"*|"lock my mac"*|\
+    "what time"*|"what is the time"*|"lock my mac"*|\
+    "mute yourself"*|"unmute yourself"*|"be quiet"*|"go quiet"*|\
     "shut down"*|"restart"*|"go to sleep"*|"take a screenshot"*|\
     "volume up"*|"volume down"*|"stop listening"*|"stop talking"*|\
     "hey orbit"*)

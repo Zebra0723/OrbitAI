@@ -283,6 +283,7 @@ eleven_cache_line() {
 # caller should fall back to `say`.
 eleven_speak() {
   local text="$1" file
+  orbit_muted && return 0   # muted: no sound, whatever asked for it
   eleven_available || return 1
 
   file="$(eleven_cache_path "$text")"

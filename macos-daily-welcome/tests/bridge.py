@@ -42,7 +42,7 @@ spec.loader.exec_module(server)
 ran = []
 server.run = lambda args, timeout=60: (ran.append(args), (True, "stub"))[1]
 server.status = lambda: {"app_running": False, "listener": {}, "heard": [],
-                         "last_greeting": "", "on_call": ""}
+                         "on_call": "", "muted": ""}
 server.config_values = lambda: {}
 
 httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.Console)

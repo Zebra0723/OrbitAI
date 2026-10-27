@@ -16,6 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var statusItem: NSStatusItem!
     private var listeningItem: NSMenuItem!
+    private var muteStateItem: NSMenuItem!
+    private var unmuteItem: NSMenuItem!
     /// The console server, once it has been asked for.
     private var consoleTask: Process?
     private let listener = OrbitListener()
@@ -109,6 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         listener.orbitPath = orbitPath
         listener.wakeWord = wakeWord
         listener.statusPath = stateDir + "/listener-status"
+        listener.mutePath = stateDir + "/muted-until"
         listener.wakeAliases = (shellConfig("aliases") ?? "")
             .split(separator: "|")
             .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
@@ -199,6 +202,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Stop Talking", #selector(hush), "."))
         menu.addItem(.separator())
 
+        // Mute: no sound at all until the time is up or it's unmuted.
+        muteStateItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        muteStateItem.isEnabled = false
+        muteStateItem.isHidden = true
+        menu.addItem(muteStateItem)
+        let muteItem = NSMenuItem(title: "Mute Orbit", action: nil, keyEquivalent: "")
+        let muteMenu = NSMenu()
+        for (title, length) in [("For 30 Minutes", "30m"), ("For 1 Hour", "1h"), ("For 2 Hours", "2h"),
+                                ("For 8 Hours", "8h"), ("Until I Unmute", "")] {
+            let entry = item(title, #selector(muteFor(_:)), "")
+            entry.representedObject = length
+            muteMenu.addItem(entry)
+        }
+        muteMenu.addItem(.separator())
+        muteMenu.addItem(item("Custom\u{2026}", #selector(muteCustom), ""))
+        muteItem.submenu = muteMenu
+        menu.addItem(muteItem)
+        unmuteItem = item("Unmute Orbit", #selector(unmute), "")
+        menu.addItem(unmuteItem)
+        menu.addItem(.separator())
+
         // Everything the terminal could do, on a page. Reaching it used
         // to mean opening Terminal and typing `orbit console`, which is
         // the whole barrier for anybody who does not already live there.
@@ -220,6 +244,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - Actions
 
     @objc private func hush()          { run(["--hush"]) }
+
+    // MARK: - Mute
+
+    @objc private func muteFor(_ sender: NSMenuItem) {
+        let length = sender.representedObject as? String ?? ""
+        runOrbit(length.isEmpty ? ["mute"] : ["mute", length])
+    }
+
+    @objc private func muteCustom() {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Mute Orbit"
+        alert.informativeText = "How long? For example 45m, 3h, 2d, or until 7:30am. Leave it empty to mute until you unmute."
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.placeholderString = "3h"
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Mute")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let length = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        runOrbit(length.isEmpty ? ["mute"] : ["mute", length])
+    }
+
+    @objc private func unmute() { runOrbit(["unmute"]) }
+
+    /// When the current mute ends: nil if not muted, .distantFuture for "until unmuted".
+    private var mutedUntil: Date? {
+        let path = stateDir + "/muted-until"
+        guard FileManager.default.fileExists(atPath: path) else { return nil }
+        let text = ((try? String(contentsOfFile: path, encoding: .utf8)) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard text != "never", let epoch = TimeInterval(text) else { return .distantFuture }
+        let date = Date(timeIntervalSince1970: epoch)
+        return date > Date() ? date : nil
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        if let until = mutedUntil {
+            muteStateItem.isHidden = false
+            if until == .distantFuture {
+                muteStateItem.title = "Muted until you unmute"
+            } else {
+                let f = DateFormatter()
+                f.dateStyle = Calendar.current.isDateInToday(until) ? .none : .short
+                f.timeStyle = .short
+                muteStateItem.title = "Muted until \(f.string(from: until))"
+            }
+            unmuteItem.isEnabled = true
+        } else {
+            muteStateItem.isHidden = true
+            unmuteItem.isEnabled = false
+        }
+    }
+
+    private func runOrbit(_ arguments: [String]) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [orbitPath] + arguments
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+    }
 
     @objc private func listenNow() { listener.listenNow() }
 
@@ -303,9 +389,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         process.arguments = [path] + arguments
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
-        process.terminationHandler = { [weak self] _ in
-            DispatchQueue.main.async { self?.refreshLastRunItem() }
-        }
         do { try process.run() } catch {
             NSLog("daily-welcome: could not run \(path): \(error.localizedDescription)")
         }

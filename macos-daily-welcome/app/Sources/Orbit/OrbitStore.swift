@@ -46,6 +46,35 @@ struct ConfEntry: Identifiable, Equatable {
     var value: String
 }
 
+/// Whether Orbit may make a sound. Mirrors orbit_muted in lib/common.sh.
+enum MuteState: Equatable {
+    case off
+    case untilUnmuted
+    case until(Date)
+
+    var isMuted: Bool { self != .off }
+
+    static func read() -> MuteState {
+        guard FileManager.default.fileExists(atPath: OrbitPaths.muted.path) else { return .off }
+        let text = ((try? String(contentsOf: OrbitPaths.muted, encoding: .utf8)) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        // Anything unreadable counts as muted, the same as the shell.
+        guard text != "never", let epoch = TimeInterval(text) else { return .untilUnmuted }
+        let end = Date(timeIntervalSince1970: epoch)
+        return end > Date() ? .until(end) : .off
+    }
+
+    var description: String {
+        switch self {
+        case .off: return "Sound on"
+        case .untilUnmuted: return "Muted until you unmute"
+        case .until(let end):
+            let clock = Format.clock(end)
+            return Calendar.current.isDateInToday(end) ? "Muted until \(clock)" : "Muted until \(Format.day(end)) \(clock)"
+        }
+    }
+}
+
 struct ListenerStatus: Equatable {
     var state = "unknown"
     var updated = ""
@@ -68,6 +97,7 @@ final class OrbitStore: ObservableObject {
     @Published private(set) var macros: [ConfEntry] = []
     @Published private(set) var contacts: [ConfEntry] = []
     @Published private(set) var listener = ListenerStatus()
+    @Published private(set) var mute = MuteState.off
 
     private var refreshTask: Task<Void, Never>?
     private var stamps: [URL: Date] = [:]
@@ -93,6 +123,23 @@ final class OrbitStore: ObservableObject {
         if force || changed(OrbitPaths.macros) { macros = Self.readConf(OrbitPaths.macros) }
         if force || changed(OrbitPaths.contacts) { contacts = Self.readConf(OrbitPaths.contacts) }
         listener = Self.readListener()
+        mute = MuteState.read()
+    }
+
+    // MARK: Mute
+
+    /// "" mutes until unmuted; otherwise anything `orbit mute` reads: 45m, 2h, until 7:30.
+    @discardableResult
+    func mute(for length: String) async -> Bool {
+        let trimmed = length.trimmingCharacters(in: .whitespacesAndNewlines)
+        let result = await OrbitCLI.orbit(trimmed.isEmpty ? ["mute"] : ["mute", trimmed])
+        reload(force: false)
+        return result.ok
+    }
+
+    func unmute() async {
+        _ = await OrbitCLI.orbit(["unmute"])
+        reload(force: false)
     }
 
     private func changed(_ url: URL) -> Bool {

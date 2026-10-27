@@ -269,6 +269,33 @@ _first_number() {
 # both silently, since a timer that is wrong says nothing until it goes off.
 # A bare number still means minutes, which is what people mean when they
 # leave the unit off.
+# Muting Orbit itself: "mute yourself for two hours", "go quiet until 7",
+# "be quiet", "unmute yourself". Prints quiet<TAB>mute<TAB>how long, or
+# quiet<TAB>unmute. Plain "mute" and "unmute" stay the Mac's volume.
+_try_quiet() {
+  local lower rest
+  lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[.!?,]+$//; s/[[:space:]]+/ /g; s/^ //; s/ $//')"
+
+  case "$lower" in
+    "unmute yourself"|"unmute orbit"|"orbit unmute"|"you can talk again"|"you can speak again"|\
+    "talk again"|"speak again"|"you can talk now"|"stop being quiet"|"end quiet mode"|"quiet mode off"|\
+    "unmute yourself "*|"you can talk again "*)
+      printf 'quiet\tunmute\t\n'; return 0 ;;
+  esac
+
+  case "$lower" in
+    "mute yourself"*|"mute orbit"*|"orbit mute"*|"silence yourself"*|\
+    "go quiet"*|"be quiet"*|"stay quiet"*|"keep quiet"*|"go silent"*|"be silent"*|"stay silent"*|\
+    "quiet mode"*|"shut up"*|"don't talk"*|"do not talk"*|"don't speak"*|"do not speak"*)
+      rest="$(printf '%s' "$lower" | sed -E \
+        's/^(mute yourself|mute orbit|orbit mute|silence yourself|go quiet|be quiet|stay quiet|keep quiet|go silent|be silent|stay silent|quiet mode( on)?|shut up|don'"'"'t talk|do not talk|don'"'"'t speak|do not speak)[[:space:]]*//')"
+      printf 'quiet\tmute\t%s\n' "$rest"; return 0 ;;
+    "stop talking for "*|"stop talking until "*|"stop talking till "*)
+      printf 'quiet\tmute\t%s\n' "${lower#stop talking }"; return 0 ;;
+  esac
+  return 1
+}
+
 _duration_seconds() {
   printf '%s' "$1" | awk '
     BEGIN {
@@ -763,6 +790,10 @@ parse_intent() {
   # Drop the wake word if the recognizer kept it.
   text="$(printf '%s' "$text" | sed -E 's/^(hey|hi|ok|okay)[[:space:]]+orbit[[:space:]]*[,.]?[[:space:]]*//I')"
 
+  # Muting comes before everything, models and macros included: "be
+  # quiet" has to work the same way every single time.
+  _try_quiet "$text" && return 0
+
   # In "openai" mode the model gets first refusal on everything except the
   # user's own macro phrases, which are theirs by definition.
   if [ "$ORBIT_NLU" = "openai" ]; then
@@ -840,8 +871,12 @@ Things Orbit understands (after "Hey Orbit"):
     new tab / close tab / reload / go back / save this
     play bohemian rhapsody on spotify
 
+  Quiet
+    mute yourself / mute yourself for two hours / go quiet until 7:30
+    be quiet (until you unmute it)
+    unmute yourself
+
   Reading things out
-    brief me
     what's on my calendar
     read my messages
     any new email

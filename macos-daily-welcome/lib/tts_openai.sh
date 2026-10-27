@@ -94,6 +94,7 @@ openai_tts_voices() {
 # Renders and plays in one go, the counterpart to eleven_speak.
 openai_speak() {
   local text="$1" file
+  orbit_muted && return 0   # muted: no sound, whatever asked for it
   file="$(openai_tts_cache_path "$text")"
   if [ ! -s "$file" ]; then
     openai_tts_synthesize "$text" "$file" || return 1

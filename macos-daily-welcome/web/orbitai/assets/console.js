@@ -29,11 +29,19 @@ function drawTiles() {
     ["App", s.app_running ? "Running" : "Not running", s.app_running],
     ["Ears", listening, alive],
     ["Microphone", s.on_call ? s.on_call + " has it" : "free", !s.on_call],
-    ["Last greeting", s.last_greeting || "none yet", !!s.last_greeting],
+    ["Sound", muteText(s.muted), !s.muted],
     ["Wake word", s.listener.wake || "hey orbit", true],
   ].map(([k, v, ok]) =>
     `<div class="tile"><div class="k">${esc(k)}</div>
      <div class="v ${ok ? "on" : "off"}">${esc(v)}</div></div>`).join("");
+}
+
+// "" means it may speak; "never" is muted until unmuted; else an epoch second.
+function muteText(muted) {
+  if (!muted) return "on";
+  if (muted === "never") return "muted until unmuted";
+  const until = new Date(Number(muted) * 1000);
+  return "muted until " + until.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
 // An empty page is indistinguishable from a broken one, so say which.

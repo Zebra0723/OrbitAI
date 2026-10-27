@@ -51,6 +51,6 @@ still()  { if slot_is_new_command "$1"; then ok "\"$1\" is still the answer" n y
 
 fresh "what time is it"
 fresh "stop listening"
-fresh "hey orbit, brief me"
+fresh "hey orbit, what time is it"
 still "tell her I'm running late"
 still "say I'll be there at six"

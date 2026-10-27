@@ -76,6 +76,7 @@ piper_synthesize() {
 
 piper_speak() {
   local text="$1" file
+  orbit_muted && return 0   # muted: no sound, whatever asked for it
   file="$(piper_cache_path "$text")"
   if [ ! -s "$file" ]; then
     piper_synthesize "$text" "$file" || return 1

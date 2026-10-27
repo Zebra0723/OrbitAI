@@ -7,6 +7,8 @@ struct SettingsView: View {
     @State private var values: [String: String] = [:]
     @State private var output = ""
     @State private var busy = false
+    @State private var muteLength = ""
+    @State private var muteError = false
 
     private struct Setting {
         enum Kind { case text, number, toggle, choice([String]) }
@@ -61,11 +63,12 @@ struct SettingsView: View {
                       subtitle: "The same file the terminal uses. Changes apply to Orbit's next turn.")
 
             microphone
+            sound
             voiceTools
 
             ForEach(Array(Self.groups.enumerated()), id: \.element.title) { index, group in
                 VStack(alignment: .leading, spacing: 0) {
-                    SectionHeader(index: Format.index(index + 3), title: group.title)
+                    SectionHeader(index: Format.index(index + 4), title: group.title)
                         .padding(.bottom, 4)
                     ForEach(group.settings, id: \.key) { setting in
                         row(setting)
@@ -113,9 +116,68 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Sound
+
+    private static let mutePresets: [(String, String)] = [
+        ("30 min", "30m"), ("1 hour", "1h"), ("2 hours", "2h"), ("8 hours", "8h"), ("Until I unmute", ""),
+    ]
+
+    /// Muted means silent: no voice, no chime, no timers, whatever asks.
+    private var sound: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(index: "02", title: "Sound")
+                .padding(.bottom, 4)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 18) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(store.mute.isMuted ? store.mute.description : "Not muted")
+                            .font(Theme.body(14, weight: .medium))
+                            .foregroundStyle(store.mute.isMuted ? Theme.signal : Theme.ink)
+                        Text("While muted Orbit makes no sound at all. It still answers here, in text.")
+                            .font(Theme.body(12.5))
+                            .foregroundStyle(Theme.ink3)
+                    }
+                    Spacer()
+                    if store.mute.isMuted {
+                        Button("Unmute") { Task { await store.unmute() } }
+                            .buttonStyle(InstrumentButtonStyle(kind: .primary))
+                    }
+                }
+                HStack(spacing: 8) {
+                    ForEach(Self.mutePresets, id: \.0) { preset in
+                        Button(preset.0) { mute(preset.1) }
+                            .buttonStyle(InstrumentButtonStyle())
+                    }
+                }
+                HStack(spacing: 8) {
+                    TextField("45m, 3h, until 7:30, until 7pm", text: $muteLength)
+                        .instrumentField(mono: true)
+                        .frame(maxWidth: 280)
+                        .onSubmit { mute(muteLength) }
+                    Button("Mute") { mute(muteLength) }
+                        .buttonStyle(InstrumentButtonStyle(kind: .primary))
+                        .disabled(muteLength.trimmingCharacters(in: .whitespaces).isEmpty)
+                    if muteError {
+                        MonoLabel("Couldn't read that length", color: Theme.signal)
+                    }
+                }
+            }
+            .padding(.vertical, 18)
+            .overlay(alignment: .bottom) { Rule() }
+        }
+    }
+
+    private func mute(_ length: String) {
+        Task {
+            let ok = await store.mute(for: length)
+            muteError = !ok
+            if ok { muteLength = "" }
+        }
+    }
+
     private var voiceTools: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionHeader(index: "02", title: "Diagnostics")
+            SectionHeader(index: "03", title: "Diagnostics")
                 .padding(.bottom, 4)
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 8) {

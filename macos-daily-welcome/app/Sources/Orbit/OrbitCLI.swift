@@ -23,6 +23,7 @@ enum OrbitPaths {
     static var turns: URL { stateDir.appendingPathComponent("turns.log") }
     static var listenerStatus: URL { stateDir.appendingPathComponent("listener-status") }
     static var paused: URL { stateDir.appendingPathComponent("paused") }
+    static var muted: URL { stateDir.appendingPathComponent("muted-until") }
 
     static var orbit: URL { home.appendingPathComponent(".local/bin/orbit") }
     static var welcome: URL { home.appendingPathComponent(".local/bin/daily-welcome") }

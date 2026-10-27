@@ -14,6 +14,7 @@
 # playback stopped belonging to either of them.
 play_file() {
   local file="$1"
+  orbit_muted && return 0   # muted: no sound, whatever asked for it
   [ -s "$file" ] || return 1
   have_cmd afplay || return 1
   afplay -v "$WELCOME_VOLUME" "$file" 2>/dev/null
@@ -91,6 +92,7 @@ _say_prosody() {
 
 say_speak() {
   local text="$1" voice
+  orbit_muted && return 0   # muted: no sound, whatever asked for it
   have_cmd say || return 1
   text="$(_say_prosody)$(speech_pace "$text" say)"
   voice="$(resolve_voice)"
@@ -142,6 +144,7 @@ EOT
 # caller can wait for it rather than exiting mid-sentence.
 speak_async() {
   local text="$1"
+  orbit_muted && return 0   # muted: no sound, whatever asked for it
   [ "$WELCOME_SPEAK" = "1" ] || return 0
   [ -z "$text" ] && return 0
   # The backstop: whatever asked for this, it is not worth talking into a
@@ -167,6 +170,8 @@ speak_async() {
 # most of the wait.
 speak_to_file() {
   local text="$1" file
+  # Muted: no audio to hand back, so whoever plays it has nothing to play.
+  orbit_muted && return 1
   [ "$WELCOME_SPEAK" = "1" ] || return 1
   [ -z "$text" ] && return 1
 

@@ -50,7 +50,7 @@ load_libs() {
 # other; loading the lot is a second of startup and no surprises.
 ORBIT_LIBS=(common sources messages mail contacts claude_jobs system freeform
             speech_text tts_eleven tts_openai tts_piper voice intents
-            context ask tone macros nlu_openai nlu_claude emoji memory
+            context ask tone macros mute nlu_openai nlu_claude emoji memory
             slots speaker)
 
 load_orbit() {
@@ -127,6 +127,20 @@ succeeds() {
     FAILURES+=("$CURRENT_FILE: $what
     command failed: $*
     output: $out")
+  fi
+}
+
+# fails DESCRIPTION COMMAND... - the command must exit non-zero.
+fails() {
+  local what="$1"; shift
+  local out
+  if out="$("$@" 2>&1)"; then
+    FAIL=$((FAIL + 1))
+    FAILURES+=("$CURRENT_FILE: $what
+    command succeeded but should have failed: $*
+    output: $out")
+  else
+    PASS=$((PASS + 1))
   fi
 }
 

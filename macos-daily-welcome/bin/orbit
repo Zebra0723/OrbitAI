@@ -35,6 +35,7 @@ welcome_load_user_config
 . "$ROOT/lib/ask.sh"
 . "$ROOT/lib/tone.sh"
 . "$ROOT/lib/macros.sh"
+. "$ROOT/lib/mute.sh"
 . "$ROOT/lib/nlu_openai.sh"
 . "$ROOT/lib/nlu_claude.sh"
 . "$ROOT/lib/emoji.sh"
@@ -63,6 +64,10 @@ orbit - voice commands for daily-welcome
   orbit cancel <token>           drop it
   orbit say "<text>"             speak something in the Orbit voice
   orbit hush                     stop talking right now
+  orbit mute [how long]          no sound at all until then: 45m, 2h, "until 7:30", or
+                                 nothing for "until I unmute"
+  orbit unmute                   let it speak again
+  orbit mute status              whether it's muted, and until when
   orbit listen [status|on|off|pause|resume|restart]   the microphone
   orbit warm                     pre-render the lines it says most
   orbit greeting                 the line for a wake word with no command
@@ -354,6 +359,24 @@ plan_call() {
 
 # The social half of talking to something. "Thanks" ends the conversation,
 # which is how you stop without saying stop.
+# "Mute yourself for an hour" / "unmute yourself". Muting answers in text
+# only: by the time the reply is rendered Orbit is already muted, so there
+# is no audio to play and the listener plays nothing.
+plan_quiet() {
+  local what="$1" how_long="$2" until
+  memory_log_event quiet "$what${how_long:+ $how_long}"
+  if [ "$what" = unmute ]; then
+    orbit_unmute
+    emit "I'm back." false "" true
+    return 0
+  fi
+  if until="$(orbit_mute "$how_long")"; then
+    emit "Muted $(orbit_mute_words "$until")." false "" true
+  else
+    emit "I can't tell how long that is. Try: mute yourself for two hours." false ""
+  fi
+}
+
 plan_social() {
   case "$1" in
     thanks)     emit "$ORBIT_SIGNOFF" false "" true ;;
@@ -727,6 +750,7 @@ case "${1:-}" in
         [ -n "$arg2" ] && memory_add_fact "$arg2"
         emit "$(tone_shape "$ORBIT_TONE" "$arg1")" false "" ;;
       social)     plan_social "$arg1" ;;
+      quiet)      plan_quiet "$arg1" "$arg2" ;;
       ask)        plan_ask "$arg1" ;;
       screen)     plan_screen "$arg1" ;;
       message)    plan_message "$arg1" "$arg2" ;;
@@ -786,6 +810,30 @@ case "${1:-}" in
     shift
     speak_async "${1:-}"
     [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
+    ;;
+  mute)
+    shift
+    case "${1:-}" in
+      status)
+        if orbit_muted; then
+          echo "Muted $(orbit_mute_words "$(tr -d '[:space:]' < "$(orbit_mute_file)")")."
+        else
+          echo "Not muted."
+        fi ;;
+      off) orbit_unmute; echo "Unmuted." ;;
+      *)
+        if until="$(orbit_mute "$*")"; then
+          echo "Muted $(orbit_mute_words "$until"). Nothing will make a sound until then."
+        else
+          echo "orbit mute: I can't tell how long \"$*\" is." >&2
+          echo '  try: orbit mute 45m | 2h | 1d | "until 7:30" | (nothing, for until you unmute)' >&2
+          exit 2
+        fi ;;
+    esac
+    ;;
+  unmute)
+    orbit_unmute
+    echo "Unmuted."
     ;;
   hush)
     hush
@@ -1060,12 +1108,14 @@ case "${1:-}" in
     exec python3 "$ROOT/web/server.py" "$@"
     ;;
   timer-fire)
-    # Runs detached: sleep, then say so. Only ever started by nohup.
+    # Runs detached: sleep, then a silent notification. Not spoken: by the
+    # time it fires nobody has just said anything, and Orbit only talks in
+    # answer to someone. Only ever started by nohup.
     shift
     seconds="${1:-300}"
     sleep "$seconds"
-    speak_async "Your $(duration_attr "$seconds") timer is up."
-    [ -n "${WELCOME_SPEAK_PID:-}" ] && wait "$WELCOME_SPEAK_PID" 2>/dev/null
+    message="Your $(duration_attr "$seconds") timer is up."
+    osascript -e "display notification \"$message\" with title \"Orbit\"" >/dev/null 2>&1
     ;;
   warm)
     # Synthesis is the slow part of a reply, and the same handful of lines

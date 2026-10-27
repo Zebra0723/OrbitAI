@@ -198,8 +198,17 @@ struct RootView: View {
             }
 
             Rule()
-            StatusLine(status: store.listener)
-                .padding(.vertical, 16)
+            VStack(alignment: .leading, spacing: 8) {
+                StatusLine(status: store.listener)
+                if store.mute.isMuted {
+                    Text(store.mute.description.uppercased())
+                        .font(Theme.mono(10, weight: .medium))
+                        .tracking(0.8)
+                        .foregroundStyle(Theme.ink2)
+                        .padding(.leading, 17)
+                }
+            }
+            .padding(.vertical, 16)
         }
         .padding(.horizontal, 24)
         .frame(width: 216)

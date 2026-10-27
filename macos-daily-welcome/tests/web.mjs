@@ -77,7 +77,7 @@ const BRIDGE = {
       app_running: true,
       listener: { state: 'listening', wake: 'hey orbit', updated: '2026-09-02T19:00:00Z' },
       heard: ['what time is it', 'hey orbit'],
-      last_greeting: '2026-09-02',
+      muted: 'never',
       on_call: '',
     },
     contacts: [{ name: 'Mama', value: '+15551234567' }],
@@ -240,7 +240,7 @@ for (const file of files) {
     const text = await page.evaluate(() => document.body.innerText + '\n' +
       [...document.querySelectorAll('input,textarea,select')].map(e => e.value).join('\n'));
     const want = { 'console.html': ['Arjun', 'listening', 'Running', 'hey orbit',
-                                    'what time is it', '2026-09-02'],
+                                    'what time is it', 'muted until unmuted'],
                    'macros.html': ['Mama', '+15551234567', 'good night'],
                    'voice.html': ['veda-sky', 'sir'],
                    'people.html': ['Arjun', '3 recordings', 'refused', 'bypass 727590'],

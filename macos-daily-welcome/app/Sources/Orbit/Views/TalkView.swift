@@ -47,6 +47,9 @@ struct TalkView: View {
                 Tally(live: working)
                 MonoLabel(working ? "Working" : (reply == nil ? "Ready" : "Orbit"),
                           color: working ? Theme.ink : Theme.ink3)
+                if store.mute.isMuted {
+                    MonoLabel("·  \(store.mute.description)", color: Theme.ink2)
+                }
             }
 
             if let reply {
@@ -170,7 +173,8 @@ struct TalkView: View {
         }
         reply = plan.speak.isEmpty ? "Done." : plan.speak
         pendingToken = plan.confirm && !plan.token.isEmpty ? plan.token : nil
-        if speakReplies, !plan.audio.isEmpty {
+        // Muted means silent here too, whatever the voice toggle says.
+        if speakReplies, !plan.audio.isEmpty, !MuteState.read().isMuted {
             player = try? AVAudioPlayer(contentsOf: URL(fileURLWithPath: plan.audio))
             player?.play()
         }

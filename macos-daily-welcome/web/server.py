@@ -338,11 +338,6 @@ def status():
     if heard_path.exists():
         heard = [l.split("\t", 1)[-1] for l in heard_path.read_text().splitlines()[-8:]]
 
-    last_run = ""
-    last_path = STATE / "last-run"
-    if last_path.exists():
-        last_run = last_path.read_text().strip()
-
     # Written by the menu bar app while another app has the microphone.
     # Stale notes are debris from an app that was killed mid-call.
     on_call = ""
@@ -354,9 +349,21 @@ def status():
         "app_running": running,
         "listener": listener,
         "heard": heard,
-        "last_greeting": last_run,
         "on_call": on_call,
+        "muted": muted_until(),
     }
+
+
+def muted_until():
+    """Empty when Orbit may speak, "never" when muted until unmuted, or the
+    epoch second the mute ends. Mirrors orbit_muted in lib/common.sh."""
+    path = STATE / "muted-until"
+    if not path.exists():
+        return ""
+    text = path.read_text().strip()
+    if text == "never" or not text.isdigit():
+        return "never"
+    return text if int(text) > time.time() else ""
 
 
 def read_pairs(path, sep="="):
