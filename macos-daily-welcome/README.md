@@ -1,15 +1,13 @@
-# Daily Welcome + Orbit
+# Orbit
 
-A menu bar assistant for macOS, in two halves.
+A voice assistant for macOS that lives in the menu bar. Say *"Hey Orbit"* and
+give it a command: message someone, hand a job to Claude in one of your repos,
+reply to a pile of email, read back your calendar or messages, or drive the
+Mac itself. It answers in your ElevenLabs voice.
 
-**Daily Welcome** greets you once a day, the first time you open your Mac. It
-says *"Welcome Arjun"* in your ElevenLabs voice and reads a short briefing —
-reminders due, today's calendar, unread messages and mail, and anything Claude
-finished overnight.
-
-**Orbit** is the same voice, listening. Say *"Hey Orbit"* and give it a
-command: message someone, hand a job to Claude in one of your repos, reply to
-a pile of email, or drive the Mac itself.
+(It started life as "Daily Welcome", a once-a-day spoken briefing. The
+briefing has been removed; the folder and command names still carry the old
+name.)
 
 It lives in the menu bar. No Terminal, no Dock icon, no windows.
 
@@ -21,14 +19,14 @@ This is self-contained and unrelated to the rest of the repo; it just lives here
 cd macos-daily-welcome
 ./install.sh
 daily-welcome --set-key      # your ElevenLabs API key, into the Keychain
-daily-welcome --force        # hear the briefing now
+daily-welcome --test-voice   # hear the voice now
 ```
 
 Then say **"Hey Orbit, what time is it"** to check the ears work.
 
 If `swiftc` isn't installed (`xcode-select --install` gets it), the installer
-skips the menu bar app and falls back to a background check every two minutes.
-The briefing still works; voice commands need the app.
+skips the menu bar app and falls back to a background check every two minutes
+for proactive alerts. Voice commands need the app.
 
 ## The voice
 
@@ -41,7 +39,7 @@ your account, so add it to your ElevenLabs voices first, or set
 
 **Without a key it still works.** It falls back to the best built-in macOS
 voice, so a missing key, dead network, or API error costs you the voice, never
-the briefing. Replies are cached, so replaying today's costs nothing.
+the answer. Replies are cached, so a phrase said before costs nothing.
 
 ```bash
 daily-welcome --voices       # which backend and voice are actually in use
@@ -57,7 +55,7 @@ differently:
 |---|---|
 | Waiting for you to stop talking | 0.9s of silence ends the command |
 | Working out what you meant | Rule-based, so instant; only unrecognised phrasings go to Claude |
-| Making the audio | The **fast model** (`eleven_flash_v2_5`) for replies; the better one only for the daily briefing, which nobody is waiting on |
+| Making the audio | The **fast model** (`eleven_flash_v2_5`) for replies |
 | Playing it | Cached by phrase, so anything said before plays from disk |
 
 `orbit warm` renders the lines Orbit says constantly — the greeting, "Done",
@@ -79,16 +77,7 @@ Pause markup like `[[slnc 400]]` is deliberately unused: older Apple voices
 obey it, newer neural ones read it out loud. Pacing comes from sentence
 structure, which every engine handles.
 
-### What the briefing sounds like
-
-> *Welcome back, Arjun. Good morning, sir. It's eight forty-two in the morning,
-> Monday the thirty-first of August. Three reminders due today, one overdue.
-> Two events on the calendar. Four unread messages. Top of the list: Call the
-> bank. That one is overdue. Next: Design review, at nine o'clock. Standing by.*
-
-Short declaratives, no hedging. `WELCOME_HONORIFIC=""` drops the "sir",
-`WELCOME_CLOSER` changes the sign-off, `WELCOME_SPEAK_MAX_ITEMS` sets how many
-items get read.
+`WELCOME_HONORIFIC=""` drops the "sir".
 
 ## Talking to Orbit
 
@@ -121,9 +110,8 @@ that resolves to nobody stops the command — guessing who you meant is the one
 failure worth refusing.
 
 Claude jobs run detached in the repo you named, matched loosely, so "the
-dailyos mvp development chat" finds `~/projects/dailyos-mvp`. The result waits
-for you in the next briefing: *"Claude finished fixing the login flow in
-dailyos."*
+dailyos mvp development chat" finds `~/projects/dailyos-mvp`. Orbit says so when
+it finishes: *"Claude finished fixing the login flow in dailyos."*
 
 Email replies are **drafted first**. Orbit writes them into Mail, tells you how
 many, and sends only on your yes. Delete a draft before answering and that one
@@ -205,7 +193,7 @@ Both take longer than an ordinary answer because they are doing real work.
 
 Two hosted services and a local fallback. `auto` prefers ElevenLabs, drops
 to OpenAI, then to the best built-in macOS voice - so a service having a bad
-day costs you the voice and never the briefing.
+day costs you the voice and never the answer.
 
 ```
 daily-welcome --voice-provider openai       speak through OpenAI
@@ -338,8 +326,7 @@ written next - where a list of app names would have been out of date the week
 it was written. On macOS below 14.4 there is no per-process audio API, so it
 falls back to a list of known call apps, which is less exact.
 
-The daily briefing and the proactive alerts hold off too, so nothing talks
-over the call. A briefing you were owed is given once the call ends.
+The proactive alerts hold off too, so nothing talks over the call.
 
 Pressing Option-Space during a call overrides all of it for a minute: an
 explicit ask always beats a guess about what you are doing.
@@ -370,7 +357,7 @@ ORBIT_CALL_IGNORE=...     bundle ids that shouldn't count, comma separated
 | Web | search for flights to Delhi, open https://… |
 | Bits | what time is it, how much battery, read my clipboard, type hello |
 | Making things | remind me to call the dentist, make a note saying buy milk, set a timer for 10 minutes |
-| Reading back | brief me, what's on my calendar, read my messages, any new email, what did Claude do |
+| Reading back | what's on my calendar, read my messages, any new email, what did Claude do |
 | Questions | how long do I boil an egg, what's the capital of Peru, explain this error |
 | The screen | what's on my screen, what does this say, what's this error |
 | Macros | whatever you name in macros.conf: "good night", "focus" |
@@ -433,11 +420,7 @@ you when changed.
 |---|---|
 | Listen Now | Skip the wake word, talk immediately |
 | Listening for "hey orbit" | Toggle the microphone off entirely |
-| Play Today's Briefing | Replay it, voice and all |
-| Show / Speak Briefing Only | One half or the other |
 | Stop Talking | Cuts playback immediately |
-| Mute for Today | Nothing more until tomorrow |
-| Greet Me Again Today | Forget that today's greeting happened |
 | Edit Settings… / Open Log | `~/.config/daily-welcome/config.sh`, agent log |
 
 ## Permissions
@@ -485,9 +468,6 @@ it, at the cost of re-approving.
 | Setting | Default | |
 |---|---|---|
 | `WELCOME_NAME` | `Arjun` | what it calls you |
-| `WELCOME_SECTIONS` | reminders calendar messages mail claude tasks | which sections, in order |
-| `WELCOME_PRESENT` | `dialog` | `dialog`, `notification`, `both`, `stdout` |
-| `WELCOME_EARLIEST_HOUR` | `5` | a 1am session isn't a new day |
 | `WELCOME_ELEVEN_VOICE_NAME` | `Veda Sky` | looked up in your account |
 | `ORBIT_LISTEN` | `1` | `0` never opens the microphone |
 | `ORBIT_WAKE_WORD` | `hey orbit` | what wakes it |
@@ -500,10 +480,7 @@ it, at the cost of re-approving.
 ## Commands
 
 ```
-daily-welcome              the daily check (greets only once a day)
-daily-welcome --force      greet now regardless
-daily-welcome --print      the briefing as text, no voice
-daily-welcome --status     what it thinks, and when it last ran
+daily-welcome --status     how it is set up
 daily-welcome --brain groq which service works out what you meant
 daily-welcome --set-openai-key   its key, into the Keychain
 daily-welcome --set-key    ElevenLabs key into the Keychain
@@ -527,14 +504,6 @@ orbit say "<text>"         speak something in the Orbit voice
 orbit examples             every phrasing it knows
 ```
 
-## How "first time of the day" works
-
-The app watches system wake, screen unlock, and a five-minute backstop timer.
-Each asks the script whether today's greeting is still owed; a date stamp and a
-lock file mean the three overlapping triggers still greet exactly once. It
-waits until you've actually unlocked, so the greeting isn't spent on the lock
-screen.
-
 ## Troubleshooting
 
 **Start here:**
@@ -552,10 +521,10 @@ command or click that fixes anything broken.
 there's nothing for macOS to prompt about. `xcode-select --install`, then
 `./install.sh` again. Note the app is a menu bar item: it deliberately has no
 Dock icon, doesn't appear in Launchpad, and lives in `~/Applications`, not
-`/Applications`. Look for a small sun icon at the top right.
+`/Applications`. Look for a small circle icon at the top right.
 
-**Nothing happened this morning.** `daily-welcome --status` shows the last
-greeting date; `launchctl list | grep dailywelcome` shows the agent;
+**Nothing happens.** `daily-welcome --status` shows how it's set up;
+`launchctl list | grep dailywelcome` shows the agent;
 `~/.local/state/daily-welcome/agent.log` has the rest.
 
 **It used the wrong voice.** `daily-welcome --voices` names the backend in use.
@@ -596,11 +565,11 @@ covers what each suite protects and how to add one.
 ## Layout
 
 ```
-bin/daily-welcome       the briefing: gather, speak, show
+bin/daily-welcome       voice, key, and setup tools
 bin/orbit               voice commands: plan, confirm, run
 lib/config.sh           defaults, then your ~/.config override
 lib/common.sh           timeouts, lock-screen check, small helpers
-lib/sources.sh          reminders, calendar, tasks -> records
+lib/sources.sh          reminders, calendar -> records for readbacks
 lib/messages.sh         unread iMessages (chat.db), and sending one
 lib/mail.sh             unread mail, awaiting-reply, drafting, sending
 lib/claude_jobs.sh      repo lookup, dispatching Claude, reporting back
@@ -610,13 +579,12 @@ lib/freeform.sh         Claude-written commands, denylist, confirmation
 lib/intents.sh          sentence -> intent
 lib/speech_text.sh      numbers, times, dates -> words a voice reads right
 lib/tts_eleven.sh       ElevenLabs synthesis, caching, soft failure
-lib/voice.sh            records -> spoken sentences, backend choice
-lib/present.sh          records -> screen text, dialog, notification
+lib/voice.sh            backend choice, speaking, hushing
 lib/memory.sh           what was said and done, and dropping a subject
 lib/slots.sh            the half-finished request, and its one question
 lib/speaker.py          who is speaking: embeddings, matching, banning
 tests/run               the whole test suite; see tests/README.md
-menubar/main.swift      the menu bar app, wake and unlock triggers
+menubar/main.swift      the menu bar app and its timers
 menubar/listener.swift  wake word, command capture, yes/no loop
 launchd/*.template      login agent, one per install mode
 install.sh              build, install, load

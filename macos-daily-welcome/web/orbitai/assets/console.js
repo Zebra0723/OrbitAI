@@ -58,7 +58,6 @@ function drawSettings() {
 
 on("listen", (action) => listen(action));
 on("selftest", () => selftest());
-on("briefing", () => briefing());
 on("command", () => command());
 on("say", () => say());
 on("toggle", (key, element) => toggle(key, element));
@@ -116,10 +115,6 @@ function command() {
 
 function selftest() {
   return act("out", "Running...", async () => (await api("/api/selftest")).output);
-}
-
-function briefing() {
-  return act("out", "Building...", async () => (await api("/api/briefing")).output);
 }
 
 load().catch((error) => { drawOffline(); out("out", explain(error)); });

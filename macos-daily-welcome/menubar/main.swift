@@ -16,7 +16,6 @@ import EventKit
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var statusItem: NSStatusItem!
-    private var lastRunItem: NSMenuItem!
     private var listeningItem: NSMenuItem!
     /// The console server, once it has been asked for.
     private var consoleTask: Process?
@@ -86,14 +85,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            if let image = NSImage(systemSymbolName: "sun.horizon",
-                                   accessibilityDescription: "Daily Welcome") {
+            if let image = NSImage(systemSymbolName: "circle.circle",
+                                   accessibilityDescription: "Orbit") {
                 image.isTemplate = true
                 button.image = image
             } else {
-                button.title = "\u{2600}"
+                button.title = "Orbit"
             }
-            button.toolTip = "Daily Welcome"
+            button.toolTip = "Orbit"
         }
         statusItem.menu = buildMenu()
 
@@ -112,11 +111,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         backstopTimer = Timer.scheduledTimer(timeInterval: 300, target: self,
                                              selector: #selector(backstopTick),
                                              userInfo: nil, repeats: true)
-
-        // Give the desktop a beat to settle before the first check at login.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-            self?.run(["--agent"])
-        }
 
         listener.orbitPath = orbitPath
         listener.wakeWord = wakeWord
@@ -191,18 +185,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - Triggers
 
     @objc private func machineCameBack(_ note: Notification) {
-        // Unlock and wake usually arrive together; the script's once-a-day
-        // stamp and lock directory make the duplicate call harmless.
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            self?.run(["--agent"])
             // Sleep is where the microphone usually gets lost.
             self?.listener.restartIfNeeded()
         }
     }
 
     @objc private func backstopTick() {
-        run(["--agent"])
-        // The same tick asks whether anything is worth saying unprompted.
+        // Every five minutes, ask whether anything is worth saying unprompted.
         // Everything that decides "worth" lives in the shell, including
         // quiet hours and the rate limit.
         let process = Process()
@@ -219,25 +209,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        lastRunItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        lastRunItem.isEnabled = false
-        menu.addItem(lastRunItem)
-        menu.addItem(.separator())
-
         menu.addItem(item("Listen Now (\u{2325}Space)", #selector(listenNow), "l"))
         listeningItem = item("Listening for \u{201C}\(wakeWord)\u{201D}", #selector(toggleListening), "")
         listeningItem.state = listeningWanted ? .on : .off
         menu.addItem(listeningItem)
         menu.addItem(.separator())
 
-        menu.addItem(item("Play Today's Briefing", #selector(playBriefing), "p"))
-        menu.addItem(item("Show Briefing Only", #selector(showBriefing), "s"))
-        menu.addItem(item("Speak Briefing Only", #selector(speakBriefing), ""))
         menu.addItem(item("Stop Talking", #selector(hush), "."))
-        menu.addItem(.separator())
-
-        menu.addItem(item("Mute for Today", #selector(muteToday), ""))
-        menu.addItem(item("Greet Me Again Today", #selector(resetToday), ""))
         menu.addItem(.separator())
 
         // Everything the terminal could do, on a page. Reaching it used
@@ -248,7 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Open Log", #selector(openLog), ""))
         menu.addItem(.separator())
 
-        menu.addItem(item("Quit Daily Welcome", #selector(quit), "q"))
+        menu.addItem(item("Quit Orbit", #selector(quit), "q"))
         return menu
     }
 
@@ -258,31 +236,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return mi
     }
 
-    func menuWillOpen(_ menu: NSMenu) { refreshLastRunItem() }
-
-    private func refreshLastRunItem() {
-        let stamp = (try? String(contentsOfFile: stateDir + "/last-run", encoding: .utf8))?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if stamp == Self.todayStamp() {
-            lastRunItem.title = "Greeted today"
-        } else if stamp.isEmpty {
-            lastRunItem.title = "Waiting for the first greeting"
-        } else {
-            lastRunItem.title = "Last greeting: \(stamp)"
-        }
-    }
-
-    private static func todayStamp() -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: Date())
-    }
-
     // MARK: - Actions
 
-    @objc private func playBriefing()  { run(["--force"]) }
-    @objc private func showBriefing()  { run(["--preview", "--quiet"]) }
-    @objc private func speakBriefing() { run(["--preview", "--present", "stdout"]) }
     @objc private func hush()          { run(["--hush"]) }
 
     @objc private func listenNow() { listener.listenNow() }
@@ -297,8 +252,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    @objc private func muteToday()     { run(["--mute-today"]) }
-    @objc private func resetToday()    { run(["--reset"]) }
 
     /// Starts the console and opens it.
     ///

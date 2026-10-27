@@ -1,8 +1,8 @@
 #!/bin/bash
-# The briefing's contents, and the order they come out in.
+# What readbacks contain, and the order they come out in.
 #
 # A day read out in the wrong order is not obviously broken - it is just
-# wrong, every morning, in a way that is easy to hear and hard to place.
+# wrong, every time, in a way that is easy to hear and hard to place.
 # Sorting clock times as strings put ten in the morning before nine and
 # one in the afternoon before both.
 
@@ -46,33 +46,3 @@ ok "midnight, morning, noon, afternoon - in that order" \
 times="$(printf '14:30:00\tafternoon\n09:15:00\tmorning\n23:59:00\tlate\n00:05:00\tearly')"
 ok "and a twenty-four hour clock" "early|morning|afternoon|late|" \
    "$(printf '%s\n' "$times" | sort_by_time_field | cut -f2 | tr '\n' '|')"
-
-# ----------------------------------------------------------------- tasks
-
-tasks="$WELCOME_STATE_DIR/todo.md"
-cat > "$tasks" <<'TODO'
-# My list
-
-- [ ] call the bank
-- [x] already done
-* [ ] book the flights
-TODO
-out="$(WELCOME_TASKS_FILE="$tasks" src_tasks)"
-contains "an unchecked box is a task"        "call the bank"   "$out"
-contains "whichever bullet it uses"          "book the flights" "$out"
-lacks "a ticked box is not"                  "already done"    "$out"
-lacks "and neither is the heading"           "My list"         "$out"
-ok "each task is a record with an empty time" "2" \
-   "$(printf '%s\n' "$out" | awk -F'\t' 'NF == 3 && $1 == ""' | grep -c .)"
-
-# A file with no checkboxes at all is a list of lines.
-printf 'buy milk\n# a comment\n\nwalk the dog\n' > "$tasks"
-out="$(WELCOME_TASKS_FILE="$tasks" src_tasks)"
-contains "a plain list works too" "buy milk"     "$out"
-contains "all of it"              "walk the dog" "$out"
-lacks "comments are not tasks"    "a comment"    "$out"
-ok "and blank lines are not tasks" "2" "$(printf '%s\n' "$out" | grep -c .)"
-
-# A file that is not there is not an error.
-ok "no file, no tasks, no complaint" "" \
-   "$(WELCOME_TASKS_FILE=/nowhere/todo.md src_tasks)"

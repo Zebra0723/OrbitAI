@@ -48,7 +48,7 @@ SETTINGS = [
      "Separated by |. Whatever the recogniser hears instead of your wake word, add it here."),
     ("ORBIT_GREETING", "text", "Greeting", "The answer to the wake word on its own."),
     ("ORBIT_SIGNOFF", "text", "Sign-off", "What ends a conversation."),
-    ("WELCOME_HONORIFIC", "text", "Honorific", "How the briefing addresses you. Empty for just your name."),
+    ("WELCOME_HONORIFIC", "text", "Honorific", "How Orbit addresses you. Empty for just your name."),
     ("WELCOME_ELEVEN_VOICE_ID", "text", "Voice ID", "The ElevenLabs voice. An ID always works; a name only if it is in your account."),
     ("WELCOME_ELEVEN_SPEED", "number", "Speed", "1.0 is normal."),
     ("WELCOME_ELEVEN_STABILITY", "number", "Stability", "Lower is more expressive, higher is steadier."),
@@ -64,7 +64,6 @@ SETTINGS = [
     ("ORBIT_CONFIRM_CALLS", "toggle", "Confirm calls", "Say the name back before dialling."),
     ("ORBIT_REQUIRE_UNLOCKED", "toggle", "Only when unlocked", "Ignore commands while the screen is locked."),
     ("ORBIT_VIPS", "text", "Interrupt for", "Names worth interrupting you for, separated by |."),
-    ("WELCOME_SECTIONS", "text", "Briefing sections", "In order: reminders calendar messages mail claude tasks."),
 
     # Everything below here used to need a terminal. That is fine for the
     # person who wrote it and is the whole barrier for everybody else, so
@@ -638,10 +637,6 @@ class Console(BaseHTTPRequestHandler):
 
         if path == "/api/braintest":
             ok, out = run([WELCOME, "--brain", "test"], timeout=60)
-            return self.send(200, json.dumps({"ok": ok, "output": out}))
-
-        if path == "/api/briefing":
-            ok, out = run([WELCOME, "--print"], timeout=90)
             return self.send(200, json.dumps({"ok": ok, "output": out}))
 
         return self.send(404, json.dumps({"error": "no such thing"}))

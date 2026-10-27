@@ -155,13 +155,13 @@ if [ "$WANT_APP" -eq 1 ]; then
     <key>NSAppleEventsUsageDescription</key>
     <string>Orbit controls apps like Mail, Messages and Music on your behalf.</string>
     <key>NSRemindersFullAccessUsageDescription</key>
-    <string>Your briefing reads what's due today, and "remind me to..." adds to it.</string>
+    <string>Orbit reads what's due today when you ask, and "remind me to..." adds to it.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>Your briefing reads today's events.</string>
+    <string>Orbit reads today's events when you ask.</string>
     <key>NSRemindersUsageDescription</key>
-    <string>Your briefing reads what's due today.</string>
+    <string>Orbit reads what's due today when you ask.</string>
     <key>NSCalendarsUsageDescription</key>
-    <string>Your briefing reads today's events.</string>
+    <string>Orbit reads today's events when you ask.</string>
     <key>NSContactsUsageDescription</key>
     <string>Looking up who you mean by "message Mama" or "call Priya".</string>
 </dict>
@@ -190,7 +190,7 @@ PLIST
 
   Without it there is no menu bar icon, no "Hey Orbit" listening, and
   macOS never asks for any permissions - there's no app to ask for them.
-  The daily briefing still works, on a timer.
+  Proactive alerts still work, on a timer.
 
   To get the whole thing:
 
@@ -215,7 +215,7 @@ if [ "$BUILT_APP" -eq 1 ]; then
       "$ROOT/launchd/com.arjun.dailywelcome.app.plist.template" > "$PLIST"
 else
   sed -e "s|@@LABEL@@|$LABEL|g" \
-      -e "s|@@BIN@@|$BIN_LINK|g" \
+      -e "s|@@ORBIT@@|$ORBIT_LINK|g" \
       -e "s|@@LOG@@|$LOG|g" \
       -e "s|@@PATH@@|$AGENT_PATH|g" \
       -e "s|@@INTERVAL@@|$INTERVAL|g" \
@@ -275,7 +275,6 @@ fi
 echo
 echo "  Add your voice:  $BIN_LINK --set-key      (ElevenLabs API key)"
 echo "  Check the voice: $BIN_LINK --test-voice"
-echo "  Hear it all:     $BIN_LINK --force"
 echo "  See settings:    $BIN_LINK --status"
 echo "  Edit settings:   $CONFIG"
 echo "  Uninstall:       $ROOT/uninstall.sh"

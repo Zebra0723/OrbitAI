@@ -1,15 +1,19 @@
 #!/bin/bash
-# Data sources for the daily briefing.
+# Data sources Orbit reads back when you ask ("any new messages?").
 #
 # Every source emits TAB-separated records:  when <TAB> title <TAB> context
 #   when    - "OVERDUE", a time like "9:30 AM", or empty for undated items
 #   title   - what it is
 #   context - reminder list / calendar name / empty
-# Formatting for the screen and phrasing for the voice both work off these,
-# so the two can't drift apart. A source that is unavailable emits nothing
+# A source that is unavailable emits nothing
 # but a single "#note" record explaining itself.
 
 _note() { printf '#note\t%s\t\n' "$1"; }
+
+# Items only; "#note" lines are chrome, not work.
+count_records() {
+  printf '%s\n' "$1" | awk -F'\t' '$1 != "#note" && NF >= 2 && $2 != "" { n++ } END { print n + 0 }'
+}
 
 # The menu bar app doubles as an EventKit reader. It's the preferred path
 # for reminders and events: AppleScript needs the target app running and
@@ -199,20 +203,4 @@ src_calendar() {
   [ "$rc" -ne 0 ] && { _note "Calendar: $(last_error) (daily-welcome --doctor)"; return 0; }
   printf '%s\n' "$raw" | awk -F'\t' 'NF >= 2 && $2 != "" { print }' \
     | sort_by_time_field | tidy_time_field
-}
-
-# -------------------------------------------------------------- tasks file
-
-# Unchecked markdown checkboxes, or every non-comment line if the file
-# doesn't use checkboxes at all.
-src_tasks() {
-  local file="$WELCOME_TASKS_FILE"
-  [ -f "$file" ] || return 0
-
-  if grep -qE '^[[:space:]]*[-*] \[ \]' "$file"; then
-    grep -E '^[[:space:]]*[-*] \[ \]' "$file" \
-      | sed -E 's/^[[:space:]]*[-*] \[ \][[:space:]]*//'
-  else
-    grep -vE '^[[:space:]]*(#|$)' "$file" | trim_lines
-  fi | awk 'NF { printf "\t%s\t\n", $0 }'
 }

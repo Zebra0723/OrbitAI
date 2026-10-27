@@ -71,12 +71,12 @@ check("the local console is let in", 200,
 # The pages themselves are served before any of this is consulted, so the
 # console still loads by being typed in. An API path navigated to is a
 # different thing, and refusing it also refuses a link straight to
-# /api/briefing.
+# /api/braintest.
 check("the console page itself still loads", 200,
       ask("/console.html", {"Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate",
                             "Sec-Fetch-Dest": "document"}))
 check("but navigating to an API path is not an API call", 403,
-      ask("/api/briefing", {"Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate",
+      ask("/api/braintest", {"Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate",
                             "Sec-Fetch-Dest": "document"}))
 
 # ------------------------------------------------------ somebody else's page
@@ -95,10 +95,10 @@ FORM = {"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "no-cors",
 
 for name, headers, path in [
     ("an image tag cannot read the state", IMG, "/api/state"),
-    ("an image tag cannot make it speak", IMG, "/api/briefing"),
+    ("an image tag cannot spend a model call", IMG, "/api/braintest"),
     ("an image tag cannot run the self-test", IMG, "/api/selftest"),
     ("a script tag cannot either", SCRIPT, "/api/selftest"),
-    ("nor an iframe", FRAME, "/api/briefing"),
+    ("nor an iframe", FRAME, "/api/braintest"),
 ]:
     check(name, 403, ask(path, headers))
 

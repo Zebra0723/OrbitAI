@@ -49,7 +49,7 @@ load_libs() {
 # its own mostly works and then mostly does not, because they lean on each
 # other; loading the lot is a second of startup and no surprises.
 ORBIT_LIBS=(common sources messages mail contacts claude_jobs system freeform
-            present speech_text tts_eleven tts_openai tts_piper voice intents
+            speech_text tts_eleven tts_openai tts_piper voice intents
             context ask tone macros watch nlu_openai nlu_claude emoji memory
             slots speaker)
 

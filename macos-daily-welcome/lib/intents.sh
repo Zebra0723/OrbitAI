@@ -653,8 +653,6 @@ _try_readback() {
   esac
 
   case "$lower" in
-    *"brief me"*|*"my briefing"*|*"what's my day"*|*"whats my day"*|*"how's my day"*)
-      printf 'readback\tbriefing\n' ;;
     *message*|*imessage*|*text*)
       printf 'readback\tmessages\n' ;;
     *email*|*inbox*|*mail*)
@@ -685,7 +683,7 @@ no code fences. Allowed forms, with real tabs between fields:
 message<TAB><person><TAB><what to say>
 claude<TAB><repo name><TAB><task>
 mail_reply<TAB><reply text>
-readback<TAB>one of: briefing messages mail calendar reminders claude
+readback<TAB>one of: messages mail calendar reminders claude
 none
 
 Command: $text"

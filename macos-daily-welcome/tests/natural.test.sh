@@ -31,7 +31,7 @@ nat "It is not there."                "It isn't there."
 nat "You are not late."               "You aren't late."
 
 # Left alone. "You've three reminders" is British and dated, and a
-# briefing is nothing but nouns.
+# readback is nothing but nouns.
 nat "You have three reminders."       "You have three reminders."
 nat "I have sent it."                 "I have sent it."
 
@@ -40,39 +40,6 @@ nat "It is. That is."                 "It's. That's."
 nat "Is it done? It is."              "Is it done? It's."
 contains "a capital stays a capital"  "It's" "$(speech_natural "It is here")"
 contains "and mid-sentence stays low" "it's" "$(speech_natural "I think it is here")"
-
-# ------------------------------------------------------------- briefing
-
-records="$(printf 'OVERDUE\tcall the bank\tHome
-9:00 AM\tstandup\tWork
-2:00 PM\tdentist\tHome')"
-out="$(build_spoken_briefing "$records" "" "")"
-
-# One greeting, not two. It used to open "Welcome back, Arjun - good
-# evening, sir", which is a doorman and a butler talking over each other.
-lacks "no doubled greeting" "Welcome back" "$out"
-ok "one greeting only" "1" \
-   "$(printf '%s' "$out" | grep -oE 'Good (morning|afternoon|evening)' | grep -c .)"
-
-# The honorific replaces the name; it does not follow it.
-out2="$(WELCOME_HONORIFIC=sir build_spoken_briefing "$records" "" "")"
-contains "the honorific is used"    "sir"   "$out2"
-lacks "and the name is not as well" "Arjun" "$(printf '%s' "$out2" | head -c 40)"
-out3="$(WELCOME_HONORIFIC= build_spoken_briefing "$records" "" "")"
-contains "no honorific means your name" "Arjun" "$out3"
-
-# A list read out with one connective repeated is a list being read out.
-lacks "it does not start by counting"   "first," "$out"
-ok "\"then\" is not the only join" "1" \
-   "$(printf '%s' "$out" | grep -oE ', and then ' | grep -c .)"
-
-# The relative clause is gone: the sentence before already said how many
-# are overdue.
-lacks "no relative clause on the item" "which is overdue" "$out"
-contains "still says which one is late" "already overdue" "$out"
-
-# Contractions reach the briefing.
-contains "the briefing contracts too" "It's" "$out"
 
 # ----------------------------------------------------------- the pauses
 

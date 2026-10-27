@@ -4,14 +4,12 @@
 # What it calls you, on screen and out loud.
 # WELCOME_NAME="Arjun"
 
-# How it addresses you in the spoken briefing. Empty for just your name.
+# How it addresses you out loud. Empty for just your name.
 # WELCOME_HONORIFIC="sir"
 
 # --- voice -----------------------------------------------------------------
 
 # WELCOME_SPEAK=1                # 0 turns the voice off entirely
-# WELCOME_SPEAK_MAX_ITEMS=3      # how many items get read aloud
-# WELCOME_CLOSER="Standing by."  # the sign-off
 # WELCOME_VOLUME=1.0             # playback volume, 0.0-1.0
 
 # Which engine: auto (ElevenLabs when a key is set), elevenlabs, or say.
@@ -38,18 +36,10 @@
 # WELCOME_SPEAK_RATE=170
 # WELCOME_VOICE="Ava (Premium)"
 
-# --- what you see ----------------------------------------------------------
+# --- what readbacks include ------------------------------------------------
 
-# dialog | notification | both | stdout
-# WELCOME_PRESENT="dialog"
-# WELCOME_DIALOG_TIMEOUT=90      # seconds before the dialog closes itself; 0 waits
-
-# --- what's in the briefing ------------------------------------------------
-
-# WELCOME_SECTIONS="reminders calendar tasks"
 # WELCOME_MAX_ITEMS=8
-# WELCOME_REMINDERS_INCLUDE_UNDATED=0   # 1 also shows flagged reminders with no due date
-# WELCOME_TASKS_FILE="$HOME/todo.md"
+# WELCOME_REMINDERS_INCLUDE_UNDATED=0   # 1 also includes flagged reminders with no due date
 
 # Calendar comes from icalBuddy (brew install ical-buddy) when it's there.
 # Without it, set this to 1 to ask Calendar.app directly - correct but slow.
@@ -89,7 +79,3 @@
 # How long a spoken "yes" stays valid after the question.
 # ORBIT_PLAN_TTL_MINUTES=10
 
-# --- when it fires ---------------------------------------------------------
-
-# WELCOME_EARLIEST_HOUR=5        # a 1am session doesn't count as a new day
-# WELCOME_REQUIRE_UNLOCKED=1     # wait until you've actually unlocked

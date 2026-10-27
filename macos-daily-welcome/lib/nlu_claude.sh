@@ -33,7 +33,7 @@ message<TAB><person><TAB><what to say>
 mail_send<TAB><person><TAB><what the email says>
 mail_reply<TAB><reply text>
 claude<TAB><repo name><TAB><task>
-readback<TAB><one of: briefing messages mail calendar reminders claude>
+readback<TAB><one of: messages mail calendar reminders claude>
 command<TAB><what it does in at most twelve words><TAB><one-line shell command>
 chat<TAB><your spoken answer><TAB><a fact worth remembering, or empty>
 

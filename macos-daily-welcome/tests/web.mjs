@@ -85,7 +85,6 @@ const BRIDGE = {
   }),
   '/api/voices':   () => ({ ok: true, output: 'Ava (Premium)\nZoe (Premium)' }),
   '/api/selftest': () => ({ ok: true, output: 'everything works' }),
-  '/api/briefing': () => ({ ok: true, output: 'Good evening, Arjun.' }),
   '/api/setting':  () => ({ ok: true }),
   '/api/say':      () => ({ ok: true, output: 'said it' }),
   '/api/command':  () => ({ ok: true, result: { speak: "It's seven o'clock in the evening.",
@@ -249,7 +248,7 @@ for (const file of files) {
                    // innerText is the RENDERED text, and the small-caps
                    // headings here are uppercased by CSS - so these are
                    // words the stylesheet does not touch.
-                   'phone.html': ['Briefing', 'Sign out', 'Restart Orbit'] }[file];
+                   'phone.html': ['Messages', 'Sign out', 'Restart Orbit'] }[file];
     if (want) for (const needle of want) {
       say(text.includes(needle), `${file}: shows "${needle}" from the bridge`,
           'the page fetched it and did not draw it');

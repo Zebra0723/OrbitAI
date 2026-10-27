@@ -18,7 +18,6 @@ welcome_load_user_config
 . "$ROOT/lib/tts_eleven.sh"
 . "$ROOT/lib/memory.sh"
 . "$ROOT/lib/macros.sh"
-. "$ROOT/lib/present.sh"
 . "$ROOT/lib/nlu_openai.sh"
 . "$ROOT/lib/tts_openai.sh"
 . "$ROOT/lib/tts_piper.sh"

@@ -25,7 +25,6 @@ welcome_load_user_config
 . "$ROOT/lib/claude_jobs.sh"
 . "$ROOT/lib/system.sh"
 . "$ROOT/lib/freeform.sh"
-. "$ROOT/lib/present.sh"
 . "$ROOT/lib/speech_text.sh"
 . "$ROOT/lib/tts_eleven.sh"
 . "$ROOT/lib/tts_openai.sh"
@@ -53,8 +52,7 @@ PLAN_DIR="$WELCOME_STATE_DIR/plans"
 mkdir -p "$PLAN_DIR" 2>/dev/null
 
 # Everything orbit says is a reply to something just said out loud, so it
-# is judged on how quickly it starts talking. The briefing keeps the
-# better-sounding, slower model; this side takes the fast one.
+# is judged on how quickly it starts talking, so it takes the fast model.
 WELCOME_ELEVEN_MODEL="$WELCOME_ELEVEN_FAST_MODEL"
 
 usage() {
@@ -469,11 +467,6 @@ plan_system() {
 plan_readback() {
   local what="$1" text=""
   case "$what" in
-    briefing)
-      "$ROOT/bin/daily-welcome" --preview --present notification >/dev/null 2>&1 &
-      emit "Here's your briefing." false ""
-      return 0
-      ;;
     messages)
       text="$(_speak_section "$(src_messages)" "unread message" "unread messages" "Nothing unread in Messages.")"
       ;;
@@ -495,6 +488,8 @@ plan_readback() {
       ;;
     claude)
       text="$(_speak_section "$(src_claude)" "update from Claude" "updates from Claude" "Claude has nothing new for you.")"
+      # Heard now; don't read the same results out next time.
+      claude_jobs_mark_reported
       ;;
   esac
   emit "$text" false ""
@@ -590,7 +585,7 @@ run_plan() {
       claude_dispatch "$DIR" "$TASK" >/dev/null
       rm -f "$file"
       memory_log_event claude "Sent Claude into $REPO to $TASK"
-      emit "Claude is on it. I'll tell you what happened in your next briefing." false ""
+      emit "Claude is on it. I'll tell you when it's done." false ""
       ;;
     mail_send)
       local result
@@ -1092,7 +1087,7 @@ case "${1:-}" in
       "Added to your reminders." "Copied." "Next." "Back one." \
       "I didn't catch that. Try: message Mom saying I'm running late." \
       "That request has expired. Say it again." \
-      "Claude is on it. I'll tell you what happened in your next briefing."
+      "Claude is on it. I'll tell you when it's done."
     do
       [ -z "$line" ] && continue
       if eleven_cache_line "$line"; then

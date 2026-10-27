@@ -66,7 +66,7 @@ Intents and their arguments:
   claude      arg1 = repo name (or "" for the default), arg2 = the task
   mail_reply  arg1 = the reply text (only for replying to everything awaiting a reply)
   system      arg1 = action, arg2 = argument (see the action list)
-  readback    arg1 = briefing | messages | mail | calendar | reminders | claude
+  readback    arg1 = messages | mail | calendar | reminders | claude
   social      arg1 = thanks | hello | howareyou | goodnight | nevermind | praise | present
   ask         arg1 = the question, asked as the person asked it
   screen      arg1 = the question about what is on screen

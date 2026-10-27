@@ -6,13 +6,13 @@
     <string>@@LABEL@@</string>
     <key>ProgramArguments</key>
     <array>
-        <string>@@BIN@@</string>
-        <string>--agent</string>
+        <string>@@ORBIT@@</string>
+        <string>watch</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
-    <!-- launchd runs a missed StartInterval job as soon as the Mac wakes,
-         so this doubles as the "lid just opened" trigger. -->
+    <!-- Without the menu bar app, this timer is what asks every few
+         minutes whether anything is worth saying unprompted. -->
     <key>StartInterval</key>
     <integer>@@INTERVAL@@</integer>
     <key>EnvironmentVariables</key>

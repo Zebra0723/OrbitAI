@@ -7,32 +7,11 @@
 # Where state, the voice cache, and logs live.
 : "${WELCOME_STATE_DIR:=$HOME/.local/state/daily-welcome}"
 
-# How the greeting is shown: dialog | notification | both | stdout
-: "${WELCOME_PRESENT:=dialog}"
-
-# Auto-dismiss the dialog after N seconds (0 = wait for a click).
-: "${WELCOME_DIALOG_TIMEOUT:=90}"
-
-# Don't greet before this hour (0-23). Late-night sessions past midnight
-# shouldn't trigger "tomorrow's" welcome at 00:01.
-: "${WELCOME_EARLIEST_HOUR:=5}"
-
-# Skip while the screen is locked, so the greeting isn't spent behind the
-# lock screen. It fires on the next check after you unlock.
-: "${WELCOME_REQUIRE_UNLOCKED:=1}"
-
-# Sections to include, in order.
-# Any of: reminders calendar messages mail claude tasks
-: "${WELCOME_SECTIONS:=reminders calendar messages mail claude tasks}"
-
-# Max items shown per section on screen.
+# Most items any one readback ("any new mail?") looks at.
 : "${WELCOME_MAX_ITEMS:=8}"
 
 # Include reminders that have no due date but are flagged.
 : "${WELCOME_REMINDERS_INCLUDE_UNDATED:=0}"
-
-# Plain-text task list. Markdown checkboxes ("- [ ] thing") or bare lines.
-: "${WELCOME_TASKS_FILE:=$HOME/todo.md}"
 
 # How far back unread Messages count as news, and how much of each to show.
 : "${WELCOME_MESSAGES_SINCE_DAYS:=2}"
@@ -56,15 +35,6 @@
 # set to empty for just your name.
 : "${WELCOME_HONORIFIC:=sir}"
 
-# How it signs off.
-# How it signs off. Empty by default: a briefing that simply ends sounds
-# like a person finishing a sentence, and one that ends "Standing by."
-# every single morning sounds like the computer on a spaceship.
-: "${WELCOME_CLOSER:=}"
-
-# How many items get read aloud (the screen still shows all of them).
-: "${WELCOME_SPEAK_MAX_ITEMS:=3}"
-
 # Playback volume for the hosted voice, 0.0-1.0.
 : "${WELCOME_VOLUME:=1.0}"
 
@@ -76,10 +46,10 @@
 # directly, which works either way.
 : "${WELCOME_ELEVEN_VOICE_NAME:=Veda Sky}"
 : "${WELCOME_ELEVEN_VOICE_ID:=GWparLcEBJuQc36gyF2J}"
-# Two models, because the two jobs have opposite priorities. The briefing
-# is a monologue nobody is waiting on, so it uses the better-sounding model;
-# a reply to something you just said is judged on how fast it starts, so it
-# uses the low-latency one.
+# Two models, because the two jobs have opposite priorities. Speech nobody
+# is waiting on (a test line, a cached phrase) uses the better-sounding
+# model; a reply to something you just said is judged on how fast it
+# starts, so it uses the low-latency one.
 : "${WELCOME_ELEVEN_MODEL:=eleven_multilingual_v2}"
 : "${WELCOME_ELEVEN_FAST_MODEL:=eleven_flash_v2_5}"
 
@@ -148,8 +118,7 @@
 
 # ------------------------------------------------------- voice commands
 
-# Listening for "Hey Orbit". 0 keeps the daily briefing but never opens
-# the microphone.
+# Listening for "Hey Orbit". 0 never opens the microphone.
 : "${ORBIT_LISTEN:=1}"
 : "${ORBIT_WAKE_WORD:=hey orbit}"
 
@@ -258,7 +227,7 @@
 # itself an hour later.
 # Which service speaks. "auto" prefers ElevenLabs, then OpenAI, then the
 # best built-in macOS voice - so a failing provider costs you the voice
-# and never the briefing. Set it explicitly to pin one:
+# and never the answer. Set it explicitly to pin one:
 #   WELCOME_TTS=openai       use OpenAI, reusing your existing key
 #   WELCOME_TTS=elevenlabs   ElevenLabs only
 #   WELCOME_TTS=say          no network at all

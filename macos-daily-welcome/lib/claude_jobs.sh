@@ -1,9 +1,8 @@
 #!/bin/bash
-# Handing work to Claude Code in one of your repos, and reporting back on
-# it in the next briefing.
+# Handing work to Claude Code in one of your repos, and reporting back.
 #
 # Jobs run detached: you say "tell Claude to debug the dailyos repo", it
-# starts, and the result is waiting for you the next time Orbit speaks.
+# starts, and Orbit says so when it finishes (see watch.sh).
 
 _jobs_dir() { printf '%s/claude-jobs' "$WELCOME_STATE_DIR"; }
 
@@ -64,7 +63,7 @@ claude_dispatch() {
     printf 'started\t%s\n' "$(date '+%Y-%m-%d %H:%M')"
   } > "$meta"
 
-  # Detached: the briefing reports the outcome later, nobody waits here.
+  # Detached: the watch reports the outcome later, nobody waits here.
   (
     cd "$dir" 2>/dev/null || exit 1
     # shellcheck disable=SC2086
@@ -75,7 +74,7 @@ claude_dispatch() {
   printf '%s' "$id"
 }
 
-# Finished jobs that haven't been reported yet, as briefing records.
+# Finished jobs that haven't been reported yet, as records.
 src_claude() {
   local jobs done_file id meta repo task status summary
   jobs="$(_jobs_dir)"
@@ -109,7 +108,7 @@ _claude_summary() {
     | cut -c1-160
 }
 
-# Called once a briefing has read them out, so they aren't repeated.
+# Called once they've been read out, so they aren't repeated.
 claude_jobs_mark_reported() {
   local jobs archive
   jobs="$(_jobs_dir)"
