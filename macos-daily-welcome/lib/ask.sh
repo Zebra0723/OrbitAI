@@ -94,7 +94,7 @@ chat_claude() {
   claude_cmd="$(claude_bin)" || return 1
 
   history="$(chat_history 2>/dev/null | awk -F'\t' '{ printf "%s: %s\n", $1, $2 }')"
-  facts="$(memory_facts 2>/dev/null | cut -f2-)"
+  facts="$(memory_known 2>/dev/null)"
   [ -n "$facts" ] && prompt_facts="
 
 What you already know about them:

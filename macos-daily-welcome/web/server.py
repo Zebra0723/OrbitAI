@@ -57,6 +57,7 @@ SETTINGS = [
     ("ORBIT_CONVERSATION", "toggle", "Conversation mode", "Keep listening after a reply until you say thanks."),
     ("ORBIT_MATCH_TONE", "toggle", "Match my tone", "Clipped questions get clipped answers."),
     ("ORBIT_FREEFORM", "toggle", "Freeform commands", "Claude writes a command for anything not in the catalogue."),
+    ("ORBIT_GALAXY", "toggle", "Galaxy Link", "Share memory with Comet, Nova and Zenith, and hand them what Orbit can't do."),
     ("ORBIT_ONDEVICE", "toggle", "On-device recognition", "Keeps audio on this Mac. Hears invented names badly."),
     ("ORBIT_PAUSE_ON_CALL", "toggle", "Pause while you're on a call", "Shuts the microphone whenever another app is recording."),
     ("ORBIT_CALL_IGNORE", "text", "Never counts as a call", "Bundle ids to ignore, separated by commas."),

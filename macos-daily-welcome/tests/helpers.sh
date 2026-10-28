@@ -50,7 +50,7 @@ load_libs() {
 # other; loading the lot is a second of startup and no surprises.
 ORBIT_LIBS=(common sources messages mail contacts claude_jobs system freeform
             speech_text tts_eleven tts_openai tts_piper voice intents
-            context ask tone macros mute nlu_openai nlu_claude emoji memory
+            context ask tone macros mute nlu_openai nlu_claude emoji galaxy memory
             slots speaker)
 
 load_orbit() {

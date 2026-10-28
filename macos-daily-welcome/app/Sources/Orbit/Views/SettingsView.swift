@@ -51,6 +51,7 @@ struct SettingsView: View {
             Setting(key: "ORBIT_NLU", label: "How it understands you", help: "A model handles phrasings nobody anticipated. rules needs no key.", kind: .choice(["claude", "openai", "rules"])),
             Setting(key: "ORBIT_MATCH_TONE", label: "Match my tone", help: "Clipped questions get clipped answers.", kind: .toggle),
             Setting(key: "ORBIT_FREEFORM", label: "Freeform commands", help: "Claude writes a command for anything not in the catalogue.", kind: .toggle),
+            Setting(key: "ORBIT_GALAXY", label: "Galaxy Link", help: "Share memory with Comet, Nova and Zenith, and hand them what Orbit can't do.", kind: .toggle),
             Setting(key: "ORBIT_CONFIRM_CALLS", label: "Confirm calls", help: "Say the name back before dialling.", kind: .toggle),
         ]),
     ]

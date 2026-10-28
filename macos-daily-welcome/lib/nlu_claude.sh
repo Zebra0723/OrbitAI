@@ -56,6 +56,21 @@ Rules:
   React to what they said, then ask the one question that moves it
   forward. Never refuse; if you do not know, say so in a sentence.
 PROMPT
+  # The rest of GalaxyAI, offered only when Link is there to hand to.
+  # Without this a request Orbit cannot do itself ends in "I can't", even
+  # though Comet or Nova, one hop away, could.
+  if galaxy_installed; then
+    cat <<PROMPT
+One more form, for handing work to another member of GalaxyAI:
+handoff<TAB><comet, nova or zenith><TAB><what they should do, in full>
+- Other members of GalaxyAI can do what you cannot. Comet builds
+  websites, CAD models and code, and does research. Nova drives this
+  Mac's screen and apps and the websites it is signed in to. Zenith takes
+  big missions that run for hours. When the sentence needs one of them
+  and none of the forms above can do it, use "handoff" rather than
+  saying you cannot. Never use it for a question you can just answer.
+PROMPT
+  fi
   if [ -n "$ORBIT_SPEAKER_NAME" ]; then
     if [ "$ORBIT_SPEAKER_NAME" = "$WELCOME_NAME" ]; then
       printf 'The person speaking is %s, whose Mac this is.\n' "$ORBIT_SPEAKER_NAME"
@@ -91,7 +106,9 @@ claude_intent() {
   claude_cmd="$(claude_bin)" || return 1
 
   phrases="$(macros_list 2>/dev/null | cut -f1 | tr '\n' ',' | sed 's/,$//')"
-  facts="$(memory_facts 2>/dev/null | cut -f2- | tr '\n' ';' | cut -c1-400)"
+  # Orbit's own facts and what the rest of GalaxyAI knows, merged. More
+  # room than when it was only Orbit's handful, and still a bound.
+  facts="$(memory_known 2>/dev/null | tr '\n' ';' | cut -c1-1200)"
   history="$(chat_history 2>/dev/null | tail -6)"
   # Both of these are for looking BACKWARDS, and both only when asked.
   # Carrying them into every turn is what made it dwell on old topics.
@@ -107,7 +124,7 @@ claude_intent() {
 
   # The model occasionally writes the word TAB instead of pressing it.
   line="$(printf '%s' "$out" | sed -E 's/<TAB>/\t/g' \
-    | grep -E '^(message|mail_send|mail_reply|claude|readback|command|chat)' | head -1)"
+    | grep -E '^(message|mail_send|mail_reply|claude|readback|command|chat|handoff)' | head -1)"
   [ -n "$line" ] || return 1
 
   case "$(printf '%s' "$line" | cut -f1)" in

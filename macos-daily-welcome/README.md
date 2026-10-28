@@ -180,6 +180,42 @@ orbit memory show        what it remembers about you, and recent turns
 orbit memory clear       forget all of it
 ```
 
+### The rest of GalaxyAI
+
+With Galaxy Link (galaxyd, from the NovaAI repo) running on the Mac, Orbit is one
+member of GalaxyAI alongside Comet, Nova, Zenith and Nebula:
+
+- **One memory.** A fact Orbit learns is shared, and what the others
+  learned about you reaches Orbit's prompt (fetched at most once a minute).
+- **One record.** Things Orbit actually did - a message sent, a timer set,
+  a macro run - are noted for the others. Questions are not.
+- **Handoffs.** What Orbit can't do, it passes on, and says so:
+
+```
+you    ask Comet to build me a landing page for the bakery
+orbit  I've asked Comet to build you a landing page for the bakery. The
+       result will show up on your screen or phone.
+
+you    have Nova reorder my usual from the grocery site
+you    tell Zenith to research every grant I could apply for
+you    make this a mission           (the thing you just asked for)
+you    start a mission to map every cafe in town
+```
+
+- **Status, when asked.** "Galaxy status", "what are the others doing",
+  "how's my mission", "what's Comet doing" - who is running, what each is
+  working on, and how many approvals are waiting for you.
+
+Orbit never waits for a result and never says one later. Link sends results
+to your screen (Nova) or your phone (Comet), never to a voice, and nothing in
+Orbit listens to Link for anything - so Link can't make Orbit talk, and the
+mute stays absolute. The menu bar app tells Link that Orbit is running (a
+hello, a heartbeat every thirty seconds, a goodbye on quit) and nothing more.
+
+Without Link nothing changes, and every call fails quietly in under a second.
+`ORBIT_GALAXY=0` leaves it out even when Link is there. `orbit galaxy` says
+whether Orbit can reach it.
+
 ### The web
 
 ```
@@ -484,6 +520,8 @@ it, at the cost of re-approving.
 | `ORBIT_MAIL_AWAITING_DAYS` | `7` | how far back "awaiting reply" reaches |
 | `ORBIT_MAIL_MAX_BATCH` | `25` | blast radius for one mail command |
 | `ORBIT_FREEFORM` | `1` | `0` allows only the catalog |
+| `ORBIT_GALAXY` | `1` | `0` leaves Galaxy Link out: no shared memory, handoffs or presence |
+| `ORBIT_GALAXY_MEMORY_SECONDS` | `60` | how long shared memories are cached |
 
 ## Commands
 
@@ -510,6 +548,7 @@ orbit plan "<command>"     what it would do, as JSON
 orbit run <token>          carry out a planned action
 orbit say "<text>"         speak something in the Orbit voice
 orbit examples             every phrasing it knows
+orbit galaxy               Galaxy Link: reachable, and what the others are doing
 ```
 
 ## Troubleshooting
@@ -589,11 +628,13 @@ lib/speech_text.sh      numbers, times, dates -> words a voice reads right
 lib/tts_eleven.sh       ElevenLabs synthesis, caching, soft failure
 lib/voice.sh            backend choice, speaking, hushing
 lib/memory.sh           what was said and done, and dropping a subject
+lib/galaxy.sh           Galaxy Link: shared memory, notes, handoffs, status
 lib/slots.sh            the half-finished request, and its one question
 lib/speaker.py          who is speaking: embeddings, matching, banning
 tests/run               the whole test suite; see tests/README.md
 menubar/main.swift      the menu bar app, menu, and microphone restarts
 menubar/listener.swift  wake word, command capture, yes/no loop
+menubar/galaxy.swift    hello, heartbeat and goodbye to Galaxy Link
 launchd/*.template      login agent, one per install mode
 install.sh              build, install, load
 app/                    Orbit.app: talk, conversations, memory, stats, settings

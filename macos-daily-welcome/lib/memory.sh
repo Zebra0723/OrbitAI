@@ -75,6 +75,33 @@ memory_add_fact() {
     return 0
   fi
   printf '%s\t%s\n' "$(date '+%Y-%m-%d')" "$fact" >> "$(_facts_file)"
+  # And with the rest of GalaxyAI, so Comet and Nova know it too. Sent
+  # off in the background: it never holds up the reply that learned it.
+  galaxy_remember "$fact"
+  return 0
+}
+
+# Everything known about them, for a prompt: Orbit's own facts, then what
+# the other members of GalaxyAI have learned, one a line. A memory both
+# hold - Link's installer imports these very facts - is said once, by
+# comparing them the way Link does: case, spacing and a closing full stop
+# do not make two memories different.
+memory_known() {
+  {
+    memory_facts | cut -f2-
+    galaxy_memories 2>/dev/null | sed 's/^/+/'
+  } | awk '
+    function norm(s) {
+      s = tolower(s)
+      gsub(/[ \t]+/, " ", s)
+      sub(/^ /, "", s)
+      sub(/[ .!]+$/, "", s)
+      return s
+    }
+    /^\+/ { t = substr($0, 2); n = norm(t)
+             if (n != "" && !(n in seen)) { seen[n] = 1; print t }
+             next }
+    { n = norm($0); if (n != "" && !(n in seen)) { seen[n] = 1; print } }'
 }
 
 memory_forget() {
@@ -129,6 +156,15 @@ memory_event_words() {
 memory_log_event() {
   [ -n "${2:-}" ] || return 0
   memory_init
+  # Things it really did are news to the other members of GalaxyAI too.
+  # Not refusals, mutes or bypasses - those are about who may talk to
+  # Orbit, not about anything done for you - and not handoffs, which Link
+  # writes down itself as it takes them.
+  case "$1" in
+    message|mail|mail_reply|claude|call|macro|freeform|add_reminder|new_note|timer|\
+    empty_trash|restart|shut_down|sleep_mac)
+      galaxy_note "$2" ;;
+  esac
   printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%d %H:%M')" "$1" \
     "$(printf '%s' "$2" | tr '\n' ' ')" >> "$(_events_file)"
 

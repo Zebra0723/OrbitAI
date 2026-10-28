@@ -572,6 +572,83 @@ _try_system() {
   return 1
 }
 
+# The rest of GalaxyAI, by name. Only when Galaxy Link is set up on this
+# Mac: without it these sentences mean whatever they meant before - "tell
+# Nova I'm late" is a message to somebody called Nova - so nothing changes
+# for anyone who never installed it.
+#
+#   ask Comet to build me a landing page          handoff  comet   ...  to
+#   have Nova book the table on OpenTable          handoff  nova    ...
+#   hand this to Zenith                            handoff  zenith  (the last thing asked)
+#   make this a mission / start a mission to ...   handoff  mission ...
+#   galaxy status / what are the others doing      galaxy   all
+#   how's my mission                               galaxy   mission
+#   what's Comet doing                             galaxy   comet
+#
+# A handoff with nothing after it ("make this a mission") means the thing
+# they asked for a moment ago; bin/orbit finds it in the transcript.
+_try_galaxy() {
+  local text="$1" lower out
+  galaxy_installed || return 1
+  lower="$(printf '%s' "$text" | tr '[:upper:]' '[:lower:]' | sed -E 's/[[:space:]?!.]+$//')"
+
+  out="$(awk -v text="$text" 'BEGIN {
+    lower = tolower(text)
+    sub(/[ \t?!.]+$/, "", lower); text = substr(text, 1, length(lower))
+    who = ""; how = ""; rest = ""; found = 0
+    if (match(lower, /^(please )?((can|could|would|will) you )?(please )?(ask|have|tell|get) (comet|nova|zenith),?( (to|for|if|whether|about))?( |$)/)) {
+      head = substr(lower, 1, RLENGTH); rest = substr(text, RLENGTH + 1); found = 1
+      n = split(head, w, " ")
+      for (i = 1; i <= n; i++) {
+        x = w[i]; sub(/,$/, "", x)
+        if (x == "comet" || x == "nova" || x == "zenith") who = x
+      }
+      last = w[n]
+      if (last == "to" || last == "for") how = last
+      # "have Nova book a table" is "asked Nova to book a table".
+      else if (index(head, "have ") > 0 && last != "if" && last != "whether" && last != "about") how = "to"
+      if (rest == "") found = 0
+    } else if (match(lower, /^(please )?(hand|pass|give|send) (this|that|it)( off| over)? to (comet|nova|zenith)[,:]?( and)?( |$)/)) {
+      head = substr(lower, 1, RLENGTH); rest = substr(text, RLENGTH + 1); found = 1
+      n = split(head, w, " ")
+      for (i = 1; i <= n; i++) {
+        x = w[i]; sub(/[,:]$/, "", x)
+        if (x == "comet" || x == "nova" || x == "zenith") who = x
+      }
+    } else if (match(lower, /^(please )?(make|turn) (this|that|it) (into )?a mission[,:]?( to)?( |$)/) ||
+               match(lower, /^(please )?(make|start|begin|kick off|launch|create) (a )?(new )?mission( to| for| about| out of| of)?[,:]?( |$)/) ||
+               match(lower, /^(new )?mission[,:] /)) {
+      rest = substr(text, RLENGTH + 1); who = "mission"; how = "mission"; found = 1
+    }
+    if (!found) exit 1
+    gsub(/^[ \t,:]+|[ \t,]+$/, "", rest)
+    printf "handoff\t%s\t%s\t%s\n", who, rest, how
+  }')" && { printf '%s\n' "$out"; return 0; }
+
+  case "$lower" in
+    *"galaxy status"*|"status of the galaxy"|"how's the galaxy"*|"hows the galaxy"*|\
+    "how is the galaxy"*|"what are the others"*|"what are the other members"*|\
+    "what are the other agents"*|"what's everyone"*|"whats everyone"*|"what is everyone"*|\
+    "what's everybody"*|"whats everybody"*|"what is everybody"*|"what's the rest of galaxy"*)
+      printf 'galaxy\tall\t\n'; return 0 ;;
+    *"mission status"*|*"status of my mission"*|*"status of the mission"*)
+      printf 'galaxy\tmission\t\n'; return 0 ;;
+    how*|what*|"is "*|"any "*|"check on "*|"update on "*)
+      case "$lower" in
+        *" my mission"*|"how's the mission"*|"hows the mission"*|"how is the mission"*|\
+        "is the mission done"*|"how's zenith doing"*|"hows zenith doing"*|"how is zenith doing"*)
+          printf 'galaxy\tmission\t\n'; return 0 ;;
+      esac ;;
+  esac
+
+  out="$(printf '%s' "$lower" | sed -nE "s/^(what's|whats|what is|how's|hows|how is|is) (comet|nova|zenith|nebula) (doing|up to|working on|running|busy|online|up)( .*)?$/\\2/p")"
+  if [ -n "$out" ]; then
+    printf 'galaxy\t%s\t\n' "$out"
+    return 0
+  fi
+  return 1
+}
+
 # The things people say to a person that aren't instructions. Answering
 # them is most of the difference between a command line with a microphone
 # and something you can talk to.
@@ -794,6 +871,10 @@ parse_intent() {
   # quiet" has to work the same way every single time.
   _try_quiet "$text" && return 0
 
+  # Naming a member of GalaxyAI is as unambiguous as a sentence gets, and
+  # a model handed "ask Comet to..." would only answer it itself.
+  _try_galaxy "$text" && return 0
+
   # In "openai" mode the model gets first refusal on everything except the
   # user's own macro phrases, which are theirs by definition.
   if [ "$ORBIT_NLU" = "openai" ]; then
@@ -870,6 +951,13 @@ Things Orbit understands (after "Hey Orbit"):
     click Export in Keynote
     new tab / close tab / reload / go back / save this
     play bohemian rhapsody on spotify
+
+  The rest of GalaxyAI (when Galaxy Link is running)
+    ask Comet to build me a landing page for the bakery
+    have Nova reorder my usual from the grocery site
+    tell Zenith to research every grant I could apply for
+    make this a mission / start a mission to ...
+    galaxy status / what are the others doing / how's my mission
 
   Quiet
     mute yourself / mute yourself for two hours / go quiet until 7:30

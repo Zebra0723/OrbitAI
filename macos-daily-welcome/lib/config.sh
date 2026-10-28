@@ -448,6 +448,17 @@
 # that started them (timers).
 : "${ORBIT_BIN:=$HOME/.local/bin/orbit}"
 
+# Galaxy Link, the hub the rest of GalaxyAI (Comet, Nova, Zenith, Nebula)
+# meets in. With it running, what Orbit learns about you is shared and
+# what the others learned reaches Orbit; what Orbit does is noted for the
+# others; "ask Comet to..." hands work over; and "galaxy status" says what
+# everyone is up to. Orbit never listens for anything from it, so it never
+# speaks because of it. Without Link installed nothing changes. Set to 0
+# to leave Link out entirely, even when it is there.
+: "${ORBIT_GALAXY:=1}"
+# How long the shared memories are kept before Link is asked again.
+: "${ORBIT_GALAXY_MEMORY_SECONDS:=60}"
+
 welcome_load_user_config() {
   # Do this before anything looks for a tool: the app's PATH is not yours.
   command -v orbit_widen_path >/dev/null 2>&1 && orbit_widen_path

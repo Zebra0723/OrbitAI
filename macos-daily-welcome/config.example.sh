@@ -79,3 +79,8 @@
 # How long a spoken "yes" stays valid after the question.
 # ORBIT_PLAN_TTL_MINUTES=10
 
+
+# Galaxy Link: share memory with Comet, Nova and Zenith, hand them what
+# Orbit can't do ("ask Comet to build me a site"), and hear "galaxy
+# status". Does nothing until Link is installed. 0 leaves it out.
+# ORBIT_GALAXY=1

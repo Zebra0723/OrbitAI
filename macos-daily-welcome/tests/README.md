@@ -34,6 +34,7 @@ the name you gave matches no suite.
 | `natural` | sounding like a person rather than a machine reading |
 | `sources` | what readbacks contain, and the order they come in |
 | `memory` | what it remembers and what it lets go of |
+| `galaxy` | Galaxy Link against a stand-in: shared memory, handoffs, status, Link down, and never a sound |
 | `messages` | unread iMessages, against a real chat.db shape |
 | `applescript` | the scripts Mail is sent, as they come out |
 | `slots` | the half-finished request, and the way out of one |

@@ -39,6 +39,7 @@ welcome_load_user_config
 . "$ROOT/lib/nlu_openai.sh"
 . "$ROOT/lib/nlu_claude.sh"
 . "$ROOT/lib/emoji.sh"
+. "$ROOT/lib/galaxy.sh"
 . "$ROOT/lib/memory.sh"
 . "$ROOT/lib/slots.sh"
 . "$ROOT/lib/speaker.sh"
@@ -74,6 +75,7 @@ orbit - voice commands for daily-welcome
   orbit console                  open the OrbitAI console in a browser
   orbit console --phone          put it on the Wi-Fi so a phone can use it
   orbit memory [show|events|add|forget|clear]  what it remembers, and did
+  orbit galaxy [status|mission]  Galaxy Link: who's running and what they're doing
   orbit voice [enroll|who|test|check|ban|unban|forget]   who is speaking
   orbit log                      what it heard, how it read it, how long it took
   orbit selftest                 check every feature in the place it runs
@@ -248,13 +250,20 @@ plan_message() {
 }
 
 plan_claude() {
-  local repo_name="$1" task="$2" dir token
+  local repo_name="$1" task="$2" dir token who
 
   if ! dir="$(resolve_repo "$repo_name")"; then
     emit "I couldn't find a repo called $repo_name under your project folders." false ""
     return 0
   fi
   if ! have_claude; then
+    # Comet writes code too, on a machine that has what it needs. Better
+    # passed on than refused.
+    if who="$(galaxy_handoff code "$task in the $(basename "$dir") repo" "${ORBIT_TRANSCRIPT:-$task}")"; then
+      memory_log_event handoff "Asked $who to $task in $(basename "$dir")"
+      emit "Claude Code isn't on this Mac, so I've asked $who to do it. The result will show up on your screen or phone." false ""
+      return 0
+    fi
     emit "Claude Code isn't installed on this Mac, so I can't hand that off." false ""
     return 0
   fi
@@ -357,6 +366,67 @@ plan_call() {
   fi
 }
 
+# Something another member of GalaxyAI does, handed to them by way of
+# Galaxy Link: "ask Comet to build me a site", "make this a mission".
+#
+# Orbit asks, says so, and is done. It does not wait for the result and
+# will never say it later - the result reaches you on your screen or your
+# phone, through Nova or Comet, because a voice that piped up an hour
+# afterwards would be Orbit talking when nobody had talked to it.
+plan_handoff() {
+  local who="$1" task="$2" how="${3:-}" name said reply
+  who="$(printf '%s' "$who" | tr '[:upper:]' '[:lower:]')"
+
+  # "Make this a mission" is about whatever they just asked for.
+  if [ -z "$task" ]; then
+    task="$(memory_recent | awk -F'\t' '$1 == "user" { t = (NF >= 3 ? $3 : $2) } END { print t }')"
+  fi
+  if [ -z "$task" ]; then
+    ask_for "What should I hand over?" handoff task "$who"
+    return 0
+  fi
+
+  case "$who" in
+    comet|nova|zenith|mission) ;;
+    *)
+      emit "I'm not sure who in GalaxyAI should take that. Try: ask Comet to, or ask Nova to." false ""
+      return 0 ;;
+  esac
+
+  if ! name="$(galaxy_handoff "$who" "$task" "${ORBIT_TRANSCRIPT:-$task}")"; then
+    if [ "$who" = mission ]; then
+      emit "I couldn't reach Galaxy Link, so that mission hasn't started." false ""
+    else
+      emit "I couldn't reach Galaxy Link, so I haven't passed that to $(galaxy_member_name "$who")." false ""
+    fi
+    return 0
+  fi
+
+  said="$(galaxy_said_back "$task")"
+  memory_log_event handoff "Asked $name: $task"
+  # Said back in full only while it is short enough to say back. A whole
+  # paragraph repeated is the opposite of being listened to.
+  if [ "$(printf '%s' "$said" | wc -w | tr -d ' ')" -gt 14 ]; then
+    how=long
+  fi
+  case "$how" in
+    mission) reply="I've started a mission with $name: $said. It will take a while, and the result will show up on your screen or phone." ;;
+    to)      reply="I've asked $name to $said. The result will show up on your screen or phone." ;;
+    for)     reply="I've asked $name for $said. The result will show up on your screen or phone." ;;
+    *)       reply="I've passed that to $name. The result will show up on your screen or phone." ;;
+  esac
+  emit "$reply" false ""
+}
+
+# "Galaxy status", "how's my mission", "what's Comet doing". Answered
+# because it was asked, as an ordinary reply.
+plan_galaxy() {
+  local text
+  text="$(galaxy_status "${1:-all}")" || text="I can't reach Galaxy Link right now."
+  [ -n "$text" ] || text="I can't reach Galaxy Link right now."
+  emit "$text" false ""
+}
+
 # The social half of talking to something. "Thanks" ends the conversation,
 # which is how you stop without saying stop.
 # "Mute yourself for an hour" / "unmute yourself". Muting answers in text
@@ -442,7 +512,10 @@ EOT
     emit "$phrase: $(num_word "$count") $(_plural "$count" step steps). Go ahead?" true "$token"
   else
     rm -f "$(plan_file "$token")"
-    emit "$(run_macro_steps "$steps")" false ""
+    local said
+    said="$(run_macro_steps "$steps")"
+    memory_log_event macro "Ran the macro: $phrase"
+    emit "$said" false ""
   fi
 }
 
@@ -628,6 +701,7 @@ run_plan() {
         if [ "$result" = "sent" ]; then sent=$((sent + 1)); else missing=$((missing + 1)); fi
       done < "$file"
       rm -f "$file"
+      [ "$sent" -gt 0 ] && memory_log_event mail_reply "Replied to $(num_word "$sent") $(_plural "$sent" email emails)"
       if [ "$missing" -gt 0 ]; then
         emit "Sent $(num_word "$sent"). $(num_word "$missing") were gone from Drafts, so I left those alone." false ""
       else
@@ -635,10 +709,13 @@ run_plan() {
       fi
       ;;
     macro)
-      local steps
+      local steps phrase said
       steps="$(awk -F'\t' '$1 == "STEP" { print $2 }' "$file")"
+      phrase="$(sed -n 's/^PHRASE=//p' "$file" | head -1)"
       rm -f "$file"
-      emit "$(run_macro_steps "$steps")" false ""
+      said="$(run_macro_steps "$steps")"
+      memory_log_event macro "Ran the macro: ${phrase:-a macro}"
+      emit "$said" false ""
       ;;
     system)
       rm -f "$file"
@@ -726,6 +803,7 @@ case "${1:-}" in
           message:recipient) plan_message "$answer" "$p_arg2"; exit 0 ;;
           mail_send:body)      plan_mail_send "$p_arg1" "$answer"; exit 0 ;;
           mail_send:recipient) plan_mail_send "$answer" "$p_arg2"; exit 0 ;;
+          handoff:task)        plan_handoff "$p_arg1" "$answer"; exit 0 ;;
         esac
       fi
       # A plainly new instruction: let the question go rather than
@@ -754,6 +832,8 @@ case "${1:-}" in
       ask)        plan_ask "$arg1" ;;
       screen)     plan_screen "$arg1" ;;
       message)    plan_message "$arg1" "$arg2" ;;
+      handoff)    plan_handoff "$arg1" "$arg2" "$arg3" ;;
+      galaxy)     plan_galaxy "$arg1" ;;
       claude)     plan_claude "$arg1" "$arg2" ;;
       mail_reply) plan_mail_reply "$arg1" ;;
       mail_send)  plan_mail_send "$arg1" "$arg2" ;;
@@ -1007,6 +1087,27 @@ case "${1:-}" in
       *) echo 'orbit memory [show|events|add "..."|forget "..."|clear]' >&2; exit 2 ;;
     esac
     ;;
+  galaxy)
+    # Galaxy Link from a terminal: whether Orbit can reach it, and what
+    # the others are up to - the same answer "galaxy status" speaks.
+    shift
+    if ! galaxy_enabled; then
+      echo "Galaxy Link is switched off for Orbit (ORBIT_GALAXY=0)."
+      exit 0
+    fi
+    if ! galaxy_installed; then
+      echo "Galaxy Link isn't set up on this Mac (no token in $(_galaxy_home))."
+      exit 1
+    fi
+    if ! galaxy_available; then
+      echo "Galaxy Link is installed but not answering on port $(_galaxy_port)."
+      exit 1
+    fi
+    case "${1:-status}" in
+      mission) galaxy_status mission; echo ;;
+      *)       galaxy_status all; echo ;;
+    esac
+    ;;
   log)
     # What it heard, how it read it, and how long each turn took.
     if [ -f "$WELCOME_STATE_DIR/turns.log" ]; then
@@ -1211,8 +1312,9 @@ case "${1:-}" in
       hotkey)    printf '%s\n' "$ORBIT_HOTKEY" ;;
       pause_on_call) printf '%s\n' "$ORBIT_PAUSE_ON_CALL" ;;
       call_ignore)   printf '%s\n' "$ORBIT_CALL_IGNORE" ;;
+      galaxy)        printf '%s\n' "$ORBIT_GALAXY" ;;
       *)         printf 'orbit config: wake_word | listen | followup | aliases | hotkey |\n' >&2
-                 printf '             conversation | ondevice | pause_on_call | call_ignore\n' >&2
+                 printf '             conversation | ondevice | pause_on_call | call_ignore | galaxy\n' >&2
                  exit 2 ;;
     esac
     ;;
