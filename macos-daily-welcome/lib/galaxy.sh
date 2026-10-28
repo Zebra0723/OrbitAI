@@ -325,7 +325,7 @@ galaxy_status() {
 # The newest mission: the latest task Zenith was given, by anybody.
 _galaxy_mission_status() {
   local body line title status progress
-  body="$(galaxy_call GET '/v1/tasks?body=zenith')" || return 1
+  body="$(galaxy_call GET '/v1/tasks?to=zenith')" || return 1
   line="$(printf '%s' "$body" | _galaxy_read tasks | awk -F'\t' '$1 == "zenith" { print; exit }')"
   if [ -z "$line" ]; then
     printf 'There is no mission on the go.'
