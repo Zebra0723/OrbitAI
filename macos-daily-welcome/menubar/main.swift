@@ -21,6 +21,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// The console server, once it has been asked for.
     private var consoleTask: Process?
     private let listener = OrbitListener()
+    /// Orbit's hello, heartbeat and goodbye to Galaxy Link. Presence only:
+    /// it never brings anything back for Orbit to say.
+    private var galaxy: GalaxyPresence?
 
     // MARK: - Paths
 
@@ -152,6 +155,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if (shellConfig("hotkey") ?? "1") != "0" {
             listener.installHotKey(49, flags: .option)   // 49 is Space
         }
+
+        // This app running is Orbit running, as far as the rest of
+        // GalaxyAI is concerned. ORBIT_GALAXY=0 leaves Link out of it.
+        if (shellConfig("galaxy") ?? "1") != "0" {
+            let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+            let presence = GalaxyPresence(version: version ?? "")
+            presence.start()
+            galaxy = presence
+        }
     }
 
     /// The icon says what Orbit is doing, so an open microphone is never
@@ -174,6 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        galaxy?.stop()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         DistributedNotificationCenter.default().removeObserver(self)
     }

@@ -110,7 +110,8 @@ if [ "$WANT_APP" -eq 1 ]; then
 
     if ! swiftc -O -o "$BUILD_DIR/Contents/MacOS/DailyWelcome" \
       "$ROOT/menubar/main.swift" "$ROOT/menubar/listener.swift" \
-      "$ROOT/menubar/eventkit.swift" "$ROOT/menubar/callwatch.swift"; then
+      "$ROOT/menubar/eventkit.swift" "$ROOT/menubar/callwatch.swift" \
+      "$ROOT/menubar/galaxy.swift"; then
       rm -rf "$BUILD_DIR"
       trap - EXIT
       echo >&2
