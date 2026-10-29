@@ -132,6 +132,11 @@ if mode == "memories":
         text = clean(m.get("text") if isinstance(m, dict) else "")
         if text:
             print(text)
+elif mode == "playbook":
+    for l in (data.get("lessons") or []) if isinstance(data, dict) else []:
+        text = clean(l.get("text") if isinstance(l, dict) else "")
+        if text and l.get("active"):
+            print(text)
 elif mode == "task":
     print("\t".join(clean(data.get(k)) for k in ("to", "title", "status", "progress")))
 elif mode == "tasks":
@@ -181,6 +186,28 @@ galaxy_memories() {
     } > "$cache.tmp" 2>/dev/null && mv "$cache.tmp" "$cache"
   fi
   tail -n +2 "$cache" 2>/dev/null
+}
+
+# Orbit's playbook: the lessons Galaxy Trainer has taught it, one a line. They go
+# into every turn's prompt, so training changes how Orbit actually answers.
+# Cached like the memories: lessons change at most once a night.
+galaxy_playbook() {
+  galaxy_installed || return 1
+  local cache now fetched body
+  cache="$(_galaxy_dir)/playbook.txt"
+  now="$(date +%s)"
+  fetched="$(head -1 "$cache" 2>/dev/null)"
+  case "$fetched" in ''|*[!0-9]*) fetched=0 ;; esac
+  if [ $(( now - fetched )) -ge 600 ] || [ "$fetched" -gt "$now" ]; then
+    mkdir -p "$(_galaxy_dir)" 2>/dev/null
+    {
+      printf '%s\n' "$now"
+      if body="$(galaxy_call GET '/v1/training/orbit')"; then
+        printf '%s' "$body" | _galaxy_read playbook
+      fi
+    } > "$cache.tmp" 2>/dev/null && mv "$cache.tmp" "$cache"
+  fi
+  tail -n +2 "$cache" 2>/dev/null | head -12
 }
 
 # ------------------------------------------------------------- activity

@@ -78,6 +78,8 @@ class Link(BaseHTTPRequestHandler):
                                     "status": "queued", "result": "", "progress": "", "replyTo": ""})
         if path == "/v1/tasks" and self.command == "GET":
             return self.reply(200, load("tasks.json", []))
+        if path == "/v1/training/orbit":
+            return self.reply(200, load("training.json", {"member": "orbit", "lessons": []}))
         if path == "/v1/overview":
             return self.reply(200, load("overview.json", {"bodies": [], "counts": {"approvals": 0}}))
         return self.reply(404, {"error": "no such thing"})
@@ -280,6 +282,20 @@ for _ in $(seq 1 50); do [ -s "$gx_home/port" ] && break; sleep 0.1; done
 cat > "$gx_home/tasks.json" <<'JSON'
 [{"id":"t_2","from":"orbit","to":"zenith","power":"missions","title":"Map every cafe","status":"done","result":"Here are 41 cafes.","progress":""}]
 JSON
+
+# The trainer's lessons reach Orbit's prompt; switched-off ones don't.
+cat > "$gx_home/training.json" <<'JSON'
+{"member": "orbit", "lessons": [
+  {"text": "Answer in at most two spoken sentences.", "active": true},
+  {"text": "Read every link out loud.", "active": false}
+]}
+JSON
+rm -f "$WELCOME_STATE_DIR/galaxy/playbook.txt"
+p="$(_claude_turn_prompt "what's the weather" "" "" "" "" "")"
+contains "the playbook reaches the model prompt" "Answer in at most two spoken sentences." "$p"
+lacks "a lesson you switched off doesn't" "Read every link out loud." "$p"
+contains "and it never outranks the mute" "never to speak unprompted or while muted" "$p"
+ok "it's cached, not fetched every sentence" "1" "$(grep -c '/v1/training/orbit' "$gx_log" 2>/dev/null; _claude_turn_prompt "x" "" "" "" "" "" >/dev/null)"
 
 fakes="$WELCOME_STATE_DIR/fakes"
 sounds="$WELCOME_STATE_DIR/sounds.log"

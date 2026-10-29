@@ -16,8 +16,17 @@
 claude_available() { claude_bin >/dev/null 2>&1; }
 
 _claude_turn_prompt() {
-  local text="$1" phrases="$2" facts="$3" history="$4" events="$5" recalled="$6"
+  local text="$1" phrases="$2" facts="$3" history="$4" events="$5" recalled="$6" playbook
   printf '%s\n\n' "$(orbit_identity)"
+  # What Galaxy Trainer has taught Orbit from practice. Rules it follows,
+  # never a reason to speak: the mute and the speak-when-spoken-to rule
+  # sit above anything a lesson says.
+  playbook="$(galaxy_playbook 2>/dev/null)"
+  if [ -n "$playbook" ]; then
+    printf 'Your playbook (lessons from practice; follow them, but never to speak unprompted or while muted):\n'
+    printf '%s\n' "$playbook" | sed 's/^/- /'
+    printf '\n'
+  fi
   # A heredoc, not a quoted string. As a quoted string one of the
   # apostrophes below closed it early, and everything after that point -
   # most of the drop-a-subject rule, all of "answer what they JUST said",
